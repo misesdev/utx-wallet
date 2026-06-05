@@ -73,3 +73,34 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.staging
+.env.production
+.env.*.local
+
+# Signing certificates & keys
+*.p12
+*.pem
+*.cer
+*.mobileprovision
+android/app/release.keystore
+android/app/upload.keystore
+
+# Firebase / Google services (contain API keys)
+google-services.json
+GoogleService-Info.plist
+
+# Sentry
+.sentryclirc
+sentry.properties
+
+# Editor
+.vscode/settings.json
+.vscode/launch.json
+
+# OS
+Thumbs.db

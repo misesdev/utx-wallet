@@ -1,97 +1,177 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# UTX Wallet
 
-# Getting Started
+UTX Wallet is a React Native mobile app for a Bitcoin wallet. It is built without Expo and uses TypeScript, Clean Architecture, reusable UI components, providers, hooks, services, repositories, and use cases.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+This first stage is intentionally an app shell. The project has architecture, navigation, screens, theme, test setup, and mockable infrastructure, but it does not yet implement real Bitcoin wallet logic such as seed generation, transaction signing, UTXO sync, or API broadcasting.
 
-## Step 1: Start Metro
+## Stack
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+- React Native CLI, no Expo
+- TypeScript strict mode
+- React Navigation
+- Jest
+- React Native Testing Library
+- ESLint and Prettier
+- Android/iOS native projects
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+## Architecture
+
+The project follows Clean Architecture boundaries:
+
+```text
+src/
+  app/              App composition, providers, navigation
+  core/             Domain, use cases, services, infrastructure
+  presentation/     Components, hooks, screen shells
+  shared/           Constants, theme, types, utilities
+
+tests/
+  mocks/            Storage, navigation, API, and render helpers
+  setup/            Jest setup
+  unit/             Unit tests
+  integration/      Reserved for integration tests
+```
+
+Main dependency flow:
+
+```text
+screens/components -> hooks -> providers/services -> use cases -> repositories -> infrastructure
+```
+
+Screens must stay thin and should consume hooks. Hooks and providers expose services. Services orchestrate use cases. Use cases depend on domain repository interfaces. Infrastructure contains concrete implementations for storage, APIs, adapters, and repositories.
+
+## Bitcoin Scope Prepared
+
+The base architecture is prepared for:
+
+- mainnet
+- testnet
+- testnet3
+- testnet4
+- online mode
+- offline mode
+- secure mode with personal node
+
+Real wallet behavior is not implemented yet. Future Bitcoin rules should be introduced through domain entities, repository interfaces, use cases, services, and providers before being consumed by screens.
+
+## Running
+
+Install dependencies:
 
 ```sh
-# Using npm
+npm install
+```
+
+Start Metro:
+
+```sh
 npm start
-
-# OR using Yarn
-yarn start
 ```
 
-## Step 2: Build and run your app
-
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
+Run on Android:
 
 ```sh
-# Using npm
 npm run android
-
-# OR using Yarn
-yarn android
 ```
 
-### iOS
+Run on the currently active Android device/emulator using only its ABI:
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+```sh
+npm run android:active
+```
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+Run on iOS:
 
 ```sh
 bundle install
-```
-
-Then, and every time you update your native dependencies, run:
-
-```sh
-bundle exec pod install
-```
-
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
-
-```sh
-# Using npm
+bundle exec pod install --project-directory=ios
 npm run ios
-
-# OR using Yarn
-yarn ios
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+## Build
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+Build Android debug APK:
 
-## Step 3: Modify your app
+```sh
+npm run build:android:debug
+```
 
-Now that you have successfully run the app, let's make changes!
+Build a smaller debug APK for x86_64 emulators:
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+```sh
+npm run build:android:debug:x86_64
+```
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+Build Android release APK:
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+```sh
+npm run build
+```
 
-## Congratulations! :tada:
+Generated APKs:
 
-You've successfully run and modified your React Native App. :partying_face:
+```text
+android/app/build/outputs/apk/debug/app-debug.apk
+android/app/build/outputs/apk/release/app-release.apk
+```
 
-### Now what?
+Clean Android build outputs:
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+```sh
+npm run clean:android
+```
 
-# Troubleshooting
+## Quality Checks
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+Run the full validation before finishing changes:
 
-# Learn More
+```sh
+npm run validate
+```
 
-To learn more about React Native, take a look at the following resources:
+Individual commands:
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+```sh
+npm run typecheck
+npm run lint
+npm test
+npm run test:ci
+npm run test:watch
+npm run format
+```
+
+When changing navigation, native dependencies, entrypoints, or build scripts, also run:
+
+```sh
+npm run build:android:debug
+```
+
+## Development Rules
+
+- Keep TypeScript strict.
+- Keep business logic out of screens.
+- Use SOLID, Clean Code, and small testable units.
+- Add or update tests for behavior changes.
+- Keep external integrations inside `src/core/infrastructure`.
+- Keep repository interfaces in `src/core/domain/repositories`.
+- Add wallet behavior through use cases before exposing it to UI.
+
+See [AGENTS.md](./AGENTS.md) for detailed engineering guidance for future implementation work.
+
+## Android Emulator Troubleshooting
+
+If `npm run android` fails during `:app:installDebug` with `Unknown API Level`, `ShellCommandUnresponsiveException`, or `INSTALL_FAILED_INSUFFICIENT_STORAGE`, the build is usually fine and the AVD/ADB install step is failing.
+
+Recommended checks:
+
+```sh
+adb devices -l
+adb shell getprop sys.boot_completed
+adb shell df -h /data
+```
+
+If the emulator has little free space, wipe the AVD data from Android Studio Device Manager or create an emulator with more internal storage. For x86_64 emulators, prefer:
+
+```sh
+npm run android:active
+```
