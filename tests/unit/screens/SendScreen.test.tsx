@@ -94,7 +94,7 @@ describe('SendScreen', () => {
     it('renders the available balance', () => {
       const screen = renderWithTheme(<SendScreen />);
       expect(screen.getByTestId('available-balance')).toBeTruthy();
-      expect(screen.getByText('1.000.000 sats')).toBeTruthy();
+      expect(screen.getByText('1,000,000 sats')).toBeTruthy();
     });
   });
 
@@ -223,7 +223,7 @@ describe('SendScreen', () => {
     it('renders amount sent in preview', () => {
       mockState = { ...BASE_STATE, preview: PREVIEW };
       const screen = renderWithTheme(<SendScreen />);
-      expect(screen.getByTestId('preview-amount').props.children).toBe('100.000 sats');
+      expect(screen.getByTestId('preview-amount').props.children).toBe('100,000 sats');
     });
 
     it('renders fee in preview', () => {
@@ -235,7 +235,7 @@ describe('SendScreen', () => {
     it('renders total in preview', () => {
       mockState = { ...BASE_STATE, preview: PREVIEW };
       const screen = renderWithTheme(<SendScreen />);
-      expect(screen.getByTestId('preview-total').props.children).toBe('100.900 sats');
+      expect(screen.getByTestId('preview-total').props.children).toBe('100,900 sats');
     });
 
     it('renders change in preview when changeSats > 0', () => {

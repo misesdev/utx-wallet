@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, type PressableProps, type StyleProp, StyleSheet, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, type PressableProps, type StyleProp, StyleSheet, type ViewStyle } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
 import { AppText } from './AppText';
 
@@ -9,6 +9,7 @@ type AppButtonProps = Omit<PressableProps, 'style'> & {
   title: string;
   variant?: AppButtonVariant;
   size?: 'sm' | 'md' | 'lg';
+  loading?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -16,11 +17,13 @@ export function AppButton({
   title,
   variant = 'primary',
   size = 'lg',
+  loading,
   disabled,
   style,
   ...props
 }: AppButtonProps) {
   const { theme } = useTheme();
+  const isDisabled = disabled || loading;
 
   const heights = { sm: 40, md: 46, lg: 54 };
   const height = heights[size];
@@ -53,7 +56,7 @@ export function AppButton({
   return (
     <Pressable
       accessibilityRole="button"
-      disabled={disabled}
+      disabled={isDisabled}
       style={({ pressed }) => [
         styles.button,
         {
@@ -62,17 +65,25 @@ export function AppButton({
           borderColor: borderMap[variant],
           borderWidth: variant === 'primary' ? 0 : 1,
           borderRadius: theme.radii.lg,
-          opacity: disabled ? 0.38 : pressed ? 0.72 : 1,
+          opacity: isDisabled ? 0.38 : pressed ? 0.72 : 1,
         },
         style,
       ]}
       {...props}
     >
-      <AppText
-        style={[styles.text, size === 'sm' ? styles.smallText : styles.defaultText, textStyle]}
-      >
-        {title}
-      </AppText>
+      {loading ? (
+        <ActivityIndicator
+          size="small"
+          color={textColorMap[variant]}
+          accessibilityLabel={title}
+        />
+      ) : (
+        <AppText
+          style={[styles.text, size === 'sm' ? styles.smallText : styles.defaultText, textStyle]}
+        >
+          {title}
+        </AppText>
+      )}
     </Pressable>
   );
 }

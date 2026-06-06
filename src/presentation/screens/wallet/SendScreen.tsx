@@ -16,7 +16,7 @@ import { AppRoutes } from '../../../app/navigation/routes';
 type SendNavProp = NativeStackNavigationProp<AppStackParamList, 'Send'>;
 
 function formatSats(sats: number): string {
-  return sats.toLocaleString('pt-BR');
+  return sats.toLocaleString();
 }
 
 function truncateAddress(addr: string, chars = 10): string {
@@ -75,11 +75,11 @@ export function SendScreen() {
     !isPreviewing;
 
   return (
-    <AppScreen title="Enviar">
+    <AppScreen title="Send">
       <AppCard>
         <View style={styles.row}>
           <AppText variant="label" color="muted">
-            Saldo disponível
+            Available balance
           </AppText>
           <AppText variant="subtitle" testID="available-balance">
             {`${formatSats(availableBalanceSats)} sats`}
@@ -89,12 +89,12 @@ export function SendScreen() {
 
       <AppCard>
         <AppText variant="label" color="muted">
-          Endereço de destino
+          Recipient address
         </AppText>
         <AppInput
           value={toAddress}
           onChangeText={setToAddress}
-          placeholder="bc1q… ou tb1q…"
+          placeholder="bc1q… or tb1q…"
           autoCapitalize="none"
           autoCorrect={false}
           testID="input-address"
@@ -108,7 +108,7 @@ export function SendScreen() {
 
       <AppCard>
         <AppText variant="label" color="muted">
-          Valor (sats)
+          Amount (sats)
         </AppText>
         <AppInput
           value={amountSats}
@@ -144,7 +144,7 @@ export function SendScreen() {
       )}
 
       <AppButton
-        title={isPreviewing ? 'Calculando…' : 'Revisar transação'}
+        title={isPreviewing ? 'Calculating…' : 'Review transaction'}
         disabled={!canReview}
         onPress={reviewTransaction}
         testID="btn-review"
@@ -152,14 +152,14 @@ export function SendScreen() {
 
       {preview && (
         <AppCard accent testID="preview-card">
-          <AppText variant="subtitle">Prévia</AppText>
+          <AppText variant="subtitle">Preview</AppText>
 
           <View style={styles.row}>
-            <AppText color="muted">Valor enviado</AppText>
+            <AppText color="muted">Amount</AppText>
             <AppText testID="preview-amount">{`${formatSats(preview.amountSats)} sats`}</AppText>
           </View>
           <View style={styles.row}>
-            <AppText color="muted">Taxa estimada</AppText>
+            <AppText color="muted">Estimated fee</AppText>
             <AppText testID="preview-fee">{`${formatSats(preview.feeSats)} sats`}</AppText>
           </View>
           <View style={styles.separator} />
@@ -171,23 +171,23 @@ export function SendScreen() {
           </View>
           {preview.changeSats > 0 && (
             <View style={styles.row}>
-              <AppText color="muted">Troco</AppText>
+              <AppText color="muted">Change</AppText>
               <AppText testID="preview-change">{`${formatSats(preview.changeSats)} sats`}</AppText>
             </View>
           )}
           <View style={styles.row}>
-            <AppText color="muted">Destino</AppText>
+            <AppText color="muted">Recipient</AppText>
             <AppText style={styles.address} testID="preview-address">
               {truncateAddress(preview.toAddress)}
             </AppText>
           </View>
           <View style={styles.row}>
-            <AppText color="muted">Taxa</AppText>
+            <AppText color="muted">Fee rate</AppText>
             <AppText testID="preview-fee-rate">{`${preview.feeRateSatsPerVByte} sat/vB`}</AppText>
           </View>
 
           <AppButton
-            title="Confirmar e enviar"
+            title="Confirm & send"
             size="md"
             onPress={openReview}
             testID="btn-open-review"
@@ -197,7 +197,7 @@ export function SendScreen() {
 
       {isLoadingFeeRates && (
         <AppText variant="caption" color="muted" style={styles.center}>
-          Carregando taxas…
+          Loading fee rates…
         </AppText>
       )}
 

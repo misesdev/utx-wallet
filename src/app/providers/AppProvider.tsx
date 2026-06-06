@@ -3,6 +3,7 @@ import { AddressService } from '../../core/application/services/AddressService';
 import { NetworkService } from '../../core/application/services/NetworkService';
 import { WalletService } from '../../core/application/services/WalletService';
 import { SendService } from '../../core/application/services/SendService';
+import { SecurityService } from '../../core/application/services/SecurityService';
 import { CoinSelectionService } from '../../core/domain/services/CoinSelectionService';
 import { FeeEstimationService } from '../../core/domain/services/FeeEstimationService';
 import { CreateWalletUseCase } from '../../core/domain/usecases/wallet/CreateWalletUseCase';
@@ -27,6 +28,14 @@ import { PreviewTransactionUseCase } from '../../core/domain/usecases/transactio
 import { BuildTransactionUseCase } from '../../core/domain/usecases/transaction/BuildTransactionUseCase';
 import { SignTransactionUseCase } from '../../core/domain/usecases/transaction/SignTransactionUseCase';
 import { BroadcastTransactionUseCase } from '../../core/domain/usecases/transaction/BroadcastTransactionUseCase';
+import { LoadSecuritySettingsUseCase } from '../../core/domain/usecases/security/LoadSecuritySettingsUseCase';
+import { SaveSecuritySettingsUseCase } from '../../core/domain/usecases/security/SaveSecuritySettingsUseCase';
+import { SetPinUseCase } from '../../core/domain/usecases/security/SetPinUseCase';
+import { VerifyPinUseCase } from '../../core/domain/usecases/security/VerifyPinUseCase';
+import { ClearPinUseCase } from '../../core/domain/usecases/security/ClearPinUseCase';
+import { CheckBiometricAvailabilityUseCase } from '../../core/domain/usecases/security/CheckBiometricAvailabilityUseCase';
+import { AuthenticateWithBiometricUseCase } from '../../core/domain/usecases/security/AuthenticateWithBiometricUseCase';
+import { ReauthenticateUseCase } from '../../core/domain/usecases/security/ReauthenticateUseCase';
 import { FetchHttpClient } from '../../core/infrastructure/api/HttpClient';
 import { MempoolApiAdapter } from '../../core/infrastructure/adapters/MempoolApiAdapter';
 import { ChangeNetworkUseCase } from '../../core/domain/usecases/network/ChangeNetworkUseCase';
@@ -36,6 +45,8 @@ import { PersonalNodeAdapter } from '../../core/infrastructure/adapters/Personal
 import { WalletKeyAddressProvider } from '../../core/infrastructure/adapters/WalletKeyAddressProvider';
 import { WalletTransactionSigner } from '../../core/infrastructure/adapters/WalletTransactionSigner';
 import { MempoolExplorerAdapter } from '../../core/infrastructure/adapters/MempoolExplorerAdapter';
+import { NoopBiometricAuthAdapter } from '../../core/infrastructure/adapters/BiometricAuthAdapter';
+import { WebCryptoPinHasher } from '../../core/infrastructure/adapters/PinHasherAdapter';
 import { GetTransactionDetailUseCase } from '../../core/domain/usecases/transaction/GetTransactionDetailUseCase';
 import { TransactionHistoryService } from '../../core/application/services/TransactionHistoryService';
 import { OfflineModeService } from '../../core/application/services/OfflineModeService';
@@ -44,6 +55,8 @@ import { LoadOfflineTransactionsUseCase } from '../../core/domain/usecases/offli
 import { DeleteOfflineTransactionUseCase } from '../../core/domain/usecases/offline/DeleteOfflineTransactionUseCase';
 import { OfflineTransactionStorage } from '../../core/infrastructure/storage/OfflineTransactionStorage';
 import { OfflineTransactionRepositoryImpl } from '../../core/infrastructure/repositories/OfflineTransactionRepositoryImpl';
+import { SecuritySettingsStorage } from '../../core/infrastructure/storage/SecuritySettingsStorage';
+import { SecuritySettingsRepositoryImpl } from '../../core/infrastructure/repositories/SecuritySettingsRepositoryImpl';
 import { AddressRepositoryImpl } from '../../core/infrastructure/repositories/AddressRepositoryImpl';
 import { TransactionRepositoryImpl } from '../../core/infrastructure/repositories/TransactionRepositoryImpl';
 import { UtxoRepositoryImpl } from '../../core/infrastructure/repositories/UtxoRepositoryImpl';
@@ -61,6 +74,7 @@ import { DEFAULT_NETWORK } from '../../shared/constants/networks';
 import { AddressProvider } from './AddressProvider';
 import { NetworkProvider } from './NetworkProvider';
 import { OfflineModeProvider } from './OfflineModeProvider';
+import { SecurityProvider } from './SecurityProvider';
 import { SendProvider } from './SendProvider';
 import { ThemeProvider } from './ThemeProvider';
 import { TransactionHistoryProvider } from './TransactionHistoryProvider';
@@ -73,6 +87,7 @@ type Dependencies = {
   sendService: SendService;
   transactionHistoryService: TransactionHistoryService;
   offlineModeService: OfflineModeService;
+  securityService: SecurityService;
 };
 
 export function AppProvider({ children }: PropsWithChildren) {
@@ -186,26 +201,51 @@ export function AppProvider({ children }: PropsWithChildren) {
       nodeRepository,
     );
 
-    depsRef.current = { walletService, networkService, addressService, sendService, transactionHistoryService, offlineModeService };
+    const securitySettingsStorage = new SecuritySettingsStorage(secureStorage);
+    const securitySettingsRepository = new SecuritySettingsRepositoryImpl(securitySettingsStorage);
+    const pinHasher = new WebCryptoPinHasher();
+    const biometricProvider = new NoopBiometricAuthAdapter();
+    const verifyPinUseCase = new VerifyPinUseCase(securitySettingsRepository, pinHasher);
+    const securityService = new SecurityService(
+      new LoadSecuritySettingsUseCase(securitySettingsRepository),
+      new SaveSecuritySettingsUseCase(securitySettingsRepository),
+      new SetPinUseCase(securitySettingsRepository, pinHasher),
+      verifyPinUseCase,
+      new ClearPinUseCase(securitySettingsRepository),
+      new CheckBiometricAvailabilityUseCase(biometricProvider),
+      new ReauthenticateUseCase(verifyPinUseCase, new AuthenticateWithBiometricUseCase(biometricProvider)),
+    );
+
+    depsRef.current = {
+      walletService,
+      networkService,
+      addressService,
+      sendService,
+      transactionHistoryService,
+      offlineModeService,
+      securityService,
+    };
   }
 
-  const { walletService, networkService, addressService, sendService, transactionHistoryService, offlineModeService } = depsRef.current;
+  const { walletService, networkService, addressService, sendService, transactionHistoryService, offlineModeService, securityService } = depsRef.current;
 
   return (
     <ThemeProvider>
-      <NetworkProvider networkService={networkService}>
-        <WalletProvider walletService={walletService}>
-          <AddressProvider addressService={addressService}>
-            <SendProvider sendService={sendService}>
-              <TransactionHistoryProvider service={transactionHistoryService}>
-                <OfflineModeProvider service={offlineModeService}>
-                  {children}
-                </OfflineModeProvider>
-              </TransactionHistoryProvider>
-            </SendProvider>
-          </AddressProvider>
-        </WalletProvider>
-      </NetworkProvider>
+      <SecurityProvider service={securityService}>
+        <NetworkProvider networkService={networkService}>
+          <WalletProvider walletService={walletService}>
+            <AddressProvider addressService={addressService}>
+              <SendProvider sendService={sendService}>
+                <TransactionHistoryProvider service={transactionHistoryService}>
+                  <OfflineModeProvider service={offlineModeService}>
+                    {children}
+                  </OfflineModeProvider>
+                </TransactionHistoryProvider>
+              </SendProvider>
+            </AddressProvider>
+          </WalletProvider>
+        </NetworkProvider>
+      </SecurityProvider>
     </ThemeProvider>
   );
 }

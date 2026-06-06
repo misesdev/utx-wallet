@@ -6,23 +6,29 @@ import { AppText } from '../base/AppText';
 type BalanceCardProps = {
   balanceSats: number;
   label?: string;
+  hidden?: boolean;
 };
 
 const SATS_PER_BTC = 100_000_000;
+const HIDDEN_PLACEHOLDER = '••••••';
 
-export function BalanceCard({ balanceSats, label = 'Total balance' }: BalanceCardProps) {
+export function BalanceCard({ balanceSats, label = 'Total balance', hidden = false }: BalanceCardProps) {
   const btc = (balanceSats / SATS_PER_BTC).toFixed(8);
 
   return (
     <AppCard>
       <AppText variant="label" color="muted">{label}</AppText>
       <View style={styles.row}>
-        <AppText variant="display" style={styles.amount}>
-          {balanceSats.toLocaleString()}
+        <AppText variant="display" style={styles.amount} testID="balance-amount">
+          {hidden ? HIDDEN_PLACEHOLDER : balanceSats.toLocaleString()}
         </AppText>
-        <AppText variant="body" color="muted" style={styles.unit}>sats</AppText>
+        {!hidden && (
+          <AppText variant="body" color="muted" style={styles.unit}>sats</AppText>
+        )}
       </View>
-      <AppText variant="caption" color="muted">≈ {btc} BTC</AppText>
+      <AppText variant="caption" color="muted" testID="balance-btc">
+        {hidden ? HIDDEN_PLACEHOLDER : `≈ ${btc} BTC`}
+      </AppText>
     </AppCard>
   );
 }

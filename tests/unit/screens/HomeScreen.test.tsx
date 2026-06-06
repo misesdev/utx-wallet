@@ -153,14 +153,14 @@ describe('HomeScreen', () => {
   });
 
   describe('Sync button', () => {
-    it('renders the Atualizar button when idle with no prior sync', () => {
+    it('renders the Tap to sync button when idle with no prior sync', () => {
       const screen = renderWithTheme(<HomeScreen />);
-      expect(screen.getByText('Atualizar')).toBeTruthy();
+      expect(screen.getByText('Tap to sync')).toBeTruthy();
     });
 
-    it('calls sync and refresh when Atualizar is pressed', async () => {
+    it('calls sync and refresh when Tap to sync is pressed', async () => {
       const screen = renderWithTheme(<HomeScreen />);
-      fireEvent.press(screen.getByText('Atualizar'));
+      fireEvent.press(screen.getByText('Tap to sync'));
       await waitFor(() => {
         expect(mockSync).toHaveBeenCalledTimes(1);
         expect(mockRefresh).toHaveBeenCalledTimes(1);

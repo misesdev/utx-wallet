@@ -167,7 +167,7 @@ export function HomeScreen() {
               ? syncError
               : lastSyncAt
                 ? `Last sync: ${new Date(lastSyncAt).toLocaleTimeString()}`
-                : 'Atualizar'}
+                : 'Tap to sync'}
         </AppText>
         {!isSyncing && (
           <AppText variant="caption" color="muted"> ↺</AppText>

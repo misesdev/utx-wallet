@@ -24,14 +24,14 @@ export function ReceiveScreen() {
 
   if (isLoading && !address) {
     return (
-      <AppScreen title="Receber">
+      <AppScreen title="Receive">
         <AppLoading />
       </AppScreen>
     );
   }
 
   return (
-    <AppScreen title="Receber">
+    <AppScreen title="Receive">
       {error && (
         <AppText color="danger" variant="caption" style={styles.center}>
           {error}
@@ -44,7 +44,7 @@ export function ReceiveScreen() {
 
           <AppCard>
             <AppText variant="label" color="muted">
-              Endereço de recebimento
+              Receiving address
             </AppText>
             <AppText style={styles.addressText} testID="receive-address">
               {address.value}
@@ -53,7 +53,7 @@ export function ReceiveScreen() {
 
           <View style={styles.row}>
             <AppButton
-              title="Copiar"
+              title="Copy"
               variant="secondary"
               size="md"
               style={styles.flex}
@@ -61,7 +61,7 @@ export function ReceiveScreen() {
               testID="btn-copy"
             />
             <AppButton
-              title="Compartilhar"
+              title="Share"
               variant="secondary"
               size="md"
               style={styles.flex}
@@ -72,7 +72,7 @@ export function ReceiveScreen() {
 
           <AppCard>
             <AppText variant="label" color="muted">
-              Valor opcional (sats)
+              Amount (optional, sats)
             </AppText>
             <AppInput
               value={amountSats}
@@ -89,7 +89,7 @@ export function ReceiveScreen() {
           </AppCard>
 
           <AppButton
-            title="Gerar novo endereço"
+            title="Generate new address"
             variant="ghost"
             size="md"
             onPress={generateNewAddress}
