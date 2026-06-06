@@ -1,5 +1,5 @@
 import React, { createContext, PropsWithChildren, useEffect, useMemo, useState } from 'react';
-import type { NetworkConfig } from '../../core/domain/entities/Network';
+import type { BitcoinNetwork, NetworkConfig, NodeConnectionTestResult } from '../../core/domain/entities/Network';
 import { DEFAULT_NETWORK } from '../../shared/constants/networks';
 import { NetworkService } from '../../core/application/services/NetworkService';
 
@@ -7,6 +7,8 @@ type NetworkContextValue = {
   networkConfig: NetworkConfig;
   isOnline: boolean;
   setNetworkConfig: (config: NetworkConfig) => Promise<void>;
+  changeNetwork: (targetNetwork: BitcoinNetwork, walletNetwork?: BitcoinNetwork) => Promise<NetworkConfig>;
+  testNodeConnection: (config: NetworkConfig) => Promise<NodeConnectionTestResult>;
 };
 
 export const NetworkContext = createContext<NetworkContextValue | null>(null);
@@ -37,6 +39,12 @@ export function NetworkProvider({ children, networkService }: NetworkProviderPro
         await networkService.setConfig(config);
         setNetworkConfigState(config);
       },
+      changeNetwork: async (targetNetwork, walletNetwork) => {
+        const config = await networkService.changeNetwork(targetNetwork, walletNetwork);
+        setNetworkConfigState(config);
+        return config;
+      },
+      testNodeConnection: config => networkService.testNodeConnection(config),
     }),
     [isOnline, networkConfig, networkService],
   );

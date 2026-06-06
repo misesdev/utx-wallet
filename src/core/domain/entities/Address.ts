@@ -11,4 +11,5 @@ export type Address = {
   type: AddressType;
   isChange: boolean;
   index: number;
+  isUsed: boolean;
 };

@@ -74,7 +74,9 @@ describe('TransactionStorage', () => {
     it('saves null for missing txid and feeSats', async () => {
       const db = createDatabaseMock();
       const storage = new TransactionStorage(db);
-      const { txid: _txid, feeSats: _feeSats, ...txWithoutOptionals } = tx;
+      const txWithoutOptionals: Partial<Transaction> = { ...tx };
+      delete txWithoutOptionals.txid;
+      delete txWithoutOptionals.feeSats;
       await storage.save('wallet-1', txWithoutOptionals as Transaction);
       const params = (db.execute as jest.Mock).mock.calls[0][1];
       expect(params[2]).toBeNull();

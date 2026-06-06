@@ -12,6 +12,7 @@ export const AppRoutes = {
   Receive: 'Receive',
   Send: 'Send',
   TransactionDetails: 'TransactionDetails',
+  TransactionSuccess: 'TransactionSuccess',
   Utxos: 'Utxos',
   Settings: 'Settings',
   SecuritySettings: 'SecuritySettings',
@@ -36,6 +37,7 @@ export type AppStackParamList = {
   Receive: undefined;
   Send: undefined;
   TransactionDetails: undefined;
+  TransactionSuccess: { txid: string; amountSats: number; feeSats: number };
   Utxos: undefined;
   Settings: undefined;
   SecuritySettings: undefined;

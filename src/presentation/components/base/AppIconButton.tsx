@@ -13,6 +13,7 @@ type AppIconButtonProps = Omit<PressableProps, 'style'> & {
 export function AppIconButton({ label, symbol, size = 'md', style, ...props }: AppIconButtonProps) {
   const { theme } = useTheme();
   const dimension = size === 'sm' ? 36 : 44;
+  const textStyle = size === 'sm' ? styles.smallText : styles.defaultText;
 
   return (
     <Pressable
@@ -32,7 +33,7 @@ export function AppIconButton({ label, symbol, size = 'md', style, ...props }: A
       ]}
       {...props}
     >
-      <AppText style={{ fontSize: size === 'sm' ? 14 : 17 }}>{symbol}</AppText>
+      <AppText style={textStyle}>{symbol}</AppText>
     </Pressable>
   );
 }
@@ -42,5 +43,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  smallText: {
+    fontSize: 14,
+  },
+  defaultText: {
+    fontSize: 17,
   },
 });

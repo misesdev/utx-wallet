@@ -1,7 +1,11 @@
-import type { Transaction, TransactionDraft } from '../../domain/entities/Transaction';
-import { BroadcastTransactionUseCase } from '../../domain/usecases/transaction/BroadcastTransactionUseCase';
+import type { BuiltTransaction } from '../../domain/entities/BuiltTransaction';
+import type { SignedTransaction } from '../../domain/entities/SignedTransaction';
+import type { BuildTransactionParams } from '../../domain/usecases/transaction/BuildTransactionUseCase';
+import type { SignTransactionParams } from '../../domain/usecases/transaction/SignTransactionUseCase';
+import type { BroadcastResult } from '../../domain/usecases/transaction/BroadcastTransactionUseCase';
 import { BuildTransactionUseCase } from '../../domain/usecases/transaction/BuildTransactionUseCase';
 import { SignTransactionUseCase } from '../../domain/usecases/transaction/SignTransactionUseCase';
+import { BroadcastTransactionUseCase } from '../../domain/usecases/transaction/BroadcastTransactionUseCase';
 
 export class TransactionService {
   constructor(
@@ -10,15 +14,15 @@ export class TransactionService {
     private readonly broadcastTransactionUseCase: BroadcastTransactionUseCase,
   ) {}
 
-  buildTransaction(draft: TransactionDraft): Promise<Transaction> {
-    return this.buildTransactionUseCase.execute(draft);
+  buildTransaction(params: BuildTransactionParams): Promise<BuiltTransaction> {
+    return this.buildTransactionUseCase.execute(params);
   }
 
-  signTransaction(transaction: Transaction): Promise<Transaction> {
-    return this.signTransactionUseCase.execute(transaction);
+  signTransaction(params: SignTransactionParams): Promise<SignedTransaction> {
+    return this.signTransactionUseCase.execute(params);
   }
 
-  broadcastTransaction(transaction: Transaction): Promise<Transaction> {
-    return this.broadcastTransactionUseCase.execute(transaction);
+  broadcastTransaction(signed: SignedTransaction, walletId: string): Promise<BroadcastResult> {
+    return this.broadcastTransactionUseCase.execute(signed, walletId);
   }
 }

@@ -28,10 +28,16 @@ export class OpSQLiteDatabase implements Database {
         value_sats INTEGER NOT NULL,
         address TEXT NOT NULL,
         is_confirmed INTEGER NOT NULL DEFAULT 0,
+        is_frozen INTEGER NOT NULL DEFAULT 0,
         wallet_id TEXT NOT NULL,
         PRIMARY KEY (txid, vout)
       )
     `);
+    try {
+      await db.execute('ALTER TABLE utxos ADD COLUMN is_frozen INTEGER NOT NULL DEFAULT 0');
+    } catch {
+      // Column already exists on existing databases — safe to ignore
+    }
     await db.execute(`
       CREATE TABLE IF NOT EXISTS transactions (
         id TEXT PRIMARY KEY NOT NULL,
@@ -41,6 +47,30 @@ export class OpSQLiteDatabase implements Database {
         fee_sats INTEGER,
         direction TEXT NOT NULL,
         status TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    `);
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS addresses (
+        id TEXT PRIMARY KEY NOT NULL,
+        wallet_id TEXT NOT NULL,
+        value TEXT NOT NULL,
+        network TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'p2wpkh',
+        is_change INTEGER NOT NULL DEFAULT 0,
+        index_num INTEGER NOT NULL,
+        is_used INTEGER NOT NULL DEFAULT 0
+      )
+    `);
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS offline_transactions (
+        id TEXT PRIMARY KEY NOT NULL,
+        wallet_id TEXT NOT NULL,
+        raw_hex TEXT NOT NULL,
+        txid TEXT,
+        amount_sats INTEGER,
+        fee_sats INTEGER,
+        to_address TEXT,
         created_at TEXT NOT NULL
       )
     `);

@@ -5,4 +5,5 @@ export interface TransactionRepository {
   sign(transaction: Transaction): Promise<Transaction>;
   broadcast(transaction: Transaction): Promise<Transaction>;
   list(walletId: string): Promise<Transaction[]>;
+  upsertAll(walletId: string, transactions: Transaction[]): Promise<void>;
 }

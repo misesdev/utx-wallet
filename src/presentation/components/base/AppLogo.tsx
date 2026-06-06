@@ -16,7 +16,7 @@ const iconSizes: Record<AppLogoSize, number> = {
   lg: 88,
 };
 
-const radiiFraction = 0.27;
+const radiiFraction = 0.35;
 
 export function AppLogo({ size = 'md', showName = true }: AppLogoProps) {
   const dim = iconSizes[size];

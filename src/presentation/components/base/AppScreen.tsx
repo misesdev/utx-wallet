@@ -8,9 +8,10 @@ type AppScreenProps = PropsWithChildren<{
   title: string;
   subtitle?: string;
   scrollable?: boolean;
+  testID?: string;
 }>;
 
-export function AppScreen({ title, subtitle, scrollable = true, children }: AppScreenProps) {
+export function AppScreen({ title, subtitle, scrollable = true, testID, children }: AppScreenProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -22,6 +23,7 @@ export function AppScreen({ title, subtitle, scrollable = true, children }: AppS
 
   return (
     <View
+      testID={testID}
       style={[
         styles.root,
         { backgroundColor: theme.colors.background, paddingTop: insets.top },

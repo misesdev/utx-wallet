@@ -15,6 +15,8 @@ export function TransactionItem({ transaction }: TransactionItemProps) {
   const amountColor = isIncoming ? theme.colors.success : theme.colors.text;
   const arrow = isIncoming ? '↙' : '↗';
   const prefix = isIncoming ? '+' : '−';
+  const amountStyle = { color: amountColor };
+  const arrowStyle = { color: isIncoming ? theme.colors.success : theme.colors.textMuted };
 
   const statusColors: Record<Transaction['status'], string> = {
     confirmed: theme.colors.success,
@@ -29,13 +31,13 @@ export function TransactionItem({ transaction }: TransactionItemProps) {
           <AppText
             style={[
               styles.arrow,
-              { color: isIncoming ? theme.colors.success : theme.colors.textMuted },
+              arrowStyle,
             ]}
           >
             {arrow}
           </AppText>
           <View>
-            <AppText variant="body" style={{ fontWeight: '500' }}>
+            <AppText variant="body" style={styles.title}>
               {isIncoming ? 'Received' : 'Sent'}
             </AppText>
             <View style={styles.statusRow}>
@@ -48,7 +50,7 @@ export function TransactionItem({ transaction }: TransactionItemProps) {
         </View>
         <AppText
           variant="subtitle"
-          style={{ color: amountColor, fontWeight: '600' }}
+          style={[styles.amount, amountStyle]}
         >
           {prefix}{transaction.amountSats.toLocaleString()}
           <AppText variant="caption" color="muted"> sats</AppText>
@@ -71,6 +73,12 @@ const styles = StyleSheet.create({
   },
   arrow: {
     fontSize: 20,
+  },
+  title: {
+    fontWeight: '500',
+  },
+  amount: {
+    fontWeight: '600',
   },
   statusRow: {
     flexDirection: 'row',

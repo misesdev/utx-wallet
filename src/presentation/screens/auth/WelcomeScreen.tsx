@@ -5,13 +5,16 @@ import { AppButton } from '../../components/base/AppButton';
 import { AppLogo } from '../../components/base/AppLogo';
 import { AppText } from '../../components/base/AppText';
 import { NetworkBadge } from '../../components/wallet/NetworkBadge';
+import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useNetwork } from '../../hooks/useNetwork';
 import { useTheme } from '../../hooks/useTheme';
+import { AuthRoutes } from '../../../app/navigation/routes';
 
 export function WelcomeScreen() {
   const { networkConfig } = useNetwork();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const navigation = useAppNavigation();
 
   return (
     <View
@@ -26,7 +29,6 @@ export function WelcomeScreen() {
     >
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.background} />
 
-      {/* Hero */}
       <View style={styles.hero}>
         <AppLogo size="lg" showName />
         <AppText variant="body" color="muted" style={styles.tagline}>
@@ -34,17 +36,18 @@ export function WelcomeScreen() {
         </AppText>
       </View>
 
-      {/* Actions */}
       <View style={styles.actions}>
-        <AppButton title="Create new wallet" onPress={() => undefined} />
+        <AppButton
+          title="Create new wallet"
+          onPress={() => navigation.navigate(AuthRoutes.CreateWallet)}
+        />
         <AppButton
           title="Import wallet"
           variant="secondary"
-          onPress={() => undefined}
+          onPress={() => navigation.navigate(AuthRoutes.ImportWallet)}
         />
       </View>
 
-      {/* Network indicator */}
       <View style={styles.footer}>
         <NetworkBadge config={networkConfig} />
       </View>

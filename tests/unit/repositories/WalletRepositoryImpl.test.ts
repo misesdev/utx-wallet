@@ -56,17 +56,29 @@ describe('WalletRepositoryImpl', () => {
       expect(all.map(w => w.name)).toContain('Wallet A');
       expect(all.map(w => w.name)).toContain('Wallet B');
     });
+
+    it('stores a generated mnemonic in encrypted storage', async () => {
+      const { repo, secureStorage } = createRepo();
+      const wallet = await repo.create('MnemonicTest');
+      expect(secureStorage.setItem).toHaveBeenCalledWith(
+        `wallet_secret:${wallet.id}`,
+        expect.stringMatching(/^(\w+ ){11}\w+$/),
+      );
+    });
   });
 
   describe('import()', () => {
+    // Standard BIP39 test mnemonic (all-zeros entropy)
+    const VALID_MNEMONIC =
+      'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+
     it('creates a wallet and stores the secret in encrypted storage', async () => {
       const { repo, secureStorage } = createRepo();
-      const seed = 'word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12';
-      const wallet = await repo.import('Imported', seed);
+      const wallet = await repo.import('Imported', VALID_MNEMONIC);
       expect(wallet.name).toBe('Imported');
       expect(secureStorage.setItem).toHaveBeenCalledWith(
         `wallet_secret:${wallet.id}`,
-        seed,
+        VALID_MNEMONIC,
       );
     });
 
@@ -80,20 +92,27 @@ describe('WalletRepositoryImpl', () => {
       await expect(repo.import('W', '   ')).rejects.toMatchObject({ code: 'INVALID_SECRET' });
     });
 
+    it('throws INVALID_SECRET for an invalid mnemonic phrase', async () => {
+      const { repo } = createRepo();
+      await expect(repo.import('W', 'not a valid bip39 mnemonic phrase at all here')).rejects.toMatchObject({
+        code: 'INVALID_SECRET',
+      });
+    });
+
     it('throws WALLET_EXISTS when name already in use', async () => {
       const { repo } = createRepo();
       await repo.create('Taken');
-      await expect(repo.import('Taken', 'valid secret phrase here')).rejects.toMatchObject({
+      await expect(repo.import('Taken', VALID_MNEMONIC)).rejects.toMatchObject({
         code: 'WALLET_EXISTS',
       });
     });
 
     it('trims whitespace from the secret before storing', async () => {
       const { repo, secureStorage } = createRepo();
-      const wallet = await repo.import('W', '  my secret  ');
+      const wallet = await repo.import('W', `  ${VALID_MNEMONIC}  `);
       expect(secureStorage.setItem).toHaveBeenCalledWith(
         `wallet_secret:${wallet.id}`,
-        'my secret',
+        VALID_MNEMONIC,
       );
     });
   });
@@ -123,6 +142,39 @@ describe('WalletRepositoryImpl', () => {
     it('returns null for an unknown id', async () => {
       const { repo } = createRepo();
       await expect(repo.findById('nonexistent-id')).resolves.toBeNull();
+    });
+  });
+
+  describe('delete()', () => {
+    it('removes the wallet from the list', async () => {
+      const { repo } = createRepo();
+      const wallet = await repo.create('ToDelete');
+      await repo.delete(wallet.id);
+      await expect(repo.list()).resolves.toHaveLength(0);
+    });
+
+    it('removes the associated secret from storage', async () => {
+      const { repo, secureStorage } = createRepo();
+      const wallet = await repo.create('ToDelete');
+      await repo.delete(wallet.id);
+      expect(secureStorage.removeItem).toHaveBeenCalledWith(`wallet_secret:${wallet.id}`);
+    });
+
+    it('throws WALLET_NOT_FOUND when the wallet does not exist', async () => {
+      const { repo } = createRepo();
+      await expect(repo.delete('nonexistent-id')).rejects.toMatchObject({
+        code: 'WALLET_NOT_FOUND',
+      });
+    });
+
+    it('does not affect other wallets', async () => {
+      const { repo } = createRepo();
+      const a = await repo.create('A');
+      await repo.create('B');
+      await repo.delete(a.id);
+      const remaining = await repo.list();
+      expect(remaining).toHaveLength(1);
+      expect(remaining[0].name).toBe('B');
     });
   });
 });

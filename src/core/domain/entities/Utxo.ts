@@ -6,4 +6,5 @@ export type Utxo = {
   valueSats: number;
   address: Address['value'];
   isConfirmed: boolean;
+  isFrozen?: boolean;
 };

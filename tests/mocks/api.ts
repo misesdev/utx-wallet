@@ -8,5 +8,8 @@ export function createHttpClientMock(): HttpClient {
     async post<_TBody, TResponse>(_url: string, body: _TBody): Promise<TResponse> {
       return body as unknown as TResponse;
     },
+    async postText(_url: string, body: string): Promise<string> {
+      return body;
+    },
   };
 }

@@ -140,6 +140,8 @@ npm run test:watch
 npm run format
 ```
 
+Run `npm run lint` for every implementation change before considering the work complete. Fix all reported errors and warnings instead of leaving lint debt for a later change.
+
 When changing navigation, native dependencies, entrypoints, or build scripts, also run:
 
 ```sh
@@ -152,6 +154,7 @@ npm run build:android:debug
 - Keep business logic out of screens.
 - Use SOLID, Clean Code, and small testable units.
 - Add or update tests for behavior changes.
+- Run lint on every implementation and keep the lint output clean.
 - Keep external integrations inside `src/core/infrastructure`.
 - Keep repository interfaces in `src/core/domain/repositories`.
 - Add wallet behavior through use cases before exposing it to UI.

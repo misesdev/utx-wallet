@@ -5,12 +5,13 @@ import { AppText } from './AppText';
 
 type AppLoadingProps = {
   label?: string;
+  testID?: string;
 };
 
-export function AppLoading({ label }: AppLoadingProps) {
+export function AppLoading({ label, testID }: AppLoadingProps) {
   const { theme } = useTheme();
   return (
-    <View style={styles.root}>
+    <View style={styles.root} testID={testID}>
       <ActivityIndicator color={theme.colors.accent} size="small" />
       {label ? (
         <AppText variant="caption" color="muted">

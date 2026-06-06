@@ -2,11 +2,14 @@ import type { Transaction, TransactionDraft } from '../../domain/entities/Transa
 import type { TransactionRepository } from '../../domain/repositories/TransactionRepository';
 import { AppError } from '../../application/errors/AppError';
 import { generateId } from '../../../shared/utils/generateId';
+import { TransactionStorage } from '../storage/TransactionStorage';
 
 // Conservative estimate for a 1-input-2-output P2WPKH transaction
 const ESTIMATED_TX_VBYTES = 180;
 
 export class TransactionRepositoryImpl implements TransactionRepository {
+  constructor(private readonly transactionStorage?: TransactionStorage) {}
+
   async build(draft: TransactionDraft): Promise<Transaction> {
     const feeRateSatsPerVByte = draft.feeRateSatsPerVByte ?? 1;
     const feeSats = Math.ceil(feeRateSatsPerVByte * ESTIMATED_TX_VBYTES);
@@ -35,7 +38,15 @@ export class TransactionRepositoryImpl implements TransactionRepository {
     );
   }
 
-  async list(_walletId: string): Promise<Transaction[]> {
-    return [];
+  async list(walletId: string): Promise<Transaction[]> {
+    if (!this.transactionStorage) return [];
+    return this.transactionStorage.listByWallet(walletId);
+  }
+
+  async upsertAll(walletId: string, transactions: Transaction[]): Promise<void> {
+    if (!this.transactionStorage) return;
+    for (const tx of transactions) {
+      await this.transactionStorage.save(walletId, tx);
+    }
   }
 }

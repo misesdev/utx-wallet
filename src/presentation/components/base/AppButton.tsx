@@ -45,6 +45,10 @@ export function AppButton({
     ghost: theme.colors.textMuted,
     danger: theme.colors.danger,
   };
+  const textStyle = {
+    color: textColorMap[variant],
+    letterSpacing: variant === 'primary' ? 0.2 : 0,
+  };
 
   return (
     <Pressable
@@ -65,12 +69,7 @@ export function AppButton({
       {...props}
     >
       <AppText
-        style={{
-          color: textColorMap[variant],
-          fontSize: size === 'sm' ? 13 : 15,
-          fontWeight: '600',
-          letterSpacing: variant === 'primary' ? 0.2 : 0,
-        }}
+        style={[styles.text, size === 'sm' ? styles.smallText : styles.defaultText, textStyle]}
       >
         {title}
       </AppText>
@@ -83,5 +82,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
+  },
+  text: {
+    fontWeight: '600',
+  },
+  smallText: {
+    fontSize: 13,
+  },
+  defaultText: {
+    fontSize: 15,
   },
 });

@@ -10,6 +10,7 @@ import { SettingsScreen } from '../../presentation/screens/settings/SettingsScre
 import { ReceiveScreen } from '../../presentation/screens/wallet/ReceiveScreen';
 import { SendScreen } from '../../presentation/screens/wallet/SendScreen';
 import { TransactionDetailsScreen } from '../../presentation/screens/wallet/TransactionDetailsScreen';
+import { TransactionSuccessScreen } from '../../presentation/screens/wallet/TransactionSuccessScreen';
 import { UtxosScreen } from '../../presentation/screens/wallet/UtxosScreen';
 import { WalletDetailsScreen } from '../../presentation/screens/wallet/WalletDetailsScreen';
 import type { AppStackParamList } from './routes';
@@ -25,6 +26,7 @@ export function AppNavigator() {
       <Stack.Screen name={AppRoutes.Receive} component={ReceiveScreen} />
       <Stack.Screen name={AppRoutes.Send} component={SendScreen} />
       <Stack.Screen name={AppRoutes.TransactionDetails} component={TransactionDetailsScreen} />
+      <Stack.Screen name={AppRoutes.TransactionSuccess} component={TransactionSuccessScreen} />
       <Stack.Screen name={AppRoutes.Utxos} component={UtxosScreen} />
       <Stack.Screen name={AppRoutes.Settings} component={SettingsScreen} />
       <Stack.Screen name={AppRoutes.SecuritySettings} component={SecuritySettingsScreen} />

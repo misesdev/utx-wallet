@@ -1,6 +1,7 @@
 export function generateId(): string {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const c = (globalThis as any).crypto as { randomUUID?: () => string } | undefined;
+  const c = (globalThis as typeof globalThis & {
+    crypto?: { randomUUID?: () => string };
+  }).crypto;
   if (c && typeof c.randomUUID === 'function') {
     return c.randomUUID();
   }

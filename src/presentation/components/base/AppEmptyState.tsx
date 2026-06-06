@@ -6,11 +6,12 @@ type AppEmptyStateProps = {
   icon?: string;
   title: string;
   description?: string;
+  testID?: string;
 };
 
-export function AppEmptyState({ icon = '○', title, description }: AppEmptyStateProps) {
+export function AppEmptyState({ icon = '○', title, description, testID }: AppEmptyStateProps) {
   return (
-    <View style={styles.root}>
+    <View style={styles.root} testID={testID}>
       <AppText style={styles.icon} color="faint">{icon}</AppText>
       <AppText variant="subtitle" style={styles.title}>{title}</AppText>
       {description ? (
