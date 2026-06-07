@@ -2,7 +2,6 @@ import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import type { Utxo } from '../../../core/domain/entities/Utxo';
 import { useTheme } from '../../hooks/useTheme';
-import { AppCard } from '../base/AppCard';
 import { AppText } from '../base/AppText';
 
 type UtxoItemProps = {
@@ -11,41 +10,65 @@ type UtxoItemProps = {
   onUnfreeze: (txid: string, vout: number) => void;
 };
 
+const STATUS_LABELS = {
+  frozen: '❄ Frozen',
+  confirmed: 'Confirmed',
+  pending: 'Pending',
+} as const;
+
 function shortTxid(txid: string): string {
-  return `${txid.slice(0, 8)}…${txid.slice(-6)}`;
+  return `${txid.slice(0, 10)}…${txid.slice(-8)}`;
 }
 
 export function UtxoItem({ utxo, onFreeze, onUnfreeze }: UtxoItemProps) {
   const { theme } = useTheme();
   const frozen = utxo.isFrozen ?? false;
+  const statusKey = frozen ? 'frozen' : utxo.isConfirmed ? 'confirmed' : 'pending';
+  const statusLabel = STATUS_LABELS[statusKey];
 
-  const statusColor = frozen
-    ? theme.colors.textMuted
-    : utxo.isConfirmed
-      ? theme.colors.success
-      : theme.colors.warning;
+  const dotBg =
+    statusKey === 'frozen'
+      ? theme.colors.textMuted
+      : statusKey === 'confirmed'
+        ? theme.colors.success
+        : theme.colors.warning;
 
-  const statusLabel = frozen ? 'frozen' : utxo.isConfirmed ? 'confirmed' : 'pending';
+  const dotPillBg =
+    statusKey === 'frozen'
+      ? theme.colors.surfaceMuted
+      : statusKey === 'confirmed'
+        ? theme.colors.successMuted ?? theme.colors.surfaceMuted
+        : theme.colors.warningMuted ?? theme.colors.surfaceMuted;
+
+  const dotPillColor =
+    statusKey === 'frozen'
+      ? theme.colors.textMuted
+      : statusKey === 'confirmed'
+        ? theme.colors.success
+        : theme.colors.warning;
 
   return (
-    <AppCard>
-      <View style={styles.row}>
-        <View style={styles.info}>
-          <AppText variant="subtitle" style={frozen ? styles.frozenAmount : undefined}>
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: theme.colors.surfaceRaised,
+          borderColor: frozen ? theme.colors.textMuted + '44' : theme.colors.border,
+          borderRadius: theme.radii.lg,
+        },
+        frozen ? styles.cardFrozen : null,
+      ]}
+    >
+      <View style={styles.topRow}>
+        {/* Amount */}
+        <View style={styles.amountBlock}>
+          <AppText variant="subtitle" style={frozen ? styles.amountFrozen : styles.amount}>
             {utxo.valueSats.toLocaleString()}
-            <AppText variant="caption" color="muted"> sats</AppText>
           </AppText>
-          <AppText variant="caption" color="muted" style={styles.txid}>
-            {shortTxid(utxo.txid)}:{utxo.vout}
-          </AppText>
-          <View style={styles.statusRow}>
-            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-            <AppText variant="caption" style={{ color: statusColor }}>
-              {statusLabel}
-            </AppText>
-          </View>
+          <AppText variant="caption" color="muted"> sats</AppText>
         </View>
 
+        {/* Freeze / unfreeze button */}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={frozen ? 'Descongelar UTXO' : 'Congelar UTXO'}
@@ -62,48 +85,93 @@ export function UtxoItem({ utxo, onFreeze, onUnfreeze }: UtxoItemProps) {
             },
           ]}
         >
-          <AppText variant="caption" color={frozen ? 'accent' : 'muted'}>
+          <AppText variant="label" color={frozen ? 'accent' : 'muted'}>
             {frozen ? '⊘ Unfreeze' : '❄ Freeze'}
           </AppText>
         </Pressable>
       </View>
-    </AppCard>
+
+      <View style={styles.bottomRow}>
+        {/* Txid */}
+        <AppText variant="caption" color="muted" style={styles.txid}>
+          {shortTxid(utxo.txid)}:{utxo.vout}
+        </AppText>
+
+        {/* Status pill */}
+        <View
+          style={[
+            styles.statusPill,
+            { backgroundColor: dotPillBg, borderRadius: theme.radii.xl },
+          ]}
+        >
+          <View style={[styles.statusDot, { backgroundColor: dotBg }]} />
+          <AppText variant="label" style={[styles.statusText, { color: dotPillColor }]}>
+            {statusLabel}
+          </AppText>
+        </View>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
+  card: {
+    borderWidth: 1,
+    gap: 10,
+    padding: 14,
+  },
+  cardFrozen: {
+    opacity: 0.7,
+  },
+  topRow: {
     alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: 'row',
     gap: 12,
+    justifyContent: 'space-between',
   },
-  info: {
-    flex: 1,
-    gap: 4,
-  },
-  txid: {
-    fontVariant: ['tabular-nums'],
-  },
-  frozenAmount: {
-    opacity: 0.5,
-  },
-  statusRow: {
+  amountBlock: {
+    alignItems: 'baseline',
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginTop: 2,
+    flex: 1,
+    gap: 2,
   },
-  statusDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
+  amount: {
+    fontWeight: '700',
+  },
+  amountFrozen: {
+    fontWeight: '700',
+    opacity: 0.5,
   },
   freezeBtn: {
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 8,
+  },
+  bottomRow: {
     alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
+  },
+  txid: {
+    flex: 1,
+    fontFamily: 'monospace',
+    fontSize: 11,
+    letterSpacing: 0.3,
+  },
+  statusPill: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  statusDot: {
+    borderRadius: 3,
+    height: 6,
+    width: 6,
+  },
+  statusText: {
+    fontSize: 11,
   },
 });

@@ -42,6 +42,19 @@ jest.mock('../../../src/app/providers/AddressProvider', () => ({
   }),
 }));
 
+// Stable object so React's useCallback deps don't change on every render
+const mockAddressManagerStable = {
+  getReceiveAddress: jest.fn().mockRejectedValue(new Error('HD not initialized')),
+  getChangeAddress: jest.fn().mockRejectedValue(new Error('HD not initialized')),
+  getOrigins: jest.fn().mockResolvedValue([]),
+  createAddressOrigin: jest.fn(),
+  ensureAddressPool: jest.fn(),
+};
+
+jest.mock('../../../src/app/providers/AddressManagerProvider', () => ({
+  useAddressManager: () => mockAddressManagerStable,
+}));
+
 describe('useReceiveBitcoin', () => {
   beforeEach(() => {
     jest.clearAllMocks();

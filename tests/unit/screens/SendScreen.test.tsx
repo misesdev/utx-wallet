@@ -1,9 +1,8 @@
 import React from 'react';
-import { fireEvent, waitFor } from '@testing-library/react-native';
+import { fireEvent } from '@testing-library/react-native';
 import { SendScreen } from '../../../src/presentation/screens/wallet/SendScreen';
 import { renderWithTheme } from '../../mocks/renderWithProviders';
 import type { SendBitcoinState } from '../../../src/presentation/hooks/useSendBitcoin';
-import type { TransactionPreview } from '../../../src/core/domain/entities/TransactionPreview';
 import type { FeeRates } from '../../../src/core/domain/repositories/BlockchainProvider';
 
 const VALID_ADDRESS = 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq';
@@ -16,17 +15,6 @@ const FEE_RATES: FeeRates = {
   minimumSatsPerVByte: 1,
 };
 
-const PREVIEW: TransactionPreview = {
-  toAddress: VALID_ADDRESS,
-  amountSats: 100_000,
-  feeSats: 900,
-  totalSats: 100_900,
-  changeSats: 899_100,
-  feeRateSatsPerVByte: 5,
-  estimatedVBytes: 180,
-};
-
-const mockReviewTransaction = jest.fn().mockResolvedValue(undefined);
 const mockSetToAddress = jest.fn();
 const mockSetAmountSats = jest.fn();
 const mockSetFeeTier = jest.fn();
@@ -34,13 +22,14 @@ const mockSetCustomFeeRate = jest.fn();
 const mockClearPreview = jest.fn();
 const mockOpenReview = jest.fn();
 const mockCloseReview = jest.fn();
+const mockReviewTransaction = jest.fn().mockResolvedValue(undefined);
 const mockSendTransaction = jest.fn().mockResolvedValue(undefined);
 const mockResetSend = jest.fn();
 const mockNavigate = jest.fn();
 const mockReplace = jest.fn();
 
 jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ navigate: mockNavigate, replace: mockReplace, reset: jest.fn() }),
+  useNavigation: () => ({ navigate: mockNavigate, replace: mockReplace, goBack: jest.fn() }),
   useRoute: () => ({ params: {} }),
 }));
 
@@ -143,44 +132,17 @@ describe('SendScreen', () => {
     });
   });
 
-  describe('fee selector', () => {
-    it('renders all four fee tiles', () => {
-      const screen = renderWithTheme(<SendScreen />);
-      expect(screen.getByTestId('fee-tile-economy')).toBeTruthy();
-      expect(screen.getByTestId('fee-tile-normal')).toBeTruthy();
-      expect(screen.getByTestId('fee-tile-fast')).toBeTruthy();
-      expect(screen.getByTestId('fee-tile-custom')).toBeTruthy();
-    });
-
-    it('calls setFeeTier when a fee tile is pressed', () => {
-      const screen = renderWithTheme(<SendScreen />);
-      fireEvent.press(screen.getByTestId('fee-tile-fast'));
-      expect(mockSetFeeTier).toHaveBeenCalledWith('fast');
-    });
-
-    it('shows custom fee input when custom tier is selected', () => {
-      mockState = { ...BASE_STATE, feeTier: 'custom' };
-      const screen = renderWithTheme(<SendScreen />);
-      expect(screen.getByTestId('input-custom-fee')).toBeTruthy();
-    });
-
-    it('hides custom fee input for non-custom tiers', () => {
-      const screen = renderWithTheme(<SendScreen />);
-      expect(screen.queryByTestId('input-custom-fee')).toBeNull();
-    });
-  });
-
-  describe('review button', () => {
+  describe('Next button', () => {
     it('is disabled when address is empty', () => {
       const screen = renderWithTheme(<SendScreen />);
-      const btn = screen.getByTestId('btn-review');
+      const btn = screen.getByTestId('btn-next');
       expect(btn.props.accessibilityState?.disabled).toBe(true);
     });
 
     it('is disabled when amount is empty', () => {
       mockState = { ...BASE_STATE, toAddress: VALID_ADDRESS };
       const screen = renderWithTheme(<SendScreen />);
-      expect(screen.getByTestId('btn-review').props.accessibilityState?.disabled).toBe(true);
+      expect(screen.getByTestId('btn-next').props.accessibilityState?.disabled).toBe(true);
     });
 
     it('is disabled when address has an error', () => {
@@ -191,92 +153,24 @@ describe('SendScreen', () => {
         addressError: 'Endereço Bitcoin inválido',
       };
       const screen = renderWithTheme(<SendScreen />);
-      expect(screen.getByTestId('btn-review').props.accessibilityState?.disabled).toBe(true);
+      expect(screen.getByTestId('btn-next').props.accessibilityState?.disabled).toBe(true);
     });
 
     it('is enabled when address is valid and amount is set', () => {
       mockState = { ...BASE_STATE, toAddress: VALID_ADDRESS, amountSats: '100000' };
       const screen = renderWithTheme(<SendScreen />);
-      expect(screen.getByTestId('btn-review').props.accessibilityState?.disabled).toBeFalsy();
+      expect(screen.getByTestId('btn-next').props.accessibilityState?.disabled).toBeFalsy();
     });
 
-    it('calls reviewTransaction when pressed', async () => {
+    it('navigates to SendFees when pressed with valid inputs', () => {
       mockState = { ...BASE_STATE, toAddress: VALID_ADDRESS, amountSats: '100000' };
       const screen = renderWithTheme(<SendScreen />);
-      fireEvent.press(screen.getByTestId('btn-review'));
-      await waitFor(() => expect(mockReviewTransaction).toHaveBeenCalledTimes(1));
-    });
-  });
-
-  describe('preview card', () => {
-    it('shows preview card when preview is available', () => {
-      mockState = { ...BASE_STATE, preview: PREVIEW };
-      const screen = renderWithTheme(<SendScreen />);
-      expect(screen.getByTestId('preview-card')).toBeTruthy();
-    });
-
-    it('hides preview card when preview is null', () => {
-      const screen = renderWithTheme(<SendScreen />);
-      expect(screen.queryByTestId('preview-card')).toBeNull();
-    });
-
-    it('renders amount sent in preview', () => {
-      mockState = { ...BASE_STATE, preview: PREVIEW };
-      const screen = renderWithTheme(<SendScreen />);
-      expect(screen.getByTestId('preview-amount').props.children).toBe('100,000 sats');
-    });
-
-    it('renders fee in preview', () => {
-      mockState = { ...BASE_STATE, preview: PREVIEW };
-      const screen = renderWithTheme(<SendScreen />);
-      expect(screen.getByTestId('preview-fee').props.children).toBe('900 sats');
-    });
-
-    it('renders total in preview', () => {
-      mockState = { ...BASE_STATE, preview: PREVIEW };
-      const screen = renderWithTheme(<SendScreen />);
-      expect(screen.getByTestId('preview-total').props.children).toBe('100,900 sats');
-    });
-
-    it('renders change in preview when changeSats > 0', () => {
-      mockState = { ...BASE_STATE, preview: PREVIEW };
-      const screen = renderWithTheme(<SendScreen />);
-      expect(screen.getByTestId('preview-change')).toBeTruthy();
-    });
-
-    it('hides change row when changeSats is zero', () => {
-      mockState = { ...BASE_STATE, preview: { ...PREVIEW, changeSats: 0 } };
-      const screen = renderWithTheme(<SendScreen />);
-      expect(screen.queryByTestId('preview-change')).toBeNull();
-    });
-  });
-
-  describe('error states', () => {
-    it('shows previewError when set', () => {
-      mockState = { ...BASE_STATE, previewError: 'Saldo insuficiente' };
-      const screen = renderWithTheme(<SendScreen />);
-      expect(screen.getByTestId('preview-error')).toBeTruthy();
-      expect(screen.getByText('Saldo insuficiente')).toBeTruthy();
-    });
-  });
-
-  describe('confirm and send button', () => {
-    it('shows the confirm button when preview is available', () => {
-      mockState = { ...BASE_STATE, preview: PREVIEW };
-      const screen = renderWithTheme(<SendScreen />);
-      expect(screen.getByTestId('btn-open-review')).toBeTruthy();
-    });
-
-    it('hides the confirm button when preview is null', () => {
-      const screen = renderWithTheme(<SendScreen />);
-      expect(screen.queryByTestId('btn-open-review')).toBeNull();
-    });
-
-    it('calls openReview when confirm button is pressed', () => {
-      mockState = { ...BASE_STATE, preview: PREVIEW };
-      const screen = renderWithTheme(<SendScreen />);
-      fireEvent.press(screen.getByTestId('btn-open-review'));
-      expect(mockOpenReview).toHaveBeenCalledTimes(1);
+      fireEvent.press(screen.getByTestId('btn-next'));
+      expect(mockNavigate).toHaveBeenCalledWith('SendFees', {
+        originId: undefined,
+        toAddress: VALID_ADDRESS,
+        amountSats: '100000',
+      });
     });
   });
 });

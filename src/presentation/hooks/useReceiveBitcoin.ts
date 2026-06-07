@@ -2,11 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { Share } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import type { Address } from '../../core/domain/entities/Address';
+import type { WalletAddress } from '../../core/domain/entities/WalletAddress';
 import { useAddress } from '../../app/providers/AddressProvider';
+import { useAddressManager } from '../../app/providers/AddressManagerProvider';
 import { useWallet } from './useWallet';
 
 export type ReceiveBitcoinState = {
   address: Address | null;
+  hdAddress: WalletAddress | null;
   isLoading: boolean;
   error: string | null;
   amountSats: string;
@@ -26,11 +29,13 @@ function buildBitcoinUri(address: string, amountSats: string): string {
   return `bitcoin:${address}?amount=${btc}`;
 }
 
-export function useReceiveBitcoin(): ReceiveBitcoinState {
+export function useReceiveBitcoin(originId?: string): ReceiveBitcoinState {
   const { selectedWallet } = useWallet();
   const { getCurrentReceiveAddress, generateNewReceiveAddress } = useAddress();
+  const addressManager = useAddressManager();
 
   const [address, setAddress] = useState<Address | null>(null);
+  const [hdAddress, setHdAddress] = useState<WalletAddress | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [amountSats, setAmountSats] = useState('');
@@ -40,6 +45,20 @@ export function useReceiveBitcoin(): ReceiveBitcoinState {
     setIsLoading(true);
     setError(null);
     try {
+      // Try HD address system first
+      try {
+        const hd = await addressManager.getReceiveAddress(
+          selectedWallet.id,
+          selectedWallet.network,
+          originId,
+        );
+        setHdAddress(hd);
+        // Expose as legacy Address shape for backward-compatible consumers
+        setAddress({ id: hd.id, accountId: selectedWallet.id, value: hd.address, network: selectedWallet.network, type: 'p2wpkh', isChange: false, index: hd.index, isUsed: false });
+        return;
+      } catch {
+        // Fall back to legacy system if HD system not initialized
+      }
       const addr = await getCurrentReceiveAddress(selectedWallet.id);
       setAddress(addr);
     } catch (e) {
@@ -47,28 +66,43 @@ export function useReceiveBitcoin(): ReceiveBitcoinState {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedWallet, getCurrentReceiveAddress]);
+  }, [selectedWallet, originId, getCurrentReceiveAddress, addressManager]);
 
   useEffect(() => {
     loadAddress();
   }, [loadAddress]);
 
+  const resolvedAddressValue = hdAddress?.address ?? address?.value ?? '';
+
   const copyAddress = useCallback(() => {
-    if (!address) return;
-    Clipboard.setString(address.value);
-  }, [address]);
+    if (!resolvedAddressValue) return;
+    Clipboard.setString(resolvedAddressValue);
+  }, [resolvedAddressValue]);
 
   const shareAddress = useCallback(async () => {
-    if (!address) return;
-    const uri = buildBitcoinUri(address.value, amountSats);
+    if (!resolvedAddressValue) return;
+    const uri = buildBitcoinUri(resolvedAddressValue, amountSats);
     await Share.share({ message: uri });
-  }, [address, amountSats]);
+  }, [resolvedAddressValue, amountSats]);
 
   const generateNewAddress = useCallback(async () => {
     if (!selectedWallet) return;
     setIsLoading(true);
     setError(null);
     try {
+      try {
+        const hd = await addressManager.getReceiveAddress(
+          selectedWallet.id,
+          selectedWallet.network,
+          originId,
+          true, // reserve current, get next fresh
+        );
+        setHdAddress(hd);
+        setAddress({ id: hd.id, accountId: selectedWallet.id, value: hd.address, network: selectedWallet.network, type: 'p2wpkh', isChange: false, index: hd.index, isUsed: false });
+        return;
+      } catch {
+        // Fall back to legacy
+      }
       const addr = await generateNewReceiveAddress(selectedWallet.id);
       setAddress(addr);
     } catch (e) {
@@ -76,12 +110,13 @@ export function useReceiveBitcoin(): ReceiveBitcoinState {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedWallet, generateNewReceiveAddress]);
+  }, [selectedWallet, originId, generateNewReceiveAddress, addressManager]);
 
-  const bitcoinUri = address ? buildBitcoinUri(address.value, amountSats) : '';
+  const bitcoinUri = resolvedAddressValue ? buildBitcoinUri(resolvedAddressValue, amountSats) : '';
 
   return {
     address,
+    hdAddress,
     isLoading,
     error,
     amountSats,

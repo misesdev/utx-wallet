@@ -1,19 +1,22 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { buildSeedChallenge, validateSeedChallenge, type SeedChallenge } from '../../../core/domain/utils/seedChallenge';
 import { NoopScreenCaptureAdapter } from '../../../core/infrastructure/adapters/ScreenCaptureAdapter';
-import { AppButton } from '../../components/base/AppButton';
-import { AppCard } from '../../components/base/AppCard';
-import { AppLoading } from '../../components/base/AppLoading';
-import { AppScreen } from '../../components/base/AppScreen';
+import { AppRoutes } from '../../../app/navigation/routes';
 import { AppText } from '../../components/base/AppText';
+import { AppLoading } from '../../components/base/AppLoading';
+import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useCreateWallet } from '../../hooks/useCreateWallet';
 import { useTheme } from '../../hooks/useTheme';
 
 const screenCaptureGuard = new NoopScreenCaptureAdapter();
 
 export function ConfirmSeedScreen() {
-  const { words, save, isLoading, error } = useCreateWallet();
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const navigation = useAppNavigation();
+  const { words, save, step, isLoading, error, reset } = useCreateWallet();
 
   const challenge = useMemo<SeedChallenge>(
     () => buildSeedChallenge(words),
@@ -24,6 +27,16 @@ export function ConfirmSeedScreen() {
 
   const [selected, setSelected] = useState<string[]>([]);
   const [usedOptions, setUsedOptions] = useState<Set<string>>(new Set());
+
+  // Navigate to WalletList once save completes successfully
+  const didSave = useRef(false);
+  useEffect(() => {
+    if (step === 'saving' && !isLoading && !error && !didSave.current) {
+      didSave.current = true;
+      reset();
+      navigation.navigate(AppRoutes.WalletList);
+    }
+  }, [step, isLoading, error, navigation, reset]);
 
   useEffect(() => {
     screenCaptureGuard.enable();
@@ -50,114 +63,278 @@ export function ConfirmSeedScreen() {
   const isValid = allFilled && validateSeedChallenge(words, challenge, selected);
 
   return (
-    <AppScreen title="Confirm your seed" subtitle="Tap the correct words in order">
-      <AppCard>
-        <AppText variant="label" color="muted">
-          Select the words for positions:{' '}
-          {challenge.positions.map(p => `#${p + 1}`).join(', ')}
-        </AppText>
-
-        <View style={styles.row}>
-          {challenge.positions.map((pos, i) => (
-            <SlotChip
-              key={pos}
-              label={`#${pos + 1}`}
-              word={selected[i]}
-              onRemove={selected[i] ? () => handleRemoveSlot(i) : undefined}
-            />
-          ))}
+    <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          onPress={() => navigation.goBack()}
+          style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          <AppText variant="title" color="muted">←</AppText>
+        </Pressable>
+        <View style={styles.headerCenter}>
+          <AppText variant="subtitle" style={styles.headerTitle}>Confirm seed</AppText>
+          <AppText variant="caption" color="muted">Select the words in order</AppText>
         </View>
-
-        {allFilled && !isValid && (
-          <AppText variant="caption" color="danger">
-            Incorrect order. Tap a filled slot to remove it and try again.
-          </AppText>
-        )}
-      </AppCard>
-
-      <View style={styles.row}>
-        {challenge.options.map(word => (
-          <WordChip
-            key={word}
-            word={word}
-            disabled={usedOptions.has(word)}
-            onPress={() => handleSelectWord(word)}
-          />
-        ))}
+        <View style={styles.backBtn} />
       </View>
 
-      {error ? (
-        <AppText variant="caption" color="danger" style={styles.centred}>
-          {error}
-        </AppText>
-      ) : null}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: Math.max(insets.bottom, 16) + 24 },
+        ]}
+      >
+        {/* Slots card */}
+        <View
+          style={[
+            styles.slotsCard,
+            {
+              backgroundColor: theme.colors.surfaceRaised,
+              borderColor: isValid ? theme.colors.accent + '66' : theme.colors.border,
+              borderRadius: theme.radii.xl,
+            },
+          ]}
+        >
+          <View style={styles.slotsHeader}>
+            <AppText variant="label" color="muted">
+              Select words for positions:{' '}
+              <AppText variant="label" style={{ color: theme.colors.accent }}>
+                {challenge.positions.map(p => `#${p + 1}`).join(', ')}
+              </AppText>
+            </AppText>
+          </View>
 
-      {isLoading ? (
-        <AppLoading label="Creating wallet…" />
-      ) : (
-        <AppButton
-          title="Confirm & create wallet"
-          onPress={save}
-          disabled={!isValid || isLoading}
-        />
-      )}
-    </AppScreen>
-  );
-}
+          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
 
-type SlotChipProps = {
-  label: string;
-  word?: string;
-  onRemove?: () => void;
-};
+          <View style={styles.slots}>
+            {challenge.positions.map((pos, i) => (
+              <Pressable
+                key={pos}
+                accessibilityRole="button"
+                onPress={selected[i] ? () => handleRemoveSlot(i) : undefined}
+                style={({ pressed }) => [
+                  styles.slot,
+                  {
+                    backgroundColor: selected[i]
+                      ? theme.colors.accentMuted
+                      : theme.colors.surfaceMuted,
+                    borderColor: selected[i]
+                      ? theme.colors.accent
+                      : theme.colors.border,
+                    borderRadius: theme.radii.md,
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <AppText variant="caption" color="muted" style={styles.slotPos}>
+                  #{pos + 1}
+                </AppText>
+                {selected[i] ? (
+                  <AppText variant="label" style={[styles.slotWord, { color: theme.colors.accent }]}>
+                    {selected[i]}
+                  </AppText>
+                ) : (
+                  <AppText variant="caption" color="muted" style={styles.slotEmpty}>___</AppText>
+                )}
+              </Pressable>
+            ))}
+          </View>
 
-function SlotChip({ label, word, onRemove }: SlotChipProps) {
-  const { theme } = useTheme();
-  return (
-    <AppButton
-      title={word ? `${label} · ${word}` : label}
-      variant={word ? 'secondary' : 'ghost'}
-      size="sm"
-      onPress={onRemove}
-      disabled={!onRemove}
-      style={[
-        styles.chip,
-        word ? { borderColor: theme.colors.accent } : undefined,
-      ]}
-    />
-  );
-}
+          {allFilled && !isValid && (
+            <AppText variant="caption" color="danger" style={styles.validationError}>
+              Incorrect order — tap a filled slot to remove it and try again.
+            </AppText>
+          )}
+        </View>
 
-type WordChipProps = {
-  word: string;
-  disabled: boolean;
-  onPress: () => void;
-};
+        {/* Word options */}
+        <View style={styles.options}>
+          {challenge.options.map(word => {
+            const used = usedOptions.has(word);
+            return (
+              <Pressable
+                key={word}
+                accessibilityRole="button"
+                disabled={used}
+                onPress={() => handleSelectWord(word)}
+                style={({ pressed }) => [
+                  styles.option,
+                  {
+                    backgroundColor: used ? theme.colors.surfaceMuted : theme.colors.surfaceRaised,
+                    borderColor: used ? theme.colors.border : theme.colors.accent + '66',
+                    borderRadius: theme.radii.md,
+                    opacity: used ? 0.4 : pressed ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <AppText
+                  variant="label"
+                  style={used ? styles.optionTextUsed : [styles.optionText, { color: theme.colors.accent }]}
+                >
+                  {word}
+                </AppText>
+              </Pressable>
+            );
+          })}
+        </View>
 
-function WordChip({ word, disabled, onPress }: WordChipProps) {
-  return (
-    <AppButton
-      title={word}
-      variant="secondary"
-      size="sm"
-      onPress={onPress}
-      disabled={disabled}
-      style={styles.chip}
-    />
+        {/* Error */}
+        {error ? (
+          <AppText variant="caption" color="danger" style={styles.error}>
+            {error}
+          </AppText>
+        ) : null}
+
+        {/* CTA */}
+        {isLoading ? (
+          <AppLoading label="Creating wallet…" />
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Confirm and create wallet"
+            onPress={save}
+            disabled={!isValid || isLoading}
+            style={({ pressed }) => [
+              styles.cta,
+              {
+                backgroundColor: isValid ? theme.colors.accent : theme.colors.surfaceMuted,
+                borderRadius: theme.radii.lg,
+                opacity: pressed || !isValid ? (isValid ? 0.8 : 0.5) : 1,
+              },
+            ]}
+          >
+            <AppText
+              variant="subtitle"
+              style={isValid ? styles.ctaTextActive : styles.ctaTextInactive}
+            >
+              Confirm & create wallet
+            </AppText>
+          </Pressable>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
+  root: {
+    flex: 1,
+  },
+
+  // Header
+  header: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  backBtn: {
+    alignItems: 'center',
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  headerCenter: {
+    alignItems: 'center',
+    flex: 1,
+    gap: 2,
+  },
+  headerTitle: {
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+
+  // Content
+  content: {
+    gap: 16,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+
+  // Slots
+  slotsCard: {
+    borderWidth: 1,
+    gap: 14,
+    padding: 16,
+  },
+  slotsHeader: {},
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: -16,
+  },
+  slots: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 10,
   },
-  chip: {
-    minWidth: '45%',
+  slot: {
+    alignItems: 'center',
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    minWidth: '44%',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  slotPos: {
+    fontWeight: '700',
+  },
+  slotWord: {
+    fontWeight: '600',
+  },
+  slotEmpty: {
+    letterSpacing: 2,
+  },
+  validationError: {
+    textAlign: 'center',
+  },
+
+  // Options
+  options: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  option: {
+    borderWidth: 1,
+    minWidth: '28%',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     flexGrow: 1,
   },
-  centred: {
+  optionText: {
+    fontWeight: '600',
+  },
+  optionTextUsed: {
+    fontWeight: '600',
+  },
+
+  // Error
+  error: {
     textAlign: 'center',
+  },
+
+  // CTA
+  cta: {
+    alignItems: 'center',
+    marginTop: 4,
+    paddingVertical: 16,
+  },
+  ctaText: {
+    fontWeight: '700',
+  },
+  ctaTextActive: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+  ctaTextInactive: {
+    fontWeight: '700',
   },
 });

@@ -1,17 +1,18 @@
 import React, { useCallback, useState } from 'react';
-import { Pressable, Share, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Share, StyleSheet, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { OfflineTransaction } from '../../../core/domain/entities/OfflineTransaction';
 import { AppButton } from '../../components/base/AppButton';
-import { AppCard } from '../../components/base/AppCard';
-import { AppEmptyState } from '../../components/base/AppEmptyState';
 import { AppInput } from '../../components/base/AppInput';
-import { AppLoading } from '../../components/base/AppLoading';
-import { AppScreen } from '../../components/base/AppScreen';
 import { AppText } from '../../components/base/AppText';
-import { BalanceCard } from '../../components/wallet/BalanceCard';
-import { useTheme } from '../../hooks/useTheme';
+import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useOfflineMode } from '../../hooks/useOfflineMode';
+import { useTheme } from '../../hooks/useTheme';
 import { AppError } from '../../../core/application/errors/AppError';
+
+// ---------------------------------------------------------------------------
+// Offline tx item
+// ---------------------------------------------------------------------------
 
 type OfflineTxItemProps = {
   tx: OfflineTransaction;
@@ -29,7 +30,7 @@ function OfflineTxItem({ tx, isOnline, onDelete, onBroadcast }: OfflineTxItemPro
     try {
       await Share.share({ message: tx.rawHex });
     } catch {
-      // user dismissed — ignore
+      // user dismissed
     }
   }, [tx.rawHex]);
 
@@ -45,10 +46,26 @@ function OfflineTxItem({ tx, isOnline, onDelete, onBroadcast }: OfflineTxItemPro
     }
   }, [tx, onBroadcast]);
 
+  const handleDelete = useCallback(() => {
+    Alert.alert('Remover', 'Remover esta transação salva?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Remover', style: 'destructive', onPress: () => onDelete(tx.id) },
+    ]);
+  }, [tx.id, onDelete]);
+
   const shortDate = new Date(tx.createdAt).toLocaleString();
 
   return (
-    <AppCard>
+    <View
+      style={[
+        styles.txCard,
+        {
+          backgroundColor: theme.colors.surfaceRaised,
+          borderColor: theme.colors.border,
+          borderRadius: theme.radii.lg,
+        },
+      ]}
+    >
       <View style={styles.txRow}>
         <View style={styles.txInfo}>
           {tx.amountSats !== undefined && (
@@ -67,13 +84,13 @@ function OfflineTxItem({ tx, isOnline, onDelete, onBroadcast }: OfflineTxItemPro
               Fee: {tx.feeSats.toLocaleString()} sats
             </AppText>
           )}
-          <AppText variant="caption" color="faint">{shortDate}</AppText>
+          <AppText variant="caption" color="muted">{shortDate}</AppText>
         </View>
       </View>
 
-      {broadcastError && (
+      {broadcastError ? (
         <AppText variant="caption" color="danger">{broadcastError}</AppText>
-      )}
+      ) : null}
 
       <View style={styles.txActions}>
         <Pressable
@@ -115,7 +132,7 @@ function OfflineTxItem({ tx, isOnline, onDelete, onBroadcast }: OfflineTxItemPro
 
         <Pressable
           accessibilityRole="button"
-          onPress={() => onDelete(tx.id)}
+          onPress={handleDelete}
           style={({ pressed }) => [
             styles.actionChip,
             {
@@ -129,9 +146,13 @@ function OfflineTxItem({ tx, isOnline, onDelete, onBroadcast }: OfflineTxItemPro
           <AppText variant="caption" color="danger">✕ Remover</AppText>
         </Pressable>
       </View>
-    </AppCard>
+    </View>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Prepare form
+// ---------------------------------------------------------------------------
 
 type PrepareFormProps = {
   onSubmit: (toAddress: string, amountSats: number, feeRate: number) => Promise<void>;
@@ -139,6 +160,7 @@ type PrepareFormProps = {
 };
 
 function PrepareForm({ onSubmit, onCancel }: PrepareFormProps) {
+  const { theme } = useTheme();
   const [toAddress, setToAddress] = useState('');
   const [amount, setAmount] = useState('');
   const [feeRate, setFeeRate] = useState('1');
@@ -163,8 +185,17 @@ function PrepareForm({ onSubmit, onCancel }: PrepareFormProps) {
   }, [toAddress, amount, feeRate, onSubmit]);
 
   return (
-    <AppCard>
-      <AppText variant="subtitle">Preparar transação offline</AppText>
+    <View
+      style={[
+        styles.formCard,
+        {
+          backgroundColor: theme.colors.surfaceRaised,
+          borderColor: theme.colors.border,
+          borderRadius: theme.radii.lg,
+        },
+      ]}
+    >
+      <AppText variant="subtitle" style={styles.formTitle}>Preparar transação offline</AppText>
       <AppInput
         placeholder="Endereço de destino"
         value={toAddress}
@@ -184,7 +215,7 @@ function PrepareForm({ onSubmit, onCancel }: PrepareFormProps) {
         onChangeText={setFeeRate}
         keyboardType="decimal-pad"
       />
-      {error && <AppText variant="caption" color="danger">{error}</AppText>}
+      {error ? <AppText variant="caption" color="danger">{error}</AppText> : null}
       <View style={styles.formActions}>
         <AppButton title="Cancelar" variant="ghost" size="sm" onPress={onCancel} style={styles.flex} />
         <AppButton
@@ -195,9 +226,13 @@ function PrepareForm({ onSubmit, onCancel }: PrepareFormProps) {
           style={styles.flex}
         />
       </View>
-    </AppCard>
+    </View>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Import form
+// ---------------------------------------------------------------------------
 
 type ImportFormProps = {
   onSubmit: (rawHex: string) => Promise<void>;
@@ -224,8 +259,17 @@ function ImportForm({ onSubmit, onCancel }: ImportFormProps) {
   }, [rawHex, onSubmit]);
 
   return (
-    <AppCard>
-      <AppText variant="subtitle">Importar transação assinada</AppText>
+    <View
+      style={[
+        styles.formCard,
+        {
+          backgroundColor: theme.colors.surfaceRaised,
+          borderColor: theme.colors.border,
+          borderRadius: theme.radii.lg,
+        },
+      ]}
+    >
+      <AppText variant="subtitle" style={styles.formTitle}>Importar transação assinada</AppText>
       <TextInput
         placeholder="Cole o hex da transação aqui…"
         placeholderTextColor={theme.colors.textMuted}
@@ -245,7 +289,7 @@ function ImportForm({ onSubmit, onCancel }: ImportFormProps) {
           },
         ]}
       />
-      {error && <AppText variant="caption" color="danger">{error}</AppText>}
+      {error ? <AppText variant="caption" color="danger">{error}</AppText> : null}
       <View style={styles.formActions}>
         <AppButton title="Cancelar" variant="ghost" size="sm" onPress={onCancel} style={styles.flex} />
         <AppButton
@@ -256,14 +300,21 @@ function ImportForm({ onSubmit, onCancel }: ImportFormProps) {
           style={styles.flex}
         />
       </View>
-    </AppCard>
+    </View>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Main screen
+// ---------------------------------------------------------------------------
 
 type ActiveForm = 'prepare' | 'import' | null;
 
 export function OfflineModeScreen() {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const navigation = useAppNavigation();
+
   const {
     isOnline,
     confirmedBalanceSats,
@@ -309,135 +360,270 @@ export function OfflineModeScreen() {
     [deleteOfflineTransaction],
   );
 
+  const statusColor = isOnline ? theme.colors.success : theme.colors.warning ?? theme.colors.textMuted;
+
   return (
-    <AppScreen title="Modo Offline">
-      <View
-        style={[
-          styles.statusBadge,
-          {
-            borderColor: isOnline ? theme.colors.success : theme.colors.warning,
-            backgroundColor: theme.colors.surface,
-            borderRadius: theme.radii.xl,
-          },
-        ]}
-      >
-        <View
-          style={[
-            styles.statusDot,
-            { backgroundColor: isOnline ? theme.colors.success : theme.colors.warning },
-          ]}
-        />
-        <AppText variant="caption" color={isOnline ? 'success' : 'warning'}>
-          {isOnline ? 'Online — dados locais + blockchain' : 'Offline — apenas dados locais'}
-        </AppText>
+    <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          onPress={() => navigation.goBack()}
+          style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          <AppText variant="title" color="muted">←</AppText>
+        </Pressable>
+        <AppText variant="subtitle" style={styles.headerTitle}>Modo offline</AppText>
+        <View style={styles.backBtn} />
       </View>
 
-      <BalanceCard balanceSats={confirmedBalanceSats} label="Saldo local confirmado" />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scroll, { paddingBottom: Math.max(insets.bottom, 16) + 24 }]}
+      >
+        {/* Status badge */}
+        <View
+          style={[
+            styles.statusBadge,
+            {
+              borderColor: statusColor,
+              backgroundColor: theme.colors.surface,
+              borderRadius: theme.radii.xl,
+            },
+          ]}
+        >
+          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+          <AppText variant="caption" style={{ color: statusColor }}>
+            {isOnline ? 'Online — dados locais + blockchain' : 'Offline — apenas dados locais'}
+          </AppText>
+        </View>
 
-      {pendingBalanceSats > 0 && (
-        <AppCard>
-          <View style={styles.row}>
-            <AppText variant="caption" color="muted">Pendente</AppText>
-            <AppText variant="body" color="warning">
-              +{pendingBalanceSats.toLocaleString()} sats
+        {/* Balance */}
+        <View
+          style={[
+            styles.balanceCard,
+            {
+              backgroundColor: theme.colors.surfaceRaised,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.lg,
+            },
+          ]}
+        >
+          <View style={styles.balanceRow}>
+            <AppText variant="caption" color="muted">Saldo local confirmado</AppText>
+            <AppText variant="subtitle" style={styles.balanceAmount}>
+              {confirmedBalanceSats.toLocaleString()} sats
             </AppText>
           </View>
-        </AppCard>
-      )}
-
-      {isLoadingData ? (
-        <AppLoading label="Carregando dados locais…" />
-      ) : dataError ? (
-        <AppEmptyState icon="⚠" title="Erro" description={dataError} />
-      ) : null}
-
-      {transactions.length > 0 && (
-        <AppCard>
-          <AppText variant="subtitle">Histórico local</AppText>
-          <AppText variant="caption" color="muted">
-            {transactions.length} transação{transactions.length !== 1 ? 'ões' : ''} armazenada{transactions.length !== 1 ? 's' : ''}
-          </AppText>
-        </AppCard>
-      )}
-
-      <AppCard>
-        <AppText variant="subtitle">Transações offline salvas</AppText>
-        {offlineTransactions.length === 0 ? (
-          <AppEmptyState
-            icon="◌"
-            title="Nenhuma transação salva"
-            description="Prepare ou importe uma transação para transmiti-la depois."
-          />
-        ) : (
-          offlineTransactions.map(tx => (
-            <OfflineTxItem
-              key={tx.id}
-              tx={tx}
-              isOnline={isOnline}
-              onDelete={handleDelete}
-              onBroadcast={handleBroadcast}
-            />
-          ))
-        )}
-      </AppCard>
-
-      {activeForm === 'prepare' && (
-        <PrepareForm
-          onSubmit={handlePrepareSubmit}
-          onCancel={() => setActiveForm(null)}
-        />
-      )}
-
-      {activeForm === 'import' && (
-        <ImportForm
-          onSubmit={handleImportSubmit}
-          onCancel={() => setActiveForm(null)}
-        />
-      )}
-
-      {activeForm === null && (
-        <View style={styles.actions}>
-          <AppButton
-            title="◈ Preparar transação offline"
-            variant="secondary"
-            disabled={!hasLocalUtxos}
-            onPress={() => setActiveForm('prepare')}
-          />
-          <AppButton
-            title="↓ Importar hex assinado"
-            variant="secondary"
-            onPress={() => setActiveForm('import')}
-          />
+          {pendingBalanceSats > 0 && (
+            <>
+              <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+              <View style={styles.balanceRow}>
+                <AppText variant="caption" color="muted">Pendente</AppText>
+                <AppText variant="body" style={{ color: statusColor }}>
+                  +{pendingBalanceSats.toLocaleString()} sats
+                </AppText>
+              </View>
+            </>
+          )}
         </View>
-      )}
-    </AppScreen>
+
+        {/* Loading */}
+        {isLoadingData ? (
+          <AppText variant="caption" color="muted" style={styles.center}>Carregando dados locais…</AppText>
+        ) : null}
+
+        {/* Error */}
+        {dataError ? (
+          <AppText variant="caption" color="danger" style={styles.center}>{dataError}</AppText>
+        ) : null}
+
+        {/* Local tx summary */}
+        {transactions.length > 0 && (
+          <View
+            style={[
+              styles.summaryCard,
+              {
+                backgroundColor: theme.colors.surfaceRaised,
+                borderColor: theme.colors.border,
+                borderRadius: theme.radii.lg,
+              },
+            ]}
+          >
+            <AppText variant="body" style={styles.summaryTitle}>Histórico local</AppText>
+            <AppText variant="caption" color="muted">
+              {transactions.length} transação{transactions.length !== 1 ? 'ões' : ''} armazenada{transactions.length !== 1 ? 's' : ''}
+            </AppText>
+          </View>
+        )}
+
+        {/* Offline tx list */}
+        <View style={styles.section}>
+          <AppText variant="label" color="muted" style={styles.sectionLabel}>Transações salvas</AppText>
+          {offlineTransactions.length === 0 ? (
+            <View
+              style={[
+                styles.emptyState,
+                {
+                  backgroundColor: theme.colors.surfaceRaised,
+                  borderColor: theme.colors.border,
+                  borderRadius: theme.radii.lg,
+                },
+              ]}
+            >
+              <AppText variant="body" color="muted" style={styles.center}>Nenhuma transação salva</AppText>
+              <AppText variant="caption" color="muted" style={styles.center}>
+                Prepare ou importe uma transação para transmiti-la depois.
+              </AppText>
+            </View>
+          ) : (
+            offlineTransactions.map(tx => (
+              <OfflineTxItem
+                key={tx.id}
+                tx={tx}
+                isOnline={isOnline}
+                onDelete={handleDelete}
+                onBroadcast={handleBroadcast}
+              />
+            ))
+          )}
+        </View>
+
+        {/* Forms */}
+        {activeForm === 'prepare' && (
+          <PrepareForm
+            onSubmit={handlePrepareSubmit}
+            onCancel={() => setActiveForm(null)}
+          />
+        )}
+
+        {activeForm === 'import' && (
+          <ImportForm
+            onSubmit={handleImportSubmit}
+            onCancel={() => setActiveForm(null)}
+          />
+        )}
+
+        {/* Main action buttons */}
+        {activeForm === null && (
+          <View style={styles.actions}>
+            <AppButton
+              title="◈ Preparar transação offline"
+              variant="secondary"
+              disabled={!hasLocalUtxos}
+              onPress={() => setActiveForm('prepare')}
+            />
+            <AppButton
+              title="↓ Importar hex assinado"
+              variant="secondary"
+              onPress={() => setActiveForm('import')}
+            />
+          </View>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  statusBadge: {
-    flexDirection: 'row',
+  root: {
+    flex: 1,
+  },
+  header: {
     alignItems: 'center',
-    gap: 8,
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  backBtn: {
+    alignItems: 'center',
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  headerTitle: {
+    flex: 1,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  scroll: {
+    gap: 16,
+    paddingHorizontal: 20,
+    paddingTop: 4,
+  },
+
+  // Status
+  statusBadge: {
+    alignItems: 'center',
     alignSelf: 'flex-start',
     borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
   statusDot: {
-    width: 7,
-    height: 7,
     borderRadius: 4,
+    height: 7,
+    width: 7,
   },
-  row: {
+
+  // Balance
+  balanceCard: {
+    borderWidth: 1,
+    overflow: 'hidden',
+    paddingHorizontal: 16,
+  },
+  balanceRow: {
+    alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  balanceAmount: {
+    fontWeight: '700',
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+  },
+
+  // Summary
+  summaryCard: {
+    borderWidth: 1,
+    gap: 4,
+    padding: 14,
+  },
+  summaryTitle: {
+    fontWeight: '600',
+  },
+
+  // Section
+  section: {
+    gap: 10,
+  },
+  sectionLabel: {
+    letterSpacing: 1.5,
+    marginLeft: 2,
+  },
+  emptyState: {
+    borderWidth: 1,
+    gap: 6,
+    paddingVertical: 28,
+    paddingHorizontal: 16,
+  },
+
+  // Offline tx card
+  txCard: {
+    borderWidth: 1,
+    gap: 10,
+    padding: 14,
   },
   txRow: {
+    alignItems: 'flex-start',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
   },
   txInfo: {
     flex: 1,
@@ -453,6 +639,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
+
+  // Forms
+  formCard: {
+    borderWidth: 1,
+    gap: 12,
+    padding: 16,
+  },
+  formTitle: {
+    fontWeight: '700',
+  },
+  hexInput: {
+    borderWidth: 1,
+    fontFamily: 'monospace',
+    fontSize: 13,
+    minHeight: 100,
+    padding: 12,
+    textAlignVertical: 'top',
+  },
   formActions: {
     flexDirection: 'row',
     gap: 10,
@@ -460,15 +664,14 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  hexInput: {
-    borderWidth: 1,
-    padding: 12,
-    fontSize: 13,
-    minHeight: 100,
-    textAlignVertical: 'top',
-    fontFamily: 'monospace',
-  },
+
+  // Actions
   actions: {
     gap: 10,
+  },
+
+  // Utils
+  center: {
+    textAlign: 'center',
   },
 });

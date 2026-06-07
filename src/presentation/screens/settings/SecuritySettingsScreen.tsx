@@ -1,35 +1,32 @@
 import React from 'react';
-import { Pressable, StyleSheet, Switch, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton } from '../../components/base/AppButton';
-import { AppCard } from '../../components/base/AppCard';
-import { AppScreen } from '../../components/base/AppScreen';
 import { AppText } from '../../components/base/AppText';
 import { PinInputModal } from '../../components/security/PinInputModal';
-import { FormSection } from '../../components/forms/FormSection';
+import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useSecuritySettings } from '../../hooks/useSecuritySettings';
 import { useTheme } from '../../hooks/useTheme';
 import { AUTO_LOCK_OPTIONS } from '../../../core/domain/entities/SecuritySettings';
 import type { AutoLockSeconds } from '../../../core/domain/entities/SecuritySettings';
 
-function SettingRow({
-  label,
-  description,
-  value,
-  onToggle,
-  disabled,
-}: {
+type ToggleRowProps = {
   label: string;
   description?: string;
   value: boolean;
   onToggle: () => void;
   disabled?: boolean;
-}) {
+};
+
+function ToggleRow({ label, description, value, onToggle, disabled }: ToggleRowProps) {
   const { theme } = useTheme();
   return (
-    <View style={styles.row}>
-      <View style={styles.rowText}>
-        <AppText variant="body">{label}</AppText>
-        {description ? <AppText variant="caption" color="muted">{description}</AppText> : null}
+    <View style={styles.toggleRow}>
+      <View style={styles.toggleText}>
+        <AppText variant="body" style={styles.toggleLabel}>{label}</AppText>
+        {description ? (
+          <AppText variant="caption" color="muted">{description}</AppText>
+        ) : null}
       </View>
       <Switch
         value={value}
@@ -42,35 +39,74 @@ function SettingRow({
   );
 }
 
-function LockOption({
-  label,
-  value,
-  selected,
-  onSelect,
-}: {
+type LockOptionProps = {
   label: string;
   value: AutoLockSeconds;
   selected: boolean;
   onSelect: (v: AutoLockSeconds) => void;
-}) {
+};
+
+function LockOption({ label, value, selected, onSelect }: LockOptionProps) {
   const { theme } = useTheme();
   return (
     <Pressable
-      style={[styles.lockOption, selected && { backgroundColor: theme.colors.surfaceMuted }]}
-      onPress={() => onSelect(value)}
       testID={`lock-option-${value}`}
+      onPress={() => onSelect(value)}
+      style={({ pressed }) => [
+        styles.lockOption,
+        {
+          backgroundColor: selected ? theme.colors.accentMuted : theme.colors.surfaceRaised,
+          borderColor: selected ? theme.colors.accent : theme.colors.border,
+          borderRadius: theme.radii.md,
+          opacity: pressed ? 0.72 : 1,
+        },
+      ]}
     >
-      <AppText variant="body">{label}</AppText>
-      {selected ? (
-        <View style={[styles.checkDot, { backgroundColor: theme.colors.primary }]} />
-      ) : (
-        <View style={[styles.checkDot, styles.unselectedCheckDot, { borderColor: theme.colors.border }]} />
-      )}
+      <AppText variant="body" style={selected ? [styles.lockOptionSelected, { color: theme.colors.accent }] : undefined}>
+        {label}
+      </AppText>
+      <View style={[styles.radioCircle, { borderColor: selected ? theme.colors.accent : theme.colors.border }]}>
+        {selected && <View style={[styles.radioDot, { backgroundColor: theme.colors.accent }]} />}
+      </View>
     </Pressable>
   );
 }
 
+type SectionCardProps = {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+};
+
+function SectionCard({ title, description, children }: SectionCardProps) {
+  const { theme } = useTheme();
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <AppText variant="subtitle" style={styles.sectionTitle}>{title}</AppText>
+        {description ? <AppText variant="caption" color="muted">{description}</AppText> : null}
+      </View>
+      <View
+        style={[
+          styles.sectionCard,
+          {
+            backgroundColor: theme.colors.surfaceRaised,
+            borderColor: theme.colors.border,
+            borderRadius: theme.radii.lg,
+          },
+        ]}
+      >
+        {children}
+      </View>
+    </View>
+  );
+}
+
 export function SecuritySettingsScreen() {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const navigation = useAppNavigation();
+
   const {
     settings,
     biometricAvailable,
@@ -93,96 +129,124 @@ export function SecuritySettingsScreen() {
   if (isLoading) return null;
 
   return (
-    <AppScreen title="Segurança" scrollable>
+    <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          onPress={() => navigation.goBack()}
+          style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          <AppText variant="title" color="muted">←</AppText>
+        </Pressable>
+        <AppText variant="subtitle" style={styles.headerTitle}>Segurança</AppText>
+        <View style={styles.backBtn} />
+      </View>
 
-      <FormSection
-        title="PIN"
-        description="Bloqueie a carteira com um código PIN numérico"
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scroll, { paddingBottom: Math.max(insets.bottom, 16) + 24 }]}
       >
-        <AppCard>
-          <SettingRow
+        {/* PIN Section */}
+        <SectionCard
+          title="PIN"
+          description="Bloqueie a carteira com um código PIN numérico"
+        >
+          <ToggleRow
             label="Ativar PIN"
             description={settings.pinEnabled ? 'PIN configurado' : 'Sem PIN configurado'}
             value={settings.pinEnabled}
             onToggle={settings.pinEnabled ? openPinRemove : openPinSetup}
           />
-        </AppCard>
-        {settings.pinEnabled && (
-          <AppButton
-            title="Alterar PIN"
-            variant="secondary"
-            size="sm"
-            onPress={openPinSetup}
-          />
-        )}
-      </FormSection>
+          {settings.pinEnabled && (
+            <>
+              <View style={[styles.cardDivider, { backgroundColor: theme.colors.border }]} />
+              <AppButton
+                title="Alterar PIN"
+                variant="ghost"
+                size="sm"
+                onPress={openPinSetup}
+              />
+            </>
+          )}
+        </SectionCard>
 
-      {biometricAvailable ? (
-        <FormSection
-          title="Biometria"
-          description="Desbloqueie usando digital ou reconhecimento facial"
-        >
-          <AppCard>
-            <SettingRow
+        {/* Biometric Section */}
+        {biometricAvailable && (
+          <SectionCard
+            title="Biometria"
+            description="Desbloqueie usando digital ou reconhecimento facial"
+          >
+            <ToggleRow
               label="Ativar Biometria"
               description={settings.pinEnabled ? undefined : 'Configure um PIN primeiro'}
               value={settings.biometricEnabled}
               onToggle={toggleBiometric}
               disabled={!settings.pinEnabled}
             />
-          </AppCard>
-        </FormSection>
-      ) : null}
+          </SectionCard>
+        )}
 
-      <FormSection
-        title="Bloqueio Automático"
-        description="Tempo de inatividade antes de bloquear a carteira"
-      >
-        <AppCard>
-          {AUTO_LOCK_OPTIONS.map(opt => (
-            <LockOption
-              key={opt.value}
-              label={opt.label}
-              value={opt.value}
-              selected={settings.autoLockSeconds === opt.value}
-              onSelect={setAutoLock}
-            />
-          ))}
-        </AppCard>
-      </FormSection>
+        {/* Auto-lock Section */}
+        <SectionCard
+          title="Bloqueio Automático"
+          description="Tempo de inatividade antes de bloquear a carteira"
+        >
+          <View style={styles.lockGrid}>
+            {AUTO_LOCK_OPTIONS.map(opt => (
+              <LockOption
+                key={opt.value}
+                label={opt.label}
+                value={opt.value}
+                selected={settings.autoLockSeconds === opt.value}
+                onSelect={setAutoLock}
+              />
+            ))}
+          </View>
+        </SectionCard>
 
-      <FormSection
-        title="Privacidade"
-        description="Proteções adicionais de privacidade"
-      >
-        <AppCard>
-          <SettingRow
+        {/* Privacy Section */}
+        <SectionCard
+          title="Privacidade"
+          description="Proteções adicionais de privacidade"
+        >
+          <ToggleRow
             label="Ocultar Saldo"
             description="Exibe asteriscos no lugar do saldo"
             value={settings.hideBalance}
             onToggle={toggleHideBalance}
           />
-          <View style={styles.divider} />
-          <SettingRow
+          <View style={[styles.cardDivider, { backgroundColor: theme.colors.border }]} />
+          <ToggleRow
             label="Bloquear Screenshots"
             description="Impede capturas de tela em telas sensíveis"
             value={settings.blockScreenshots}
             onToggle={toggleBlockScreenshots}
           />
-        </AppCard>
-      </FormSection>
+        </SectionCard>
 
-      <AppCard>
-        <AppText variant="caption" color="muted">
-          PIN ou biometria serão solicitados antes de visualizar a seed, enviar bitcoin e exportar dados sensíveis.
-        </AppText>
-      </AppCard>
+        {/* Info note */}
+        <View
+          style={[
+            styles.infoNote,
+            {
+              backgroundColor: theme.colors.surfaceMuted,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.md,
+            },
+          ]}
+        >
+          <AppText variant="caption" color="muted">
+            PIN ou biometria serão solicitados antes de visualizar a seed, enviar bitcoin e exportar dados sensíveis.
+          </AppText>
+        </View>
 
-      {error ? (
-        <AppText variant="caption" color="danger" testID="settings-error">
-          {error}
-        </AppText>
-      ) : null}
+        {/* Error */}
+        {error ? (
+          <AppText variant="caption" color="danger" testID="settings-error">{error}</AppText>
+        ) : null}
+      </ScrollView>
 
       <PinInputModal
         visible={pinModalVisible}
@@ -192,40 +256,113 @@ export function SecuritySettingsScreen() {
         onSubmit={submitPinStep}
         onCancel={closePinModal}
       />
-    </AppScreen>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
+  root: {
+    flex: 1,
   },
-  rowText: {
+  header: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  backBtn: {
+    alignItems: 'center',
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  headerTitle: {
+    flex: 1,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  scroll: {
+    gap: 20,
+    paddingHorizontal: 20,
+    paddingTop: 4,
+  },
+
+  // Section
+  section: {
+    gap: 10,
+  },
+  sectionHeader: {
+    gap: 3,
+    paddingHorizontal: 4,
+  },
+  sectionTitle: {
+    fontWeight: '700',
+  },
+  sectionCard: {
+    borderWidth: 1,
+    gap: 0,
+    overflow: 'hidden',
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+  },
+  cardDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginVertical: 2,
+  },
+
+  // Toggle row
+  toggleRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    paddingVertical: 12,
+  },
+  toggleText: {
     flex: 1,
     gap: 2,
   },
-  lockOption: {
+  toggleLabel: {
+    fontWeight: '500',
+  },
+
+  // Lock options
+  lockOptionSelected: {
+    fontWeight: '600',
+  },
+  lockGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingVertical: 8,
+  },
+  lockOption: {
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    borderRadius: 8,
-  },
-  checkDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-  },
-  unselectedCheckDot: {
     borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    minWidth: '46%',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    marginVertical: 8,
+  radioCircle: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1.5,
+    height: 16,
+    justifyContent: 'center',
+    marginLeft: 'auto',
+    width: 16,
+  },
+  radioDot: {
+    borderRadius: 4,
+    height: 8,
+    width: 8,
+  },
+
+  // Info note
+  infoNote: {
+    borderWidth: 1,
+    padding: 14,
   },
 });

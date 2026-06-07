@@ -4,18 +4,26 @@ import { ConfirmSeedScreen } from '../../../src/presentation/screens/auth/Confir
 import { renderWithTheme } from '../../mocks/renderWithProviders';
 
 const mockSave = jest.fn();
+const mockReset = jest.fn();
+const mockNavigate = jest.fn();
 
 const mockWords = [
   'abandon', 'ability', 'able', 'about', 'above', 'absent',
   'absorb', 'abstract', 'absurd', 'abuse', 'access', 'accident',
 ];
 
+jest.mock('../../../src/presentation/hooks/useAppNavigation', () => ({
+  useAppNavigation: () => ({ navigate: mockNavigate, goBack: jest.fn() }),
+}));
+
 jest.mock('../../../src/presentation/hooks/useCreateWallet', () => ({
   useCreateWallet: jest.fn(() => ({
     words: mockWords,
     save: mockSave,
+    step: 'confirming',
     isLoading: false,
     error: null,
+    reset: mockReset,
   })),
 }));
 
@@ -26,30 +34,34 @@ jest.mock('react-native-safe-area-context', () => ({
 describe('ConfirmSeedScreen', () => {
   beforeEach(() => {
     mockSave.mockClear();
+    mockReset.mockClear();
+    mockNavigate.mockClear();
     const { useCreateWallet } = require('../../../src/presentation/hooks/useCreateWallet');
     (useCreateWallet as jest.Mock).mockReturnValue({
       words: mockWords,
       save: mockSave,
+      step: 'confirming',
       isLoading: false,
       error: null,
+      reset: mockReset,
     });
   });
 
   it('renders the confirm screen title', () => {
     const screen = renderWithTheme(<ConfirmSeedScreen />);
-    expect(screen.getByText('Confirm your seed')).toBeTruthy();
+    expect(screen.getByText('Confirm seed')).toBeTruthy();
   });
 
   it('renders the confirm button', () => {
     const screen = renderWithTheme(<ConfirmSeedScreen />);
-    expect(screen.getByText('Confirm & create wallet')).toBeTruthy();
+    expect(screen.getByLabelText('Confirm and create wallet')).toBeTruthy();
   });
 
   it('renders 8 word option chips', () => {
     const screen = renderWithTheme(<ConfirmSeedScreen />);
-    // Each option chip is a button — at least 8 + the confirm button
+    // Each option chip is a button — at least 8 options + the back button + confirm button
     const buttons = screen.getAllByRole('button');
-    expect(buttons.length).toBeGreaterThanOrEqual(9); // 8 chips + 1 confirm
+    expect(buttons.length).toBeGreaterThanOrEqual(9);
   });
 
   it('shows a loading indicator while saving', () => {
@@ -57,8 +69,10 @@ describe('ConfirmSeedScreen', () => {
     (useCreateWallet as jest.Mock).mockReturnValue({
       words: mockWords,
       save: mockSave,
+      step: 'saving',
       isLoading: true,
       error: null,
+      reset: mockReset,
     });
     const screen = renderWithTheme(<ConfirmSeedScreen />);
     expect(screen.getByText('Creating wallet…')).toBeTruthy();
@@ -69,8 +83,10 @@ describe('ConfirmSeedScreen', () => {
     (useCreateWallet as jest.Mock).mockReturnValue({
       words: mockWords,
       save: mockSave,
+      step: 'confirming',
       isLoading: false,
       error: 'Failed to create wallet. Please try again.',
+      reset: mockReset,
     });
     const screen = renderWithTheme(<ConfirmSeedScreen />);
     expect(screen.getByText('Failed to create wallet. Please try again.')).toBeTruthy();
@@ -78,12 +94,34 @@ describe('ConfirmSeedScreen', () => {
 
   it('tapping a word chip fills a slot', () => {
     const screen = renderWithTheme(<ConfirmSeedScreen />);
-    // Tap the first available word chip (first option not yet used)
     const buttons = screen.getAllByRole('button');
-    // Buttons: 4 slot chips (disabled/ghost) + 8 word chips + 1 confirm = 13
-    // First 4 are slot chips (disabled), then word chips start
-    fireEvent.press(buttons[4]);
-    // After pressing, the confirm button should still exist (not all slots filled yet)
-    expect(screen.getByText('Confirm & create wallet')).toBeTruthy();
+    // back btn + slot chips + word option chips + confirm btn
+    // Tap any enabled word option (after the back btn and slot chips)
+    const wordBtn = buttons.find(
+      b =>
+        b.props.accessibilityRole === 'button' &&
+        !b.props.accessibilityState?.disabled &&
+        b.props.accessibilityLabel !== 'Go back' &&
+        b.props.accessibilityLabel !== 'Confirm and create wallet',
+    );
+    if (wordBtn) {
+      fireEvent.press(wordBtn);
+    }
+    expect(screen.getByLabelText('Confirm and create wallet')).toBeTruthy();
+  });
+
+  it('navigates to WalletList when save completes successfully', () => {
+    const { useCreateWallet } = require('../../../src/presentation/hooks/useCreateWallet');
+    (useCreateWallet as jest.Mock).mockReturnValue({
+      words: mockWords,
+      save: mockSave,
+      step: 'saving',
+      isLoading: false,
+      error: null,
+      reset: mockReset,
+    });
+    renderWithTheme(<ConfirmSeedScreen />);
+    expect(mockReset).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('WalletList');
   });
 });

@@ -152,5 +152,58 @@ describe('SyncTransactionsUseCase', () => {
       expect(result.newCount).toBe(2);
       expect(repo.upsertAll).toHaveBeenCalledWith(WALLET_ID, [tx1, tx2]);
     });
+
+    it('computes net sent amount when spending address and change address both return the same tx', async () => {
+      // Scenario: wallet has 20k sats on address A, sends 5k to external, 14.1k change to address B.
+      // MempoolApiAdapter computes per-address: A → outgoing 20k, B → incoming 14.1k.
+      // After merge: net outgoing = 20k − 14.1k = 5.9k (sent + fee).
+      const ADDR_B = 'tb1qchange';
+      const TXID = 'send-with-change-txid';
+      const txFromSpending: Transaction = {
+        id: TXID,
+        txid: TXID,
+        amountSats: 20_000,
+        feeSats: 900,
+        direction: 'outgoing',
+        status: 'pending',
+        createdAt: '2026-06-07T00:00:00.000Z',
+      };
+      const txFromChange: Transaction = {
+        id: TXID,
+        txid: TXID,
+        amountSats: 14_100,
+        direction: 'incoming',
+        status: 'pending',
+        createdAt: '2026-06-07T00:00:00.000Z',
+      };
+      const repo = makeRepo([]);
+      const provider = makeProvider([]);
+      provider.getTransactions
+        .mockResolvedValueOnce([txFromSpending]) // ADDRESS (spending address)
+        .mockResolvedValueOnce([txFromChange]);  // ADDR_B (change address)
+      const useCase = new SyncTransactionsUseCase(repo, provider);
+      const result = await useCase.execute(WALLET_ID, [ADDRESS, ADDR_B], NETWORK);
+
+      expect(result.newCount).toBe(1);
+      const [saved] = (repo.upsertAll as jest.Mock).mock.calls[0][1] as Transaction[];
+      expect(saved.direction).toBe('outgoing');
+      expect(saved.amountSats).toBe(5_900); // 20k − 14.1k = net sent
+    });
+
+    it('clamps net amount to zero when change exceeds spend (e.g. dust)', async () => {
+      const ADDR_B = 'tb1qchange2';
+      const TXID = 'edge-case-txid';
+      const txOut: Transaction = { id: TXID, txid: TXID, amountSats: 1_000, direction: 'outgoing', status: 'confirmed', createdAt: '2026-06-07T00:00:00.000Z' };
+      const txIn: Transaction = { id: TXID, txid: TXID, amountSats: 2_000, direction: 'incoming', status: 'confirmed', createdAt: '2026-06-07T00:00:00.000Z' };
+      const repo = makeRepo([]);
+      const provider = makeProvider([]);
+      provider.getTransactions
+        .mockResolvedValueOnce([txOut])
+        .mockResolvedValueOnce([txIn]);
+      const useCase = new SyncTransactionsUseCase(repo, provider);
+      await useCase.execute(WALLET_ID, [ADDRESS, ADDR_B], NETWORK);
+      const [saved] = (repo.upsertAll as jest.Mock).mock.calls[0][1] as Transaction[];
+      expect(saved.amountSats).toBe(0);
+    });
   });
 });

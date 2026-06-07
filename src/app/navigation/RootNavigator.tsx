@@ -1,7 +1,6 @@
 import { NavigationContainer, DarkTheme as NavigationDarkTheme, DefaultTheme as NavigationLightTheme } from '@react-navigation/native';
 import { enableScreens } from 'react-native-screens';
 import { AppNavigator } from './AppNavigator';
-import { AuthNavigator } from './AuthNavigator';
 import { useTheme } from '../../presentation/hooks/useTheme';
 import { useWallet } from '../../presentation/hooks/useWallet';
 import { LoadingScreen } from '../../presentation/screens/LoadingScreen';
@@ -10,7 +9,7 @@ enableScreens();
 
 export function RootNavigator() {
   const { theme } = useTheme();
-  const { wallets, isLoading } = useWallet();
+  const { isLoading } = useWallet();
   const navigationTheme = theme.mode === 'dark' ? NavigationDarkTheme : NavigationLightTheme;
 
   if (isLoading) {
@@ -31,7 +30,7 @@ export function RootNavigator() {
         },
       }}
     >
-      {wallets.length > 0 ? <AppNavigator /> : <AuthNavigator />}
+      <AppNavigator />
     </NavigationContainer>
   );
 }

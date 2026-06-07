@@ -7,8 +7,8 @@ const service = new CoinSelectionService(feeEstimation);
 
 const FEE_RATE = 5; // sat/vB
 
-function makeUtxo(valueSats: number, isConfirmed = true, vout = 0, isFrozen = false): Utxo {
-  return { txid: `tx-${valueSats}-${vout}`, vout, valueSats, address: 'bc1q...', isConfirmed, isFrozen };
+function makeUtxo(valueSats: number, isConfirmed = true, vout = 0, isFrozen = false, address?: string): Utxo {
+  return { txid: `tx-${valueSats}-${vout}`, vout, valueSats, address: address ?? `bc1q${vout}`, isConfirmed, isFrozen };
 }
 
 // Fee for 1 input, 2 outputs at rate 5: (10 + 68 + 62) * 5 = 700 sats

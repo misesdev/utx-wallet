@@ -2,7 +2,7 @@ import React from 'react';
 import { fireEvent } from '@testing-library/react-native';
 import { BackupSeedScreen } from '../../../src/presentation/screens/auth/BackupSeedScreen';
 import { renderWithTheme } from '../../mocks/renderWithProviders';
-import { AuthRoutes } from '../../../src/app/navigation/routes';
+import { AppRoutes } from '../../../src/app/navigation/routes';
 
 const mockNavigate = jest.fn();
 const mockProceedToConfirm = jest.fn();
@@ -20,6 +20,7 @@ jest.mock('../../../src/presentation/hooks/useCreateWallet', () => ({
   useCreateWallet: () => ({
     words: mockWords,
     walletName: 'Test Wallet',
+    passphrase: '',
     proceedToConfirm: mockProceedToConfirm,
   }),
 }));
@@ -36,31 +37,48 @@ describe('BackupSeedScreen', () => {
 
   it('renders the screen title', () => {
     const screen = renderWithTheme(<BackupSeedScreen />);
-    expect(screen.getByText('Back up your seed')).toBeTruthy();
+    expect(screen.getByText('Back up seed')).toBeTruthy();
   });
 
-  it('renders all 12 word indices', () => {
+  it('hides words by default (shows reveal prompt)', () => {
     const screen = renderWithTheme(<BackupSeedScreen />);
+    expect(screen.getByText('Tap to reveal')).toBeTruthy();
+  });
+
+  it('reveals words when reveal button is pressed', () => {
+    const screen = renderWithTheme(<BackupSeedScreen />);
+    fireEvent.press(screen.getByLabelText('Reveal seed words'));
+    expect(screen.getByText('abandon')).toBeTruthy();
+  });
+
+  it('renders all 12 word indices after reveal', () => {
+    const screen = renderWithTheme(<BackupSeedScreen />);
+    fireEvent.press(screen.getByLabelText('Reveal seed words'));
     for (let i = 1; i <= 12; i++) {
       expect(screen.getByText(String(i))).toBeTruthy();
     }
   });
 
-  it('hides words by default (shows reveal prompt)', () => {
+  it("calls proceedToConfirm and navigates when pressing continue after reveal", () => {
     const screen = renderWithTheme(<BackupSeedScreen />);
-    expect(screen.getByText('Tap to reveal seed phrase')).toBeTruthy();
-  });
-
-  it('reveals words when reveal button is pressed', () => {
-    const screen = renderWithTheme(<BackupSeedScreen />);
-    fireEvent.press(screen.getByText('Tap to reveal seed phrase'));
-    expect(screen.getByText('abandon')).toBeTruthy();
-  });
-
-  it("calls proceedToConfirm and navigates when pressing continue", () => {
-    const screen = renderWithTheme(<BackupSeedScreen />);
-    fireEvent.press(screen.getByText("I've written it down"));
+    // Reveal first so the button becomes active
+    fireEvent.press(screen.getByLabelText('Reveal seed words'));
+    fireEvent.press(screen.getByLabelText("I've written it down"));
     expect(mockProceedToConfirm).toHaveBeenCalledTimes(1);
-    expect(mockNavigate).toHaveBeenCalledWith(AuthRoutes.ConfirmSeed);
+    expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.ConfirmSeed);
+  });
+
+  it('shows passphrase badge when passphrase is active', () => {
+    jest.spyOn(
+      require('../../../src/presentation/hooks/useCreateWallet'),
+      'useCreateWallet',
+    ).mockReturnValue({
+      words: mockWords,
+      walletName: 'Test Wallet',
+      passphrase: 'mysecret',
+      proceedToConfirm: mockProceedToConfirm,
+    });
+    const screen = renderWithTheme(<BackupSeedScreen />);
+    expect(screen.getByText('Passphrase active — back it up separately')).toBeTruthy();
   });
 });

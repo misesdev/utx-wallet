@@ -1,19 +1,23 @@
 import React, { createContext, PropsWithChildren, useCallback, useMemo, useRef, useState } from 'react';
 import { GenerateMnemonicUseCase } from '../../core/domain/usecases/wallet/GenerateMnemonicUseCase';
+import { DEFAULT_NETWORK } from '../../shared/constants/networks';
 import { useWallet } from '../../presentation/hooks/useWallet';
 
+type WalletNetwork = 'mainnet' | 'testnet';
 type Step = 'idle' | 'backup' | 'confirming' | 'saving';
 
 type CreateWalletFlowState = {
   step: Step;
   walletName: string;
   words: string[];
+  passphrase: string;
+  network: WalletNetwork;
   isLoading: boolean;
   error: string | null;
 };
 
 export type CreateWalletContextValue = CreateWalletFlowState & {
-  initiate(walletName: string): void;
+  initiate(walletName: string, passphrase?: string, network?: WalletNetwork): void;
   proceedToConfirm(): void;
   save(): Promise<void>;
   reset(): void;
@@ -21,10 +25,15 @@ export type CreateWalletContextValue = CreateWalletFlowState & {
 
 export const CreateWalletContext = createContext<CreateWalletContextValue | null>(null);
 
+const defaultNetwork: WalletNetwork =
+  DEFAULT_NETWORK === 'mainnet' ? 'mainnet' : 'testnet';
+
 const INITIAL: CreateWalletFlowState = {
   step: 'idle',
   walletName: '',
   words: [],
+  passphrase: '',
+  network: defaultNetwork,
   isLoading: false,
   error: null,
 };
@@ -38,13 +47,15 @@ export function CreateWalletProvider({ children }: PropsWithChildren) {
   // Keep mnemonic out of plain state so it isn't exposed in DevTools snapshots
   const mnemonicRef = useRef('');
 
-  const initiate = useCallback((walletName: string) => {
+  const initiate = useCallback((walletName: string, passphrase = '', network: WalletNetwork = defaultNetwork) => {
     const mnemonic = generateMnemonicUseCase.execute();
     mnemonicRef.current = mnemonic;
     setState({
       step: 'backup',
       walletName,
       words: mnemonic.split(' '),
+      passphrase,
+      network,
       isLoading: false,
       error: null,
     });
@@ -55,10 +66,10 @@ export function CreateWalletProvider({ children }: PropsWithChildren) {
   }, []);
 
   const save = useCallback(async () => {
-    const { walletName } = state;
+    const { walletName, passphrase, network } = state;
     setState(prev => ({ ...prev, step: 'saving', isLoading: true, error: null }));
     try {
-      await importWallet(walletName, mnemonicRef.current);
+      await importWallet(walletName, mnemonicRef.current, network, passphrase || undefined);
       mnemonicRef.current = '';
       setState(prev => ({ ...prev, isLoading: false }));
     } catch (err) {

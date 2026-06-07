@@ -24,6 +24,9 @@ import { InMemoryDatabase } from './helpers/InMemoryDatabase';
 const RECIPIENT = 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq';
 const CHANGE_ADDR = 'bc1q2huh508fyvu04z98cvnrd2stuzyqzwe80eqark';
 const INPUT_ADDR = 'bc1qp3q5wxq3t4y5yy7v6p20clzf9r5rgy0n3z5erz';
+// Additional valid mainnet addresses for tests that require distinct addresses per UTXO
+const INPUT_ADDR_2 = 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq';
+const INPUT_ADDR_3 = 'bc1q2huh508fyvu04z98cvnrd2stuzyqzwe80eqark';
 const WALLET_ID = 'wallet-build-test';
 const FEE_RATE = 5;
 
@@ -166,10 +169,11 @@ describe('Integration: Build Transaction', () => {
   });
 
   it('selects largest-first to minimise input count', async () => {
+    // Each UTXO has a different address so they are separate coin-selection groups
     const utxos = [
-      makeUtxo('small', 10_000, 0),
-      makeUtxo('medium', 100_000, 0),
-      makeUtxo('large', 1_000_000, 0),
+      makeUtxo('small',  10_000, 0, { address: INPUT_ADDR }),
+      makeUtxo('medium', 100_000, 0, { address: INPUT_ADDR_2 }),
+      makeUtxo('large',  1_000_000, 0, { address: INPUT_ADDR_3 }),
     ];
     const service = makeTransactionService(utxos);
     const built = await service.buildTransaction({

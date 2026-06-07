@@ -1,20 +1,22 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NoopScreenCaptureAdapter } from '../../../core/infrastructure/adapters/ScreenCaptureAdapter';
-import { AppButton } from '../../components/base/AppButton';
-import { AppCard } from '../../components/base/AppCard';
-import { AppScreen } from '../../components/base/AppScreen';
+import { AppRoutes } from '../../../app/navigation/routes';
 import { AppText } from '../../components/base/AppText';
-import { SeedGrid } from '../../components/wallet/SeedGrid';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useCreateWallet } from '../../hooks/useCreateWallet';
-import { AuthRoutes } from '../../../app/navigation/routes';
+import { useTheme } from '../../hooks/useTheme';
 
 const screenCaptureGuard = new NoopScreenCaptureAdapter();
 
 export function BackupSeedScreen() {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
-  const { words, walletName, proceedToConfirm } = useCreateWallet();
+  const { words, walletName, passphrase, proceedToConfirm } = useCreateWallet();
+
+  const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
     screenCaptureGuard.enable();
@@ -23,43 +25,322 @@ export function BackupSeedScreen() {
 
   function handleContinue() {
     proceedToConfirm();
-    navigation.navigate(AuthRoutes.ConfirmSeed);
+    navigation.navigate(AppRoutes.ConfirmSeed);
   }
 
   return (
-    <AppScreen title="Back up your seed" subtitle={walletName}>
-      <AppCard accent>
-        <AppText variant="label" color="accent">
-          Keep this private
-        </AppText>
-        <AppText variant="caption" color="muted">
-          Write these 12 words on paper and store them somewhere safe. Anyone with this
-          phrase can access your funds.
-        </AppText>
-      </AppCard>
-
-      <SeedGrid words={words} />
-
-      <View style={styles.warnings}>
-        <AppText variant="caption" color="muted">
-          • Never share your seed phrase with anyone
-        </AppText>
-        <AppText variant="caption" color="muted">
-          • Never store it digitally or take a screenshot
-        </AppText>
-        <AppText variant="caption" color="muted">
-          • Without this phrase, lost funds cannot be recovered
-        </AppText>
+    <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          onPress={() => navigation.goBack()}
+          style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          <AppText variant="title" color="muted">←</AppText>
+        </Pressable>
+        <View style={styles.headerCenter}>
+          <AppText variant="subtitle" style={styles.headerTitle}>Back up seed</AppText>
+          <AppText variant="caption" color="muted" numberOfLines={1}>{walletName}</AppText>
+        </View>
+        <View style={styles.backBtn} />
       </View>
 
-      <AppButton title="I've written it down" onPress={handleContinue} />
-    </AppScreen>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: Math.max(insets.bottom, 16) + 24 },
+        ]}
+      >
+        {/* Security warning */}
+        <View
+          style={[
+            styles.warningCard,
+            {
+              backgroundColor: theme.colors.dangerMuted ?? theme.colors.surfaceMuted,
+              borderColor: theme.colors.danger + '55',
+              borderRadius: theme.radii.xl,
+            },
+          ]}
+        >
+          <AppText style={styles.warningIcon}>⚠</AppText>
+          <View style={styles.warningBody}>
+            <AppText variant="label" color="danger" style={styles.warningTitle}>Keep this private</AppText>
+            <AppText variant="caption" color="muted">
+              Write these words on paper. Anyone with this phrase can access your funds. Never share or store digitally.
+            </AppText>
+          </View>
+        </View>
+
+        {/* Passphrase badge */}
+        {passphrase ? (
+          <View
+            style={[
+              styles.passphraseBadge,
+              {
+                backgroundColor: theme.colors.accentMuted,
+                borderColor: theme.colors.accent + '55',
+                borderRadius: theme.radii.lg,
+              },
+            ]}
+          >
+            <AppText style={styles.passphraseBadgeIcon}>🔐</AppText>
+            <AppText variant="caption" style={{ color: theme.colors.accent }}>
+              Passphrase active — back it up separately
+            </AppText>
+          </View>
+        ) : null}
+
+        {/* Seed grid card */}
+        <View
+          style={[
+            styles.seedCard,
+            {
+              backgroundColor: theme.colors.surfaceRaised,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.xl,
+            },
+          ]}
+        >
+          {/* Reveal overlay */}
+          {!revealed ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Reveal seed words"
+              onPress={() => setRevealed(true)}
+              style={[
+                styles.revealOverlay,
+                { backgroundColor: theme.colors.surfaceRaised, borderRadius: theme.radii.xl },
+              ]}
+            >
+              <AppText style={styles.revealIcon}>👁</AppText>
+              <AppText variant="subtitle" style={styles.revealTitle}>Tap to reveal</AppText>
+              <AppText variant="caption" color="muted">Make sure no one can see your screen</AppText>
+            </Pressable>
+          ) : (
+            <View style={styles.seedGrid}>
+              {words.map((word, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.seedWord,
+                    {
+                      backgroundColor: theme.colors.surfaceMuted,
+                      borderColor: theme.colors.border,
+                      borderRadius: theme.radii.md,
+                    },
+                  ]}
+                >
+                  <AppText variant="caption" color="muted" style={styles.seedIndex}>
+                    {i + 1}
+                  </AppText>
+                  <AppText variant="body" style={styles.seedWordText}>{word}</AppText>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Warnings */}
+        <View
+          style={[
+            styles.tipsCard,
+            {
+              backgroundColor: theme.colors.surfaceRaised,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.xl,
+            },
+          ]}
+        >
+          {[
+            'Never share your seed phrase with anyone',
+            'Never store it digitally or take a screenshot',
+            'Without this phrase, lost funds cannot be recovered',
+          ].map((tip, i) => (
+            <View key={i} style={styles.tipRow}>
+              <View style={[styles.tipDot, { backgroundColor: theme.colors.textMuted }]} />
+              <AppText variant="caption" color="muted" style={styles.tipText}>{tip}</AppText>
+            </View>
+          ))}
+        </View>
+
+        {/* CTA */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="I've written it down"
+          onPress={handleContinue}
+          disabled={!revealed}
+          style={({ pressed }) => [
+            styles.cta,
+            {
+              backgroundColor: revealed ? theme.colors.accent : theme.colors.surfaceMuted,
+              borderRadius: theme.radii.lg,
+              opacity: pressed ? 0.8 : 1,
+            },
+          ]}
+        >
+          <AppText
+            variant="subtitle"
+            style={revealed ? styles.ctaTextActive : styles.ctaTextInactive}
+          >
+            I've written it down →
+          </AppText>
+        </Pressable>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  warnings: {
+  root: {
+    flex: 1,
+  },
+
+  // Header
+  header: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  backBtn: {
+    alignItems: 'center',
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  headerCenter: {
+    alignItems: 'center',
+    flex: 1,
+    gap: 2,
+  },
+  headerTitle: {
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+
+  // Content
+  content: {
+    gap: 16,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+
+  // Warning
+  warningCard: {
+    alignItems: 'flex-start',
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    padding: 14,
+  },
+  warningIcon: {
+    fontSize: 18,
+    marginTop: 1,
+  },
+  warningBody: {
+    flex: 1,
+    gap: 4,
+  },
+  warningTitle: {
+    fontWeight: '700',
+  },
+
+  // Passphrase badge
+  passphraseBadge: {
+    alignItems: 'center',
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 12,
+  },
+  passphraseBadgeIcon: {
+    fontSize: 18,
+  },
+
+  // Seed card
+  seedCard: {
+    borderWidth: 1,
+    minHeight: 200,
+    overflow: 'hidden',
+  },
+  revealOverlay: {
+    alignItems: 'center',
+    gap: 10,
+    justifyContent: 'center',
+    minHeight: 200,
+    padding: 32,
+  },
+  revealIcon: {
+    fontSize: 36,
+  },
+  revealTitle: {
+    fontWeight: '700',
+  },
+  seedGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    padding: 16,
+  },
+  seedWord: {
+    alignItems: 'center',
+    borderWidth: 1,
+    flexDirection: 'row',
     gap: 6,
-    paddingHorizontal: 4,
+    minWidth: '28%',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  seedIndex: {
+    fontWeight: '700',
+    minWidth: 18,
+    textAlign: 'right',
+  },
+  seedWordText: {
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+
+  // Tips
+  tipsCard: {
+    borderWidth: 1,
+    gap: 10,
+    padding: 16,
+  },
+  tipRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  tipDot: {
+    borderRadius: 3,
+    height: 6,
+    marginTop: 5,
+    width: 6,
+  },
+  tipText: {
+    flex: 1,
+    lineHeight: 18,
+  },
+
+  // CTA
+  cta: {
+    alignItems: 'center',
+    marginTop: 4,
+    paddingVertical: 16,
+  },
+  ctaText: {
+    fontWeight: '700',
+  },
+  ctaTextActive: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+  ctaTextInactive: {
+    fontWeight: '700',
   },
 });

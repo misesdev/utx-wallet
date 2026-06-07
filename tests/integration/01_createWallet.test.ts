@@ -63,7 +63,7 @@ describe('Integration: Create Wallet', () => {
     const wallet = await service.createWallet('My Wallet');
 
     expect(wallet.name).toBe('My Wallet');
-    expect(wallet.network).toBe('testnet4');
+    expect(wallet.network).toBe('testnet');
     expect(wallet.status).toBe('locked');
     expect(typeof wallet.id).toBe('string');
     expect(wallet.id.length).toBeGreaterThan(0);

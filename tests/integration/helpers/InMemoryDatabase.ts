@@ -55,11 +55,18 @@ export class InMemoryDatabase implements Database {
     const conds: Array<{ col: string; val: string | number | null }> = [];
     let consumed = 0;
     for (const part of clause.split(/\s+AND\s+/i)) {
-      // Matches: col = ? OR col = 0 OR col = 1 etc.
-      const m = part.trim().match(/^(\w+)\s*=\s*(\?|(-?\d+))$/i);
+      // Matches: col = ? OR col = 0/1 OR col = 'stringliteral'
+      const m = part.trim().match(/^(\w+)\s*=\s*(\?|'([^']*)'|(-?\d+))$/i);
       if (!m) continue;
       const token = m[2].trim();
-      const val = token === '?' ? (params[offset + consumed++] ?? null) : Number(token);
+      let val: string | number | null;
+      if (token === '?') {
+        val = params[offset + consumed++] ?? null;
+      } else if (token.startsWith("'")) {
+        val = m[3]; // unquoted string literal
+      } else {
+        val = Number(token);
+      }
       conds.push({ col: m[1].toLowerCase(), val });
     }
     return { conds, consumed };
@@ -73,7 +80,7 @@ export class InMemoryDatabase implements Database {
     const table = this.extractTable(sql);
     let rows = [...this.rows(table)];
 
-    const whereMatch = sql.match(/WHERE\s+(.+?)(?:\s+ORDER\s+BY|\s*$)/is);
+    const whereMatch = sql.match(/WHERE\s+(.+?)(?:\s+ORDER\s+BY|\s+LIMIT|\s*$)/is);
     if (whereMatch) {
       const { conds } = this.parseWhere(whereMatch[1], params, 0);
       rows = rows.filter(r => this.matches(r, conds));

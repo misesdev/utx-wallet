@@ -39,13 +39,20 @@ export type SendBitcoinState = {
   resetSend: () => void;
 };
 
-export function useSendBitcoin(): SendBitcoinState {
+export type UseSendBitcoinOpts = {
+  originId?: string;
+  initialAddress?: string;
+  initialAmount?: string;
+};
+
+export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
   const { selectedWallet, listUtxos } = useWallet();
   const { isOnline } = useNetwork();
   const { validateAddress, fetchFeeRates, preview, send } = useSend();
+  const originId = opts?.originId;
 
-  const [toAddress, setToAddressRaw] = useState('');
-  const [amountSats, setAmountSatsRaw] = useState('');
+  const [toAddress, setToAddressRaw] = useState(opts?.initialAddress ?? '');
+  const [amountSats, setAmountSatsRaw] = useState(opts?.initialAmount ?? '');
   const [feeTier, setFeeTierRaw] = useState<FeeRateTier>('normal');
   const [customFeeRate, setCustomFeeRateRaw] = useState('');
 
@@ -187,6 +194,7 @@ export function useSendBitcoin(): SendBitcoinState {
         toAddress: toAddress.trim(),
         amountSats: parsedAmount,
         feeRateSatsPerVByte: selectedFeeRate,
+        changeOriginId: originId,
       });
       setSentResult(result);
       setIsReviewVisible(false);
@@ -195,7 +203,7 @@ export function useSendBitcoin(): SendBitcoinState {
     } finally {
       setIsSending(false);
     }
-  }, [selectedWallet, toAddress, amountSats, selectedFeeRate, send]);
+  }, [selectedWallet, toAddress, amountSats, selectedFeeRate, send, originId]);
 
   const resetSend = useCallback(() => {
     setSentResult(null);

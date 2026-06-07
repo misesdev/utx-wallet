@@ -5,6 +5,7 @@ import type { UtxoRepository } from '../../repositories/UtxoRepository';
 import type { WalletAddressProvider } from '../../repositories/WalletAddressProvider';
 import type { ICoinSelectionService } from '../../services/CoinSelectionService';
 import type { IFeeEstimationService } from '../../services/FeeEstimationService';
+import type { GetNextChangeAddressUseCase } from '../address/GetNextChangeAddressUseCase';
 import { BitcoinAddress } from '../../value-objects/BitcoinAddress';
 import { AppError } from '../../../application/errors/AppError';
 import { generateId } from '../../../../shared/utils/generateId';
@@ -18,6 +19,8 @@ export type BuildTransactionParams = {
   amountSats: number;
   feeRateSatsPerVByte: number;
   changeAddressIndex?: number;
+  /** HD origin to source the change address from (uses default when absent) */
+  changeOriginId?: string;
 };
 
 export class BuildTransactionUseCase {
@@ -26,6 +29,7 @@ export class BuildTransactionUseCase {
     private readonly coinSelection: ICoinSelectionService,
     private readonly feeEstimation: IFeeEstimationService,
     private readonly changeAddressProvider: WalletAddressProvider,
+    private readonly getNextChangeAddress: GetNextChangeAddressUseCase | null = null,
   ) {}
 
   async execute(params: BuildTransactionParams): Promise<BuiltTransaction> {
@@ -51,12 +55,23 @@ export class BuildTransactionUseCase {
       feeRate,
     );
 
-    // ── Change address (BIP 44/84 internal chain, index 0 by default) ─────────
-    const changeAddress = await this.changeAddressProvider.getChangeAddress(
-      params.walletId,
-      params.walletNetwork,
-      params.changeAddressIndex ?? 0,
-    );
+    // ── Change address — prefer HD system, fall back to legacy provider ────────
+    let changeAddress: string;
+    if (this.getNextChangeAddress) {
+      const hdChangeAddr = await this.getNextChangeAddress.execute(
+        params.walletId,
+        params.walletNetwork,
+        params.changeOriginId,
+        true, // reserve it
+      );
+      changeAddress = hdChangeAddr.address;
+    } else {
+      changeAddress = await this.changeAddressProvider.getChangeAddress(
+        params.walletId,
+        params.walletNetwork,
+        params.changeAddressIndex ?? 0,
+      );
+    }
 
     // ── Fee & change calculation ──────────────────────────────────────────────
     // Coin selection assumed 2 outputs; start with that fee estimate.

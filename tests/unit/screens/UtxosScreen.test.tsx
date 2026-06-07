@@ -4,10 +4,15 @@ import { UtxosScreen } from '../../../src/presentation/screens/wallet/UtxosScree
 import { renderWithTheme } from '../../mocks/renderWithProviders';
 import type { UseUtxosState } from '../../../src/presentation/hooks/useUtxos';
 import type { Utxo } from '../../../src/core/domain/entities/Utxo';
+import type { WalletAddress } from '../../../src/core/domain/entities/WalletAddress';
 
 const mockFreeze = jest.fn().mockResolvedValue(undefined);
 const mockUnfreeze = jest.fn().mockResolvedValue(undefined);
 const mockSetFilter = jest.fn();
+const mockListAddresses = jest.fn().mockResolvedValue([]);
+const mockGoBack = jest.fn();
+
+const MOCK_WALLET = { id: 'w1', name: 'Test Wallet', network: 'testnet4', status: 'unlocked', createdAt: '' };
 
 const BASE_STATE: UseUtxosState = {
   utxos: [],
@@ -24,10 +29,67 @@ function makeUtxo(txid: string, valueSats: number, isConfirmed = true, isFrozen 
   return { txid, vout: 0, valueSats, address: 'bc1qtest', isConfirmed, isFrozen };
 }
 
+function makeAddress(address: string, originId: string, originName: string, accountIndex = 0): WalletAddress {
+  return {
+    id: `addr-${address}`,
+    walletId: 'w1',
+    originId,
+    originName,
+    address,
+    path: `m/84'/0'/${accountIndex}'/0/0`,
+    accountIndex,
+    chain: 'receive',
+    index: 0,
+    status: 'received',
+    totalReceivedSats: 0,
+    totalSentSats: 0,
+    txCount: 0,
+    incomingTxCount: 0,
+    outgoingTxCount: 0,
+    hasUtxos: true,
+    isFrozen: false,
+    createdAt: '',
+    usedAt: null,
+    lastSyncedAt: null,
+  };
+}
+
 let mockState: UseUtxosState = BASE_STATE;
 
 jest.mock('../../../src/presentation/hooks/useUtxos', () => ({
   useUtxos: () => mockState,
+}));
+
+jest.mock('../../../src/presentation/hooks/useWallet', () => ({
+  useWallet: () => ({
+    selectedWallet: MOCK_WALLET,
+    wallets: [MOCK_WALLET],
+    listUtxos: jest.fn().mockResolvedValue([]),
+    listTransactions: jest.fn().mockResolvedValue([]),
+    freezeUtxo: jest.fn(),
+    unfreezeUtxo: jest.fn(),
+    syncWallet: jest.fn(),
+    createWallet: jest.fn(),
+    importWallet: jest.fn(),
+    deleteWallet: jest.fn(),
+    selectWallet: jest.fn(),
+    generateReceiveAddress: jest.fn(),
+  }),
+}));
+
+jest.mock('../../../src/app/providers/AddressManagerProvider', () => ({
+  useAddressManager: () => ({
+    getOrigins: jest.fn().mockResolvedValue([]),
+    createAddressOrigin: jest.fn(),
+    getReceiveAddress: jest.fn(),
+    getChangeAddress: jest.fn(),
+    ensureAddressPool: jest.fn(),
+    listAddresses: mockListAddresses,
+  }),
+}));
+
+jest.mock('../../../src/presentation/hooks/useAppNavigation', () => ({
+  useAppNavigation: () => ({ goBack: mockGoBack, navigate: jest.fn() }),
 }));
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -38,6 +100,7 @@ describe('UtxosScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockState = { ...BASE_STATE };
+    mockListAddresses.mockResolvedValue([]);
   });
 
   describe('Loading state', () => {
@@ -124,6 +187,32 @@ describe('UtxosScreen', () => {
     it('renders UTXOs as screen title', () => {
       const screen = renderWithTheme(<UtxosScreen />);
       expect(screen.getByText('UTXOs')).toBeTruthy();
+    });
+  });
+
+  describe('Origin grouping', () => {
+    it('groups UTXOs under origin name when address map is available', async () => {
+      mockListAddresses.mockResolvedValue([
+        makeAddress('bc1qtest', 'origin-1', 'Savings', 1),
+      ]);
+      mockState = {
+        ...BASE_STATE,
+        utxos: [makeUtxo('a'.repeat(64), 50_000)],
+      };
+      const screen = renderWithTheme(<UtxosScreen />);
+      // Origin header appears after addresses load — wait for async
+      const header = await screen.findByText('Savings');
+      expect(header).toBeTruthy();
+    });
+
+    it('shows "Other" group for UTXOs with unrecognised addresses', () => {
+      mockListAddresses.mockResolvedValue([]);
+      mockState = {
+        ...BASE_STATE,
+        utxos: [makeUtxo('a'.repeat(64), 50_000)],
+      };
+      const screen = renderWithTheme(<UtxosScreen />);
+      expect(screen.getByText('Other')).toBeTruthy();
     });
   });
 });

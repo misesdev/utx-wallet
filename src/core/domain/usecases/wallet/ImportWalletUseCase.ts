@@ -5,7 +5,7 @@ import type { WalletRepository } from '../../repositories/WalletRepository';
 export class ImportWalletUseCase {
   constructor(private readonly walletRepository: WalletRepository) {}
 
-  execute(name: string, secret: string, network?: BitcoinNetwork): Promise<Wallet> {
-    return this.walletRepository.import(name, secret, network);
+  execute(name: string, secret: string, network?: BitcoinNetwork, passphrase?: string): Promise<Wallet> {
+    return this.walletRepository.import(name, secret, network, passphrase);
   }
 }

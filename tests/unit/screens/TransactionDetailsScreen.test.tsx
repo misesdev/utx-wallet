@@ -46,6 +46,7 @@ const BASE_STATE: UseTransactionDetailsState = {
 };
 
 let mockState: UseTransactionDetailsState = BASE_STATE;
+let mockRouteParams: { txid?: string } = {};
 
 jest.mock('../../../src/presentation/hooks/useTransactionDetails', () => ({
   useTransactionDetails: () => mockState,
@@ -57,13 +58,14 @@ jest.mock('react-native-safe-area-context', () => ({
 
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: jest.fn(), goBack: jest.fn() }),
-  useRoute: () => ({ params: {} }),
+  useRoute: () => ({ params: mockRouteParams }),
 }));
 
 describe('TransactionDetailsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockState = { ...BASE_STATE };
+    mockRouteParams = {};
   });
 
   describe('loading state', () => {
@@ -99,6 +101,15 @@ describe('TransactionDetailsScreen', () => {
       const screen = renderWithTheme(<TransactionDetailsScreen />);
       expect(screen.getByTestId('tx-error')).toBeTruthy();
       expect(screen.getByText('Erro ao carregar')).toBeTruthy();
+    });
+  });
+
+  describe('route transaction filter', () => {
+    it('shows only the selected transaction when txid route param is present', () => {
+      mockRouteParams = { txid: TXID_OUT };
+      const screen = renderWithTheme(<TransactionDetailsScreen />);
+      expect(screen.getByTestId('tx-item-tx-out')).toBeTruthy();
+      expect(screen.queryByTestId('tx-item-tx-in')).toBeNull();
     });
   });
 

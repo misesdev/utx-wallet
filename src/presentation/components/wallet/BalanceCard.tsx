@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppCard } from '../base/AppCard';
 import { AppText } from '../base/AppText';
+import { useTheme } from '../../hooks/useTheme';
 
 type BalanceCardProps = {
   balanceSats: number;
@@ -13,36 +14,95 @@ const SATS_PER_BTC = 100_000_000;
 const HIDDEN_PLACEHOLDER = '••••••';
 
 export function BalanceCard({ balanceSats, label = 'Total balance', hidden = false }: BalanceCardProps) {
+  const { theme } = useTheme();
   const btc = (balanceSats / SATS_PER_BTC).toFixed(8);
 
   return (
-    <AppCard>
-      <AppText variant="label" color="muted">{label}</AppText>
-      <View style={styles.row}>
+    <AppCard
+      accent
+      style={[
+        styles.card,
+        {
+          backgroundColor: theme.colors.surfaceRaised,
+          borderColor: theme.colors.borderHighlight,
+          borderRadius: theme.radii.xl,
+        },
+        theme.shadows.card,
+      ]}
+    >
+      <View style={styles.headerRow}>
+        <View>
+          <AppText variant="label" color="muted">{label}</AppText>
+          <AppText variant="caption" color="muted">Available to send</AppText>
+        </View>
+        <View
+          style={[
+            styles.balanceMark,
+            {
+              backgroundColor: theme.colors.accentMuted,
+              borderColor: theme.colors.accent,
+              borderRadius: theme.radii.md,
+            },
+          ]}
+        >
+          <AppText variant="subtitle" color="accent">₿</AppText>
+        </View>
+      </View>
+
+      <View style={styles.amountRow}>
         <AppText variant="display" style={styles.amount} testID="balance-amount">
           {hidden ? HIDDEN_PLACEHOLDER : balanceSats.toLocaleString()}
         </AppText>
-        {!hidden && (
+        {!hidden ? (
           <AppText variant="body" color="muted" style={styles.unit}>sats</AppText>
-        )}
+        ) : null}
       </View>
-      <AppText variant="caption" color="muted" testID="balance-btc">
-        {hidden ? HIDDEN_PLACEHOLDER : `≈ ${btc} BTC`}
-      </AppText>
+
+      <View style={[styles.footer, { borderTopColor: theme.colors.border }]}>
+        <AppText variant="caption" color="muted" testID="balance-btc">
+          {hidden ? HIDDEN_PLACEHOLDER : `≈ ${btc} BTC`}
+        </AppText>
+        <AppText variant="caption" color="muted">secured</AppText>
+      </View>
     </AppCard>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
+  card: {
+    gap: 18,
+    padding: 20,
+  },
+  headerRow: {
+    alignItems: 'flex-start',
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  balanceMark: {
+    alignItems: 'center',
+    borderWidth: 1,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  amountRow: {
     alignItems: 'flex-end',
-    gap: 6,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 7,
   },
   amount: {
     lineHeight: 42,
   },
   unit: {
     marginBottom: 4,
+  },
+  footer: {
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    gap: 12,
   },
 });

@@ -56,7 +56,7 @@ describe('Integration: Receive Bitcoin (Generate Address)', () => {
 
     expect(address.index).toBe(0);
     expect(address.isChange).toBe(false);
-    expect(address.network).toBe('testnet4');
+    expect(address.network).toBe('testnet');
     expect(address.type).toBe('p2wpkh');
   });
 

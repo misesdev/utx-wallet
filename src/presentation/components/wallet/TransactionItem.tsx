@@ -1,94 +1,160 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import type { Transaction } from '../../../core/domain/entities/Transaction';
 import { useTheme } from '../../hooks/useTheme';
-import { AppCard } from '../base/AppCard';
 import { AppText } from '../base/AppText';
 
 type TransactionItemProps = {
   transaction: Transaction;
+  onPress?: () => void;
 };
 
-export function TransactionItem({ transaction }: TransactionItemProps) {
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
+}
+
+function formatSats(n: number): string {
+  return n.toLocaleString();
+}
+
+const STATUS_LABEL: Record<Transaction['status'], string> = {
+  confirmed: 'Confirmed',
+  pending: 'Pending',
+  failed: 'Failed',
+};
+
+export function TransactionItem({ transaction, onPress }: TransactionItemProps) {
   const { theme } = useTheme();
   const isIncoming = transaction.direction === 'incoming';
-  const amountColor = isIncoming ? theme.colors.success : theme.colors.text;
-  const arrow = isIncoming ? '↙' : '↗';
-  const prefix = isIncoming ? '+' : '−';
-  const amountStyle = { color: amountColor };
-  const arrowStyle = { color: isIncoming ? theme.colors.success : theme.colors.textMuted };
 
-  const statusColors: Record<Transaction['status'], string> = {
+  const accentColor = isIncoming ? theme.colors.success : theme.colors.text;
+  const iconBg = isIncoming ? theme.colors.successMuted : theme.colors.surfaceMuted;
+  const iconColor = isIncoming ? theme.colors.success : theme.colors.textMuted;
+
+  const statusColor: Record<Transaction['status'], string> = {
     confirmed: theme.colors.success,
     pending: theme.colors.warning,
     failed: theme.colors.danger,
   };
 
-  return (
-    <AppCard>
-      <View style={styles.row}>
-        <View style={styles.left}>
-          <AppText
-            style={[
-              styles.arrow,
-              arrowStyle,
-            ]}
-          >
-            {arrow}
-          </AppText>
-          <View>
-            <AppText variant="body" style={styles.title}>
-              {isIncoming ? 'Received' : 'Sent'}
-            </AppText>
-            <View style={styles.statusRow}>
-              <View style={[styles.statusDot, { backgroundColor: statusColors[transaction.status] }]} />
-              <AppText variant="caption" color="muted">
-                {transaction.status}
-              </AppText>
-            </View>
-          </View>
-        </View>
-        <AppText
-          variant="subtitle"
-          style={[styles.amount, amountStyle]}
-        >
-          {prefix}{transaction.amountSats.toLocaleString()}
-          <AppText variant="caption" color="muted"> sats</AppText>
+  const card = (
+    <View
+      testID={`transaction-${transaction.id}`}
+      style={[
+        styles.card,
+        {
+          backgroundColor: theme.colors.surfaceRaised,
+          borderColor: theme.colors.border,
+          borderRadius: theme.radii.lg,
+        },
+      ]}
+    >
+      {/* Icon */}
+      <View style={[styles.iconWrap, { backgroundColor: iconBg, borderRadius: theme.radii.md }]}>
+        <AppText style={[styles.iconText, { color: iconColor }]}>
+          {isIncoming ? '↙' : '↗'}
         </AppText>
       </View>
-    </AppCard>
+
+      {/* Body */}
+      <View style={styles.body}>
+        <AppText variant="body" style={styles.title}>
+          {isIncoming ? 'Received' : 'Sent'}
+        </AppText>
+
+        <View style={styles.metaRow}>
+          <View style={[styles.statusPill, { backgroundColor: statusColor[transaction.status] + '22', borderRadius: theme.radii.sm }]}>
+            <View style={[styles.statusDot, { backgroundColor: statusColor[transaction.status] }]} />
+            <AppText variant="label" style={{ color: statusColor[transaction.status] }}>
+              {STATUS_LABEL[transaction.status]}
+            </AppText>
+          </View>
+          <AppText variant="label" color="faint">·</AppText>
+          <AppText variant="label" color="muted">{formatDate(transaction.createdAt)}</AppText>
+        </View>
+
+        {!isIncoming && transaction.feeSats !== undefined && transaction.feeSats > 0 && (
+          <AppText variant="label" color="faint" style={styles.feeLabel}>
+            + {formatSats(transaction.feeSats)} sats fee
+          </AppText>
+        )}
+      </View>
+
+      {/* Amount */}
+      <View style={styles.amountGroup}>
+        <AppText variant="subtitle" style={[styles.amount, { color: accentColor }]}>
+          {isIncoming ? '+' : '−'}{formatSats(transaction.amountSats)}
+        </AppText>
+        <AppText variant="label" color="muted">sats</AppText>
+      </View>
+    </View>
+  );
+
+  if (!onPress) return card;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${isIncoming ? 'received' : 'sent'} transaction`}
+      onPress={onPress}
+      style={({ pressed }) => [styles.pressable, { opacity: pressed ? 0.76 : 1 }]}
+    >
+      {card}
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
+  pressable: {},
+  card: {
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  left: {
+    borderWidth: 1,
     flexDirection: 'row',
-    alignItems: 'center',
     gap: 12,
+    padding: 14,
   },
-  arrow: {
-    fontSize: 20,
+  iconWrap: {
+    alignItems: 'center',
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
+  },
+  iconText: {
+    fontSize: 19,
+  },
+  body: {
+    flex: 1,
+    gap: 5,
+    minWidth: 0,
   },
   title: {
-    fontWeight: '500',
-  },
-  amount: {
     fontWeight: '600',
   },
-  statusRow: {
-    flexDirection: 'row',
+  metaRow: {
     alignItems: 'center',
-    gap: 5,
-    marginTop: 3,
+    flexDirection: 'row',
+    gap: 6,
+  },
+  statusPill: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
   },
   statusDot: {
-    width: 5,
-    height: 5,
     borderRadius: 3,
+    height: 5,
+    width: 5,
+  },
+  feeLabel: {
+    marginTop: -2,
+  },
+  amountGroup: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  amount: {
+    fontWeight: '700',
   },
 });

@@ -47,7 +47,7 @@ export class WalletRepositoryImpl implements WalletRepository {
     });
   }
 
-  async import(name: string, secret: string, network?: BitcoinNetwork): Promise<Wallet> {
+  async import(name: string, secret: string, network?: BitcoinNetwork, passphrase?: string): Promise<Wallet> {
     const trimmed = secret.trim();
     if (!trimmed) {
       throw new AppError('Seed phrase or extended key is required', 'INVALID_SECRET');
@@ -64,6 +64,7 @@ export class WalletRepositoryImpl implements WalletRepository {
     }
 
     const resolvedNetwork = network ?? DEFAULT_NETWORK;
+    const normalizedPassphrase = passphrase?.trim() || undefined;
     return this.serialize(async () => {
       const wallets = await this.walletStorage.load();
       if (wallets.some(w => w.name === name)) {
@@ -77,7 +78,7 @@ export class WalletRepositoryImpl implements WalletRepository {
         createdAt: new Date().toISOString(),
       };
       await this.walletStorage.save([...wallets, wallet]);
-      await this.walletKeyStorage.store(wallet.id, trimmed);
+      await this.walletKeyStorage.storeKey(wallet.id, trimmed, normalizedPassphrase);
       return wallet;
     });
   }

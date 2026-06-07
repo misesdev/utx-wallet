@@ -20,7 +20,7 @@ describe('WalletRepositoryImpl', () => {
       const wallet = await repo.create('Primary');
       expect(wallet.name).toBe('Primary');
       expect(wallet.status).toBe('locked');
-      expect(wallet.network).toBe('testnet4');
+      expect(wallet.network).toBe('testnet');
     });
 
     it('generates a non-empty unique ID', async () => {

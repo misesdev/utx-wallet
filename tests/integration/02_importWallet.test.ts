@@ -104,10 +104,10 @@ describe('Integration: Import Wallet', () => {
     expect(wallet.network).toBe('mainnet');
   });
 
-  it('uses testnet4 as default network when not specified', async () => {
+  it('uses testnet as default network when not specified', async () => {
     const { importUseCase } = makeImportSetup();
     const wallet = await importUseCase.execute('Default Net', VALID_MNEMONIC_12);
-    expect(wallet.network).toBe('testnet4');
+    expect(wallet.network).toBe('testnet');
   });
 
   it('trims whitespace from the mnemonic before storing', async () => {

@@ -9,6 +9,10 @@ export type ImportWalletHook = {
   setWalletName: (v: string) => void;
   seed: string;
   setSeed: (v: string) => void;
+  passphrase: string;
+  setPassphrase: (v: string) => void;
+  confirmPassphrase: string;
+  setConfirmPassphrase: (v: string) => void;
   selectedNetwork: BitcoinNetwork;
   setSelectedNetwork: (v: BitcoinNetwork) => void;
   isLoading: boolean;
@@ -17,11 +21,13 @@ export type ImportWalletHook = {
   submit: () => Promise<Wallet | null>;
 };
 
-export function useImportWallet(): ImportWalletHook {
+export function useImportWallet(initialNetwork: BitcoinNetwork = 'testnet'): ImportWalletHook {
   const { importWallet } = useWallet();
   const [walletName, setWalletName] = useState('');
   const [seed, setSeed] = useState('');
-  const [selectedNetwork, setSelectedNetwork] = useState<BitcoinNetwork>('testnet4');
+  const [passphrase, setPassphrase] = useState('');
+  const [confirmPassphrase, setConfirmPassphrase] = useState('');
+  const [selectedNetwork, setSelectedNetwork] = useState<BitcoinNetwork>(initialNetwork);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -41,11 +47,16 @@ export function useImportWallet(): ImportWalletHook {
       setError('Seed phrase is required');
       return null;
     }
+    if (passphrase && passphrase !== confirmPassphrase) {
+      setError('Passphrases do not match');
+      return null;
+    }
 
     setIsLoading(true);
     setError('');
     try {
-      return await importWallet(trimmedName, trimmedSeed, selectedNetwork);
+      const normalizedPassphrase = passphrase.trim() || undefined;
+      return await importWallet(trimmedName, trimmedSeed, selectedNetwork, normalizedPassphrase);
     } catch (err) {
       if (err instanceof AppError) {
         if (err.code === 'INVALID_SECRET') {
@@ -69,6 +80,10 @@ export function useImportWallet(): ImportWalletHook {
     setWalletName,
     seed,
     setSeed,
+    passphrase,
+    setPassphrase,
+    confirmPassphrase,
+    setConfirmPassphrase,
     selectedNetwork,
     setSelectedNetwork,
     isLoading,

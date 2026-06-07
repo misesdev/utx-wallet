@@ -74,6 +74,41 @@ export class OpSQLiteDatabase implements Database {
         created_at TEXT NOT NULL
       )
     `);
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS address_origins (
+        id TEXT PRIMARY KEY NOT NULL,
+        wallet_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'custom',
+        account_index INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        archived_at TEXT
+      )
+    `);
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS wallet_addresses (
+        id TEXT PRIMARY KEY NOT NULL,
+        wallet_id TEXT NOT NULL,
+        origin_id TEXT NOT NULL,
+        origin_name TEXT NOT NULL,
+        address TEXT NOT NULL,
+        path TEXT NOT NULL,
+        account_index INTEGER NOT NULL,
+        chain TEXT NOT NULL,
+        index_num INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'fresh',
+        total_received_sats INTEGER NOT NULL DEFAULT 0,
+        total_sent_sats INTEGER NOT NULL DEFAULT 0,
+        tx_count INTEGER NOT NULL DEFAULT 0,
+        incoming_tx_count INTEGER NOT NULL DEFAULT 0,
+        outgoing_tx_count INTEGER NOT NULL DEFAULT 0,
+        has_utxos INTEGER NOT NULL DEFAULT 0,
+        is_frozen INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        used_at TEXT,
+        last_synced_at TEXT
+      )
+    `);
     this.db = db;
   }
 

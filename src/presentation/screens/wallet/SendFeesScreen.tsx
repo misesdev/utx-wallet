@@ -1,0 +1,299 @@
+import React, { useEffect } from 'react';
+import { AppCard } from '../../components/base/AppCard';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRoute, type RouteProp } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AppButton } from '../../components/base/AppButton';
+import { AppText } from '../../components/base/AppText';
+import { FeeSelector } from '../../components/wallet/FeeSelector';
+import { useSendBitcoin } from '../../hooks/useSendBitcoin';
+import { useTheme } from '../../hooks/useTheme';
+import { TransactionReviewModal } from './TransactionReviewModal';
+import type { AppStackParamList } from '../../../app/navigation/routes';
+import { AppRoutes } from '../../../app/navigation/routes';
+
+type SendFeesNavProp = NativeStackNavigationProp<AppStackParamList, 'SendFees'>;
+type SendFeesRouteProps = RouteProp<AppStackParamList, 'SendFees'>;
+
+function formatSats(sats: number): string {
+  return sats.toLocaleString();
+}
+
+function truncateAddress(addr: string, chars = 10): string {
+  if (addr.length <= chars * 2 + 3) return addr;
+  return `${addr.slice(0, chars)}…${addr.slice(-chars)}`;
+}
+
+export function SendFeesScreen() {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const navigation = useNavigation<SendFeesNavProp>();
+
+  let originId: string | undefined;
+  let initialAddress = '';
+  let initialAmount = '';
+  try {
+    const route = useRoute<SendFeesRouteProps>();
+    originId = route.params?.originId;
+    initialAddress = route.params?.toAddress ?? '';
+    initialAmount = route.params?.amountSats ?? '';
+  } catch {
+    // noop — fallback for test environments
+  }
+
+  const {
+    toAddress,
+    amountSats,
+    feeTier,
+    customFeeRate,
+    feeRates,
+    isLoadingFeeRates,
+    preview,
+    isPreviewing,
+    previewError,
+    isReviewVisible,
+    isSending,
+    sendError,
+    sentResult,
+    setToAddress,
+    setAmountSats,
+    setFeeTier,
+    setCustomFeeRate,
+    reviewTransaction,
+    openReview,
+    closeReview,
+    sendTransaction,
+    resetSend,
+  } = useSendBitcoin({ originId, initialAddress, initialAmount });
+
+  // Sync params into hook state if hook initialized before params resolved
+  useEffect(() => {
+    if (initialAddress && !toAddress) setToAddress(initialAddress);
+  }, [initialAddress]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (initialAmount && !amountSats) setAmountSats(initialAmount);
+  }, [initialAmount]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!sentResult) return;
+    navigation.replace(AppRoutes.TransactionSuccess, {
+      txid: sentResult.txid,
+      amountSats: sentResult.transaction.amountSats,
+      feeSats: sentResult.transaction.feeSats ?? 0,
+    });
+    resetSend();
+  }, [sentResult, navigation, resetSend]);
+
+  const effectiveAddress = toAddress || initialAddress;
+  const effectiveAmount = amountSats || initialAmount;
+  const parsedAmount = parseInt(effectiveAmount, 10);
+
+  const canReview =
+    effectiveAddress.length > 0 &&
+    !isNaN(parsedAmount) &&
+    parsedAmount > 0 &&
+    !isPreviewing;
+
+  return (
+    <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          onPress={() => navigation.goBack()}
+          style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          <AppText variant="title" color="muted">←</AppText>
+        </Pressable>
+        <AppText variant="subtitle" style={styles.headerTitle}>Transaction fee</AppText>
+        <View style={styles.backBtn} />
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Math.max(insets.bottom, 16) + 24 },
+        ]}
+      >
+        {/* Summary card */}
+        <AppCard>
+          <View style={styles.summaryRow}>
+            <AppText variant="caption" color="muted">To</AppText>
+            <AppText style={styles.summaryAddress} numberOfLines={1}>
+              {truncateAddress(effectiveAddress)}
+            </AppText>
+          </View>
+          <View style={styles.summaryAmountRow}>
+            <AppText variant="caption" color="muted">Amount</AppText>
+            <AppText variant="subtitle" testID="summary-amount">
+              {!isNaN(parsedAmount) ? `${formatSats(parsedAmount)} sats` : '—'}
+            </AppText>
+          </View>
+        </AppCard>
+
+        {/* Fee selector */}
+        <FeeSelector
+          selected={feeTier}
+          feeRates={feeRates}
+          customFeeRate={customFeeRate}
+          onSelect={setFeeTier}
+          onCustomFeeRateChange={setCustomFeeRate}
+        />
+
+        {isLoadingFeeRates && (
+          <AppText variant="caption" color="muted" style={styles.center}>
+            Loading fee rates…
+          </AppText>
+        )}
+
+        {previewError && (
+          <AppText variant="caption" color="danger" style={styles.center} testID="preview-error">
+            {previewError}
+          </AppText>
+        )}
+
+        {/* Review button */}
+        <AppButton
+          title={isPreviewing ? 'Calculating…' : 'Review transaction'}
+          disabled={!canReview}
+          onPress={reviewTransaction}
+          testID="btn-review"
+        />
+
+        {/* Preview card */}
+        {preview && (
+          <AppCard accent testID="preview-card">
+            <AppText variant="subtitle">Preview</AppText>
+
+            <View style={styles.row}>
+              <AppText color="muted">Amount</AppText>
+              <AppText testID="preview-amount">{`${formatSats(preview.amountSats)} sats`}</AppText>
+            </View>
+            <View style={styles.row}>
+              <AppText color="muted">Estimated fee</AppText>
+              <AppText testID="preview-fee">{`${formatSats(preview.feeSats)} sats`}</AppText>
+            </View>
+            <View style={styles.separator} />
+            <View style={styles.row}>
+              <AppText color="muted">Total</AppText>
+              <AppText variant="subtitle" testID="preview-total">
+                {`${formatSats(preview.totalSats)} sats`}
+              </AppText>
+            </View>
+            {preview.changeSats > 0 && (
+              <View style={styles.row}>
+                <AppText color="muted">Change</AppText>
+                <AppText testID="preview-change">{`${formatSats(preview.changeSats)} sats`}</AppText>
+              </View>
+            )}
+            <View style={styles.row}>
+              <AppText color="muted">Recipient</AppText>
+              <AppText style={styles.address} testID="preview-address">
+                {truncateAddress(preview.toAddress)}
+              </AppText>
+            </View>
+            <View style={styles.row}>
+              <AppText color="muted">Fee rate</AppText>
+              <AppText testID="preview-fee-rate">{`${preview.feeRateSatsPerVByte} sat/vB`}</AppText>
+            </View>
+
+            <AppButton
+              title="Confirm & send"
+              size="md"
+              onPress={openReview}
+              testID="btn-open-review"
+            />
+          </AppCard>
+        )}
+      </ScrollView>
+
+      <TransactionReviewModal
+        visible={isReviewVisible}
+        preview={preview}
+        isSending={isSending}
+        sendError={sendError}
+        onConfirm={sendTransaction}
+        onCancel={closeReview}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+
+  // Header
+  header: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  backBtn: {
+    alignItems: 'center',
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  headerTitle: {
+    flex: 1,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+
+  // Scroll
+  scrollContent: {
+    gap: 16,
+    paddingHorizontal: 20,
+    paddingTop: 4,
+  },
+
+  // Summary
+  summaryRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  summaryAmountRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  summaryAddress: {
+    flex: 1,
+    fontFamily: 'monospace',
+    fontSize: 12,
+    letterSpacing: 0.3,
+    maxWidth: '65%',
+    textAlign: 'right',
+  },
+
+  // Preview card
+  row: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  separator: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    height: 1,
+  },
+  address: {
+    fontVariant: ['tabular-nums'],
+    letterSpacing: 0.3,
+    maxWidth: '60%',
+    textAlign: 'right',
+  },
+  center: {
+    textAlign: 'center',
+  },
+});

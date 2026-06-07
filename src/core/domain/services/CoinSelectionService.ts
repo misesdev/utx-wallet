@@ -19,16 +19,29 @@ export class CoinSelectionService implements ICoinSelectionService {
   constructor(private readonly feeEstimation: IFeeEstimationService) {}
 
   select(utxos: Utxo[], amountSats: number, feeRateSatsPerVByte: number): CoinSelectionResult {
-    // Only spend confirmed, non-frozen UTXOs; largest-first minimises input count
-    const confirmed = utxos.filter(u => u.isConfirmed && !u.isFrozen);
-    const sorted = [...confirmed].sort((a, b) => b.valueSats - a.valueSats);
+    // Group available UTXOs by address (confirmed, non-frozen only).
+    // Policy: selecting any UTXO from an address means spending ALL UTXOs of that address.
+    const groupsByAddress = new Map<string, Utxo[]>();
+    for (const u of utxos) {
+      if (!u.isConfirmed || u.isFrozen) continue;
+      const existing = groupsByAddress.get(u.address) ?? [];
+      existing.push(u);
+      groupsByAddress.set(u.address, existing);
+    }
+
+    // Sort groups descending by total group value (largest group first)
+    const groups = [...groupsByAddress.values()].sort(
+      (a, b) =>
+        b.reduce((s, u) => s + u.valueSats, 0) - a.reduce((s, u) => s + u.valueSats, 0),
+    );
 
     const selected: Utxo[] = [];
     let totalInputSats = 0;
 
-    for (const utxo of sorted) {
-      selected.push(utxo);
-      totalInputSats += utxo.valueSats;
+    for (const group of groups) {
+      // Select the entire group — no partial address spending
+      selected.push(...group);
+      totalInputSats += group.reduce((s, u) => s + u.valueSats, 0);
 
       const feeSats = this.feeEstimation.estimateFeeSats(
         selected.length,

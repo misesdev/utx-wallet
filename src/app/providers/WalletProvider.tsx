@@ -11,7 +11,7 @@ type WalletContextValue = {
   isLoading: boolean;
   selectedWallet: Wallet | null;
   createWallet: (name: string) => Promise<Wallet>;
-  importWallet: (name: string, secret: string, network?: BitcoinNetwork) => Promise<Wallet>;
+  importWallet: (name: string, secret: string, network?: BitcoinNetwork, passphrase?: string) => Promise<Wallet>;
   selectWallet: (id: string) => void;
   deleteWallet: (id: string) => Promise<void>;
   reloadWallets: () => Promise<void>;
@@ -61,8 +61,8 @@ export function WalletProvider({ children, walletService }: WalletProviderProps)
         await reloadWallets();
         return wallet;
       },
-      importWallet: async (name, secret, network) => {
-        const wallet = await walletService.importWallet(name, secret, network);
+      importWallet: async (name, secret, network, passphrase) => {
+        const wallet = await walletService.importWallet(name, secret, network, passphrase);
         await reloadWallets();
         return wallet;
       },

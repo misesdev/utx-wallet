@@ -14,6 +14,7 @@ import { LoadUtxosUseCase } from '../../domain/usecases/wallet/LoadUtxosUseCase'
 import { SyncWalletUseCase } from '../../domain/usecases/wallet/SyncWalletUseCase';
 import { FreezeUtxoUseCase } from '../../domain/usecases/wallet/FreezeUtxoUseCase';
 import { UnfreezeUtxoUseCase } from '../../domain/usecases/wallet/UnfreezeUtxoUseCase';
+import type { AddressManagerService } from './AddressManagerService';
 
 export class WalletService {
   constructor(
@@ -27,14 +28,19 @@ export class WalletService {
     private readonly syncWalletUseCase: SyncWalletUseCase,
     private readonly freezeUtxoUseCase: FreezeUtxoUseCase,
     private readonly unfreezeUtxoUseCase: UnfreezeUtxoUseCase,
+    private readonly addressManagerService: AddressManagerService | null = null,
   ) {}
 
-  createWallet(name: string): Promise<Wallet> {
-    return this.createWalletUseCase.execute(name);
+  async createWallet(name: string): Promise<Wallet> {
+    const wallet = await this.createWalletUseCase.execute(name);
+    await this.addressManagerService?.ensureDefaultOrigin(wallet.id, wallet.network);
+    return wallet;
   }
 
-  importWallet(name: string, secret: string, network?: BitcoinNetwork): Promise<Wallet> {
-    return this.importWalletUseCase.execute(name, secret, network);
+  async importWallet(name: string, secret: string, network?: BitcoinNetwork, passphrase?: string): Promise<Wallet> {
+    const wallet = await this.importWalletUseCase.execute(name, secret, network, passphrase);
+    await this.addressManagerService?.ensureDefaultOrigin(wallet.id, wallet.network);
+    return wallet;
   }
 
   loadWallets(): Promise<Wallet[]> {

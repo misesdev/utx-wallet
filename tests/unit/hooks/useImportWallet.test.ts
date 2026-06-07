@@ -16,13 +16,20 @@ describe('useImportWallet', () => {
     jest.clearAllMocks();
   });
 
-  it('initializes with empty fields and testnet4 as default network', () => {
+  it('initializes with empty fields and testnet as default network', () => {
     const { result } = renderHook(() => useImportWallet());
     expect(result.current.walletName).toBe('');
     expect(result.current.seed).toBe('');
-    expect(result.current.selectedNetwork).toBe('testnet4');
+    expect(result.current.passphrase).toBe('');
+    expect(result.current.confirmPassphrase).toBe('');
+    expect(result.current.selectedNetwork).toBe('testnet');
     expect(result.current.isLoading).toBe(false);
     expect(result.current.error).toBe('');
+  });
+
+  it('uses initialNetwork param when provided', () => {
+    const { result } = renderHook(() => useImportWallet('mainnet'));
+    expect(result.current.selectedNetwork).toBe('mainnet');
   });
 
   it('updates walletName via setWalletName', () => {
@@ -37,6 +44,18 @@ describe('useImportWallet', () => {
     expect(result.current.seed).toBe(VALID_MNEMONIC);
   });
 
+  it('updates passphrase via setPassphrase', () => {
+    const { result } = renderHook(() => useImportWallet());
+    act(() => result.current.setPassphrase('mypass'));
+    expect(result.current.passphrase).toBe('mypass');
+  });
+
+  it('updates confirmPassphrase via setConfirmPassphrase', () => {
+    const { result } = renderHook(() => useImportWallet());
+    act(() => result.current.setConfirmPassphrase('mypass'));
+    expect(result.current.confirmPassphrase).toBe('mypass');
+  });
+
   it('updates selectedNetwork via setSelectedNetwork', () => {
     const { result } = renderHook(() => useImportWallet());
     act(() => result.current.setSelectedNetwork('mainnet'));
@@ -47,7 +66,7 @@ describe('useImportWallet', () => {
 
   it('clearError resets error to empty string', () => {
     const { result } = renderHook(() => useImportWallet());
-    act(() => { result.current.submit().catch(() => undefined); }); // triggers "name required" error
+    act(() => { result.current.submit().catch(() => undefined); });
     act(() => result.current.clearError());
     expect(result.current.error).toBe('');
   });
@@ -88,10 +107,23 @@ describe('useImportWallet', () => {
       expect(result.current.error).toBe('Seed phrase is required');
       expect(mockImportWallet).not.toHaveBeenCalled();
     });
+
+    it('sets error when passphrases do not match', async () => {
+      const { result } = renderHook(() => useImportWallet());
+      act(() => {
+        result.current.setWalletName('My Wallet');
+        result.current.setSeed(VALID_MNEMONIC);
+        result.current.setPassphrase('abc');
+        result.current.setConfirmPassphrase('xyz');
+      });
+      await act(async () => { await result.current.submit(); });
+      expect(result.current.error).toBe('Passphrases do not match');
+      expect(mockImportWallet).not.toHaveBeenCalled();
+    });
   });
 
   describe('submit() — successful import', () => {
-    it('calls importWallet with trimmed name, trimmed seed, and selected network', async () => {
+    it('calls importWallet with trimmed name, trimmed seed, network, and undefined passphrase when no passphrase', async () => {
       const wallet = { id: '1', name: 'My Wallet', network: 'mainnet', status: 'locked', createdAt: '' };
       mockImportWallet.mockResolvedValue(wallet);
       const { result } = renderHook(() => useImportWallet());
@@ -102,7 +134,7 @@ describe('useImportWallet', () => {
       });
       let returned: unknown;
       await act(async () => { returned = await result.current.submit(); });
-      expect(mockImportWallet).toHaveBeenCalledWith('My Wallet', VALID_MNEMONIC, 'mainnet');
+      expect(mockImportWallet).toHaveBeenCalledWith('My Wallet', VALID_MNEMONIC, 'mainnet', undefined);
       expect(returned).toEqual(wallet);
       expect(result.current.error).toBe('');
     });
@@ -116,7 +148,20 @@ describe('useImportWallet', () => {
         result.current.setSelectedNetwork('testnet3');
       });
       await act(async () => { await result.current.submit(); });
-      expect(mockImportWallet).toHaveBeenCalledWith('W', VALID_MNEMONIC, 'testnet3');
+      expect(mockImportWallet).toHaveBeenCalledWith('W', VALID_MNEMONIC, 'testnet3', undefined);
+    });
+
+    it('passes passphrase to importWallet when set', async () => {
+      mockImportWallet.mockResolvedValue({ id: '3', name: 'W', network: 'mainnet' });
+      const { result } = renderHook(() => useImportWallet());
+      act(() => {
+        result.current.setWalletName('W');
+        result.current.setSeed(VALID_MNEMONIC);
+        result.current.setPassphrase('mysecret');
+        result.current.setConfirmPassphrase('mysecret');
+      });
+      await act(async () => { await result.current.submit(); });
+      expect(mockImportWallet).toHaveBeenCalledWith('W', VALID_MNEMONIC, 'testnet', 'mysecret');
     });
   });
 

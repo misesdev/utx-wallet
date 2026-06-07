@@ -4,28 +4,32 @@ import type { BitcoinNetwork } from '../../domain/entities/Network';
 import type { BuiltTransaction } from '../../domain/entities/BuiltTransaction';
 import type { SignedTransaction } from '../../domain/entities/SignedTransaction';
 import type { TransactionSigner } from '../../domain/repositories/TransactionSigner';
+import type { WalletAddressRepository } from '../../domain/repositories/WalletAddressRepository';
 import { AppError } from '../../application/errors/AppError';
 import { NetworkType } from '../../domain/value-objects/NetworkType';
 import { WalletKeyStorage } from '../storage/WalletKeyStorage';
 
-// Gap limit: number of consecutive unused addresses to scan per chain (receive + change)
+// Fallback scan limit when HD address registry is unavailable
 const ADDRESS_SCAN_LIMIT = 50;
 
 export class WalletTransactionSigner implements TransactionSigner {
-  constructor(private readonly walletKeyStorage: WalletKeyStorage) {}
+  constructor(
+    private readonly walletKeyStorage: WalletKeyStorage,
+    private readonly walletAddressRepository: WalletAddressRepository | null = null,
+  ) {}
 
   async sign(
     built: BuiltTransaction,
     walletId: string,
     network: BitcoinNetwork,
   ): Promise<SignedTransaction> {
-    const secret = await this.walletKeyStorage.retrieve(walletId);
-    if (!secret) {
+    const key = await this.walletKeyStorage.retrieveKey(walletId);
+    if (!key) {
       throw new AppError('Carteira não encontrada', 'WALLET_NOT_FOUND');
     }
 
     const bNetwork = NetworkType.of(network).toBNetwork();
-    const { wallet } = HDWallet.import(secret, undefined, {
+    const { wallet } = HDWallet.import(key.mnemonic, key.passphrase, {
       network: bNetwork,
       purpose: 84,
     });
@@ -33,7 +37,7 @@ export class WalletTransactionSigner implements TransactionSigner {
     const tx = new HDTransaction();
 
     for (const input of built.inputs) {
-      const pairKey = this.findKeyForAddress(wallet, input.address);
+      const pairKey = await this.findKeyForAddress(wallet, walletId, input.address);
       if (!pairKey) {
         throw new AppError(
           `Chave não encontrada para o endereço: ${input.address}`,
@@ -64,9 +68,21 @@ export class WalletTransactionSigner implements TransactionSigner {
     };
   }
 
-  // Scans receive (change=0) then internal (change=1) addresses up to ADDRESS_SCAN_LIMIT
-  // to find the signing key for a given P2WPKH address.
-  private findKeyForAddress(wallet: HDWallet, address: string): ECPairKey | null {
+  private async findKeyForAddress(
+    wallet: HDWallet,
+    walletId: string,
+    address: string,
+  ): Promise<ECPairKey | null> {
+    // Fast path: look up derivation path in the HD address registry
+    if (this.walletAddressRepository) {
+      const record = await this.walletAddressRepository.findByAddress(address);
+      if (record) {
+        const change: 0 | 1 = record.chain === 'change' ? 1 : 0;
+        return wallet.getPairKey(record.index, { account: record.accountIndex, change });
+      }
+    }
+
+    // Slow path: scan account 0 (legacy, covers wallets created before HD system)
     for (const change of [0, 1] as const) {
       for (let i = 0; i < ADDRESS_SCAN_LIMIT; i++) {
         const key = wallet.getPairKey(i, { change });

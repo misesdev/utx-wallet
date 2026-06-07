@@ -1,5 +1,6 @@
 import React, { PropsWithChildren, useRef } from 'react';
 import { AddressService } from '../../core/application/services/AddressService';
+import { AddressManagerService } from '../../core/application/services/AddressManagerService';
 import { NetworkService } from '../../core/application/services/NetworkService';
 import { WalletService } from '../../core/application/services/WalletService';
 import { SendService } from '../../core/application/services/SendService';
@@ -28,6 +29,12 @@ import { PreviewTransactionUseCase } from '../../core/domain/usecases/transactio
 import { BuildTransactionUseCase } from '../../core/domain/usecases/transaction/BuildTransactionUseCase';
 import { SignTransactionUseCase } from '../../core/domain/usecases/transaction/SignTransactionUseCase';
 import { BroadcastTransactionUseCase } from '../../core/domain/usecases/transaction/BroadcastTransactionUseCase';
+import { CreateAddressOriginUseCase } from '../../core/domain/usecases/address/CreateAddressOriginUseCase';
+import { ListAddressOriginsUseCase } from '../../core/domain/usecases/address/ListAddressOriginsUseCase';
+import { GetNextReceiveAddressUseCase } from '../../core/domain/usecases/address/GetNextReceiveAddressUseCase';
+import { GetNextChangeAddressUseCase } from '../../core/domain/usecases/address/GetNextChangeAddressUseCase';
+import { EnsureAddressPoolUseCase } from '../../core/domain/usecases/address/EnsureAddressPoolUseCase';
+import { SyncAddressStatusUseCase } from '../../core/domain/usecases/address/SyncAddressStatusUseCase';
 import { LoadSecuritySettingsUseCase } from '../../core/domain/usecases/security/LoadSecuritySettingsUseCase';
 import { SaveSecuritySettingsUseCase } from '../../core/domain/usecases/security/SaveSecuritySettingsUseCase';
 import { SetPinUseCase } from '../../core/domain/usecases/security/SetPinUseCase';
@@ -58,11 +65,15 @@ import { OfflineTransactionRepositoryImpl } from '../../core/infrastructure/repo
 import { SecuritySettingsStorage } from '../../core/infrastructure/storage/SecuritySettingsStorage';
 import { SecuritySettingsRepositoryImpl } from '../../core/infrastructure/repositories/SecuritySettingsRepositoryImpl';
 import { AddressRepositoryImpl } from '../../core/infrastructure/repositories/AddressRepositoryImpl';
+import { AddressOriginRepositoryImpl } from '../../core/infrastructure/repositories/AddressOriginRepositoryImpl';
+import { WalletAddressRepositoryImpl } from '../../core/infrastructure/repositories/WalletAddressRepositoryImpl';
 import { TransactionRepositoryImpl } from '../../core/infrastructure/repositories/TransactionRepositoryImpl';
 import { UtxoRepositoryImpl } from '../../core/infrastructure/repositories/UtxoRepositoryImpl';
 import { WalletRepositoryImpl } from '../../core/infrastructure/repositories/WalletRepositoryImpl';
+import { AddressOriginStorage } from '../../core/infrastructure/storage/AddressOriginStorage';
 import { AddressStorage } from '../../core/infrastructure/storage/AddressStorage';
 import { EncryptedStorageAdapter } from '../../core/infrastructure/storage/EncryptedStorageAdapter';
+import { WalletAddressStorage } from '../../core/infrastructure/storage/WalletAddressStorage';
 import { NetworkConfigStorage } from '../../core/infrastructure/storage/NetworkConfigStorage';
 import { OpSQLiteDatabase } from '../../core/infrastructure/storage/DatabaseStorage';
 import { SyncStateStorage } from '../../core/infrastructure/storage/SyncStateStorage';
@@ -71,6 +82,7 @@ import { UtxoStorage } from '../../core/infrastructure/storage/UtxoStorage';
 import { WalletKeyStorage } from '../../core/infrastructure/storage/WalletKeyStorage';
 import { WalletStorage } from '../../core/infrastructure/storage/WalletStorage';
 import { DEFAULT_NETWORK } from '../../shared/constants/networks';
+import { AddressManagerProvider } from './AddressManagerProvider';
 import { AddressProvider } from './AddressProvider';
 import { NetworkProvider } from './NetworkProvider';
 import { OfflineModeProvider } from './OfflineModeProvider';
@@ -84,6 +96,7 @@ type Dependencies = {
   walletService: WalletService;
   networkService: NetworkService;
   addressService: AddressService;
+  addressManagerService: AddressManagerService;
   sendService: SendService;
   transactionHistoryService: TransactionHistoryService;
   offlineModeService: OfflineModeService;
@@ -105,6 +118,11 @@ export function AppProvider({ children }: PropsWithChildren) {
     const utxoRepository = new UtxoRepositoryImpl(utxoStorage);
     const transactionRepository = new TransactionRepositoryImpl(transactionStorage);
 
+    const walletAddressStorage = new WalletAddressStorage(db);
+    const addressOriginStorage = new AddressOriginStorage(db);
+    const walletAddressRepository = new WalletAddressRepositoryImpl(walletAddressStorage);
+    const addressOriginRepository = new AddressOriginRepositoryImpl(addressOriginStorage);
+
     const networkConfigStorage = new NetworkConfigStorage(secureStorage);
     const httpClient = new FetchHttpClient();
     const defaultNetworkConfig = {
@@ -118,6 +136,39 @@ export function AppProvider({ children }: PropsWithChildren) {
 
     const syncStateStorage = new SyncStateStorage(secureStorage);
     const walletAddressProvider = new WalletKeyAddressProvider(walletKeyStorage);
+
+    // HD address use cases
+    const ensureAddressPool = new EnsureAddressPoolUseCase(
+      walletAddressRepository,
+      addressOriginRepository,
+      walletAddressProvider,
+    );
+    const getNextReceiveAddress = new GetNextReceiveAddressUseCase(
+      walletAddressRepository,
+      addressOriginRepository,
+      ensureAddressPool,
+    );
+    const getNextChangeAddress = new GetNextChangeAddressUseCase(
+      walletAddressRepository,
+      addressOriginRepository,
+      ensureAddressPool,
+    );
+    const syncAddressStatus = new SyncAddressStatusUseCase(
+      walletAddressRepository,
+      addressOriginRepository,
+      utxoRepository,
+      publicNodeAdapter,
+      ensureAddressPool,
+    );
+    const addressManagerService = new AddressManagerService(
+      new CreateAddressOriginUseCase(addressOriginRepository, walletAddressRepository, walletAddressProvider),
+      new ListAddressOriginsUseCase(addressOriginRepository),
+      getNextReceiveAddress,
+      getNextChangeAddress,
+      ensureAddressPool,
+      addressOriginRepository,
+      walletAddressRepository,
+    );
 
     const addressStorage = new AddressStorage(db);
     const addressRepository = new AddressRepositoryImpl(addressStorage);
@@ -143,6 +194,9 @@ export function AppProvider({ children }: PropsWithChildren) {
       syncTransactions,
       syncBalance,
       syncStateStorage,
+      walletAddressRepository,
+      syncAddressStatus,
+      addressManagerService,
     );
 
     const walletService = new WalletService(
@@ -156,6 +210,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       syncWalletUseCase,
       new FreezeUtxoUseCase(utxoRepository),
       new UnfreezeUtxoUseCase(utxoRepository),
+      addressManagerService,
     );
 
     const networkService = new NetworkService(
@@ -166,7 +221,7 @@ export function AppProvider({ children }: PropsWithChildren) {
 
     const feeEstimation = new FeeEstimationService();
     const coinSelection = new CoinSelectionService(feeEstimation);
-    const walletSigner = new WalletTransactionSigner(walletKeyStorage);
+    const walletSigner = new WalletTransactionSigner(walletKeyStorage, walletAddressRepository);
 
     const explorerAdapter = new MempoolExplorerAdapter();
     const transactionHistoryService = new TransactionHistoryService(
@@ -178,6 +233,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       coinSelection,
       feeEstimation,
       walletAddressProvider,
+      getNextChangeAddress,
     );
     const signTransactionUseCase = new SignTransactionUseCase(walletSigner);
 
@@ -220,6 +276,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       walletService,
       networkService,
       addressService,
+      addressManagerService,
       sendService,
       transactionHistoryService,
       offlineModeService,
@@ -227,13 +284,14 @@ export function AppProvider({ children }: PropsWithChildren) {
     };
   }
 
-  const { walletService, networkService, addressService, sendService, transactionHistoryService, offlineModeService, securityService } = depsRef.current;
+  const { walletService, networkService, addressService, addressManagerService, sendService, transactionHistoryService, offlineModeService, securityService } = depsRef.current;
 
   return (
     <ThemeProvider>
       <SecurityProvider service={securityService}>
         <NetworkProvider networkService={networkService}>
           <WalletProvider walletService={walletService}>
+            <AddressManagerProvider service={addressManagerService}>
             <AddressProvider addressService={addressService}>
               <SendProvider sendService={sendService}>
                 <TransactionHistoryProvider service={transactionHistoryService}>
@@ -243,6 +301,7 @@ export function AppProvider({ children }: PropsWithChildren) {
                 </TransactionHistoryProvider>
               </SendProvider>
             </AddressProvider>
+            </AddressManagerProvider>
           </WalletProvider>
         </NetworkProvider>
       </SecurityProvider>
