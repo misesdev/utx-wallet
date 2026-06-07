@@ -6,6 +6,7 @@ import { AppError } from '../../core/application/errors/AppError';
 import { useSend } from '../../app/providers/SendProvider';
 import { useNetwork } from './useNetwork';
 import { useWallet } from './useWallet';
+import { useAppTranslation } from './useAppTranslation';
 
 export type { FeeRateTier };
 
@@ -47,6 +48,7 @@ export type UseSendBitcoinOpts = {
 
 export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
   const { selectedWallet, listUtxos } = useWallet();
+  const { t } = useAppTranslation();
   const { isOnline } = useNetwork();
   const { validateAddress, fetchFeeRates, preview, send } = useSend();
   const originId = opts?.originId;
@@ -110,9 +112,9 @@ export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
         return;
       }
       const result = validateAddress(value.trim());
-      setAddressError(result.valid ? null : 'Endereço Bitcoin inválido');
+      setAddressError(result.valid ? null : t('send.errorInvalidAddress'));
     },
-    [validateAddress],
+    [validateAddress, t],
   );
 
   const setAmountSats = useCallback((v: string) => {
@@ -139,7 +141,7 @@ export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
 
     const parsedAmount = parseInt(amountSats.trim(), 10);
     if (!amountSats.trim() || isNaN(parsedAmount) || parsedAmount <= 0) {
-      setAmountError('Informe um valor em sats válido');
+      setAmountError(t('send.errorInvalidAmount'));
       return;
     }
     if (addressError !== null || !toAddress.trim()) {
@@ -158,11 +160,11 @@ export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
       });
       setTxPreview(result);
     } catch (err) {
-      setPreviewError(err instanceof AppError ? err.message : 'Falha ao criar prévia');
+      setPreviewError(err instanceof AppError ? err.message : t('send.errorPreviewFailed'));
     } finally {
       setIsPreviewing(false);
     }
-  }, [selectedWallet, toAddress, amountSats, selectedFeeRate, addressError, preview]);
+  }, [selectedWallet, toAddress, amountSats, selectedFeeRate, addressError, preview, t]);
 
   const clearPreview = useCallback(() => {
     setTxPreview(null);
@@ -199,11 +201,11 @@ export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
       setSentResult(result);
       setIsReviewVisible(false);
     } catch (err) {
-      setSendError(err instanceof AppError ? err.message : 'Falha ao enviar transação');
+      setSendError(err instanceof AppError ? err.message : t('send.errorSendFailed'));
     } finally {
       setIsSending(false);
     }
-  }, [selectedWallet, toAddress, amountSats, selectedFeeRate, send, originId]);
+  }, [selectedWallet, toAddress, amountSats, selectedFeeRate, send, originId, t]);
 
   const resetSend = useCallback(() => {
     setSentResult(null);

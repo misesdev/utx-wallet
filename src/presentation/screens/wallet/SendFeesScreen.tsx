@@ -7,7 +7,9 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppButton } from '../../components/base/AppButton';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
 import { FeeSelector } from '../../components/wallet/FeeSelector';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useSendBitcoin } from '../../hooks/useSendBitcoin';
 import { useTheme } from '../../hooks/useTheme';
 import { TransactionReviewModal } from './TransactionReviewModal';
@@ -28,6 +30,7 @@ function truncateAddress(addr: string, chars = 10): string {
 
 export function SendFeesScreen() {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<SendFeesNavProp>();
 
@@ -103,13 +106,13 @@ export function SendFeesScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.back')}
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <AppText variant="title" color="muted">←</AppText>
+          <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
-        <AppText variant="subtitle" style={styles.headerTitle}>Transaction fee</AppText>
+        <AppText variant="subtitle" style={styles.headerTitle}>{t('fees.title')}</AppText>
         <View style={styles.backBtn} />
       </View>
 
@@ -123,13 +126,13 @@ export function SendFeesScreen() {
         {/* Summary card */}
         <AppCard>
           <View style={styles.summaryRow}>
-            <AppText variant="caption" color="muted">To</AppText>
+            <AppText variant="caption" color="muted">{t('fees.to')}</AppText>
             <AppText style={styles.summaryAddress} numberOfLines={1}>
               {truncateAddress(effectiveAddress)}
             </AppText>
           </View>
           <View style={styles.summaryAmountRow}>
-            <AppText variant="caption" color="muted">Amount</AppText>
+            <AppText variant="caption" color="muted">{t('fees.amount')}</AppText>
             <AppText variant="subtitle" testID="summary-amount">
               {!isNaN(parsedAmount) ? `${formatSats(parsedAmount)} sats` : '—'}
             </AppText>
@@ -147,7 +150,7 @@ export function SendFeesScreen() {
 
         {isLoadingFeeRates && (
           <AppText variant="caption" color="muted" style={styles.center}>
-            Loading fee rates…
+            {t('fees.loadingRates')}
           </AppText>
         )}
 
@@ -159,7 +162,7 @@ export function SendFeesScreen() {
 
         {/* Review button */}
         <AppButton
-          title={isPreviewing ? 'Calculating…' : 'Review transaction'}
+          title={isPreviewing ? t('fees.calculating') : t('fees.previewTitle')}
           disabled={!canReview}
           onPress={reviewTransaction}
           testID="btn-review"
@@ -168,42 +171,42 @@ export function SendFeesScreen() {
         {/* Preview card */}
         {preview && (
           <AppCard accent testID="preview-card">
-            <AppText variant="subtitle">Preview</AppText>
+            <AppText variant="subtitle">{t('fees.previewTitle')}</AppText>
 
             <View style={styles.row}>
-              <AppText color="muted">Amount</AppText>
+              <AppText color="muted">{t('fees.amount')}</AppText>
               <AppText testID="preview-amount">{`${formatSats(preview.amountSats)} sats`}</AppText>
             </View>
             <View style={styles.row}>
-              <AppText color="muted">Estimated fee</AppText>
+              <AppText color="muted">{t('fees.estimatedFee')}</AppText>
               <AppText testID="preview-fee">{`${formatSats(preview.feeSats)} sats`}</AppText>
             </View>
             <View style={styles.separator} />
             <View style={styles.row}>
-              <AppText color="muted">Total</AppText>
+              <AppText color="muted">{t('fees.total')}</AppText>
               <AppText variant="subtitle" testID="preview-total">
                 {`${formatSats(preview.totalSats)} sats`}
               </AppText>
             </View>
             {preview.changeSats > 0 && (
               <View style={styles.row}>
-                <AppText color="muted">Change</AppText>
+                <AppText color="muted">{t('fees.change')}</AppText>
                 <AppText testID="preview-change">{`${formatSats(preview.changeSats)} sats`}</AppText>
               </View>
             )}
             <View style={styles.row}>
-              <AppText color="muted">Recipient</AppText>
+              <AppText color="muted">{t('fees.recipient')}</AppText>
               <AppText style={styles.address} testID="preview-address">
                 {truncateAddress(preview.toAddress)}
               </AppText>
             </View>
             <View style={styles.row}>
-              <AppText color="muted">Fee rate</AppText>
+              <AppText color="muted">{t('fees.feeRate')}</AppText>
               <AppText testID="preview-fee-rate">{`${preview.feeRateSatsPerVByte} sat/vB`}</AppText>
             </View>
 
             <AppButton
-              title="Confirm & send"
+              title={t('fees.confirmSend')}
               size="md"
               onPress={openReview}
               testID="btn-open-review"

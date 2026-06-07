@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { AppError } from '../../core/application/errors/AppError';
 import { useSecurity } from '../../app/providers/SecurityProvider';
+import { useAppTranslation } from './useAppTranslation';
 import type { AutoLockSeconds, SecuritySettings } from '../../core/domain/entities/SecuritySettings';
 
 export type PinModalStep = 'none' | 'set-new' | 'confirm-new' | 'verify-to-remove';
@@ -26,6 +27,7 @@ export type UseSecuritySettingsState = {
 
 export function useSecuritySettings(): UseSecuritySettingsState {
   const { settings, biometricAvailable, isLoading, updateSettings, setupPin, validatePin, removePin } = useSecurity();
+  const { t } = useAppTranslation();
 
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +66,7 @@ export function useSecuritySettings(): UseSecuritySettingsState {
 
       if (pinStep === 'confirm-new') {
         if (pin !== firstPin) {
-          setPinError('PINs não coincidem. Tente novamente.');
+          setPinError(t('security.errorPinMismatch'));
           setFirstPin('');
           setPinStep('set-new');
           return;
@@ -75,7 +77,7 @@ export function useSecuritySettings(): UseSecuritySettingsState {
           await updateSettings({ pinEnabled: true });
           closePinModal();
         } catch (err) {
-          setPinError(err instanceof AppError ? err.message : 'Erro ao salvar PIN');
+          setPinError(err instanceof AppError ? err.message : t('security.errorSavePin'));
         } finally {
           setIsSaving(false);
         }
@@ -85,7 +87,7 @@ export function useSecuritySettings(): UseSecuritySettingsState {
       if (pinStep === 'verify-to-remove') {
         const ok = await validatePin(pin);
         if (!ok) {
-          setPinError('PIN incorreto');
+          setPinError(t('security.errorPinIncorrect'));
           return;
         }
         setIsSaving(true);
@@ -94,13 +96,13 @@ export function useSecuritySettings(): UseSecuritySettingsState {
           await updateSettings({ pinEnabled: false, biometricEnabled: false });
           closePinModal();
         } catch (err) {
-          setPinError(err instanceof AppError ? err.message : 'Erro ao remover PIN');
+          setPinError(err instanceof AppError ? err.message : t('security.errorRemovePin'));
         } finally {
           setIsSaving(false);
         }
       }
     },
-    [pinStep, firstPin, setupPin, validatePin, removePin, updateSettings, closePinModal],
+    [pinStep, firstPin, setupPin, validatePin, removePin, updateSettings, closePinModal, t],
   );
 
   const toggleBiometric = useCallback(async () => {
@@ -109,9 +111,9 @@ export function useSecuritySettings(): UseSecuritySettingsState {
     try {
       await updateSettings({ biometricEnabled: !settings.biometricEnabled });
     } catch (err) {
-      setError(err instanceof AppError ? err.message : 'Erro ao atualizar biometria');
+      setError(err instanceof AppError ? err.message : t('security.errorUpdateBiometrics'));
     }
-  }, [biometricAvailable, settings.pinEnabled, settings.biometricEnabled, updateSettings]);
+  }, [biometricAvailable, settings.pinEnabled, settings.biometricEnabled, updateSettings, t]);
 
   const setAutoLock = useCallback(
     async (seconds: AutoLockSeconds) => {
@@ -119,10 +121,10 @@ export function useSecuritySettings(): UseSecuritySettingsState {
       try {
         await updateSettings({ autoLockSeconds: seconds });
       } catch (err) {
-        setError(err instanceof AppError ? err.message : 'Erro ao salvar');
+        setError(err instanceof AppError ? err.message : t('security.errorSave'));
       }
     },
-    [updateSettings],
+    [updateSettings, t],
   );
 
   const toggleHideBalance = useCallback(async () => {
@@ -130,18 +132,18 @@ export function useSecuritySettings(): UseSecuritySettingsState {
     try {
       await updateSettings({ hideBalance: !settings.hideBalance });
     } catch (err) {
-      setError(err instanceof AppError ? err.message : 'Erro ao atualizar');
+      setError(err instanceof AppError ? err.message : t('security.errorUpdate'));
     }
-  }, [settings.hideBalance, updateSettings]);
+  }, [settings.hideBalance, updateSettings, t]);
 
   const toggleBlockScreenshots = useCallback(async () => {
     setError(null);
     try {
       await updateSettings({ blockScreenshots: !settings.blockScreenshots });
     } catch (err) {
-      setError(err instanceof AppError ? err.message : 'Erro ao atualizar');
+      setError(err instanceof AppError ? err.message : t('security.errorUpdate'));
     }
-  }, [settings.blockScreenshots, updateSettings]);
+  }, [settings.blockScreenshots, updateSettings, t]);
 
   return {
     settings,

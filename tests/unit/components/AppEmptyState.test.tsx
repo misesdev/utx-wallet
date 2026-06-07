@@ -22,13 +22,13 @@ describe('AppEmptyState', () => {
   });
 
   it('renders the icon when provided', () => {
-    const screen = renderWithTheme(<AppEmptyState title="Empty" icon="◌" />);
-    expect(screen.getByText('◌')).toBeTruthy();
+    const screen = renderWithTheme(<AppEmptyState title="Empty" icon="wallet" testID="empty" />);
+    expect(screen.getByTestId('empty-icon')).toBeTruthy();
   });
 
   it('uses the default icon when not provided', () => {
-    const screen = renderWithTheme(<AppEmptyState title="Empty" />);
-    expect(screen.getByText('○')).toBeTruthy();
+    const screen = renderWithTheme(<AppEmptyState title="Empty" testID="empty" />);
+    expect(screen.getByTestId('empty-icon')).toBeTruthy();
   });
 
   it('renders action button when action is provided', () => {

@@ -73,9 +73,9 @@ export type MempoolFeeRatesResponse = {
 
 const NETWORK_BASE_URLS: Record<BitcoinNetwork, string> = {
   mainnet: 'https://mempool.space/api',
-  testnet: 'https://mempool.space/testnet/api',
-  testnet3: 'https://mempool.space/testnet/api',
-  testnet4: 'https://mempool.space/testnet4/api',
+  testnet: 'https://mempool.space/testnet4/api',  // 'testnet' is testnet4
+  testnet3: 'https://mempool.space/testnet/api',  // legacy
+  testnet4: 'https://mempool.space/testnet4/api', // legacy alias
 };
 
 const DEFAULT_TIMEOUT_MS = 10_000;

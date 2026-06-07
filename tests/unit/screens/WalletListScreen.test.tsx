@@ -53,32 +53,32 @@ describe('WalletListScreen', () => {
   describe('Header', () => {
     it('renders Wallets title', () => {
       const screen = renderWithTheme(<WalletListScreen />);
-      expect(screen.getByText('Wallets')).toBeTruthy();
+      expect(screen.getByText('walletList.title')).toBeTruthy();
     });
 
     it('navigates to CreateWallet with mainnet param when on Mainnet tab', () => {
       const screen = renderWithTheme(<WalletListScreen />);
-      fireEvent.press(screen.getByLabelText('Create wallet'));
+      fireEvent.press(screen.getByLabelText('walletList.createWallet'));
       expect(mockNavigate).toHaveBeenCalledWith('CreateWallet', { network: 'mainnet' });
     });
 
     it('navigates to ImportWallet with mainnet param when on Mainnet tab', () => {
       const screen = renderWithTheme(<WalletListScreen />);
-      fireEvent.press(screen.getByLabelText('Import wallet'));
+      fireEvent.press(screen.getByLabelText('walletList.importWallet'));
       expect(mockNavigate).toHaveBeenCalledWith('ImportWallet', { network: 'mainnet' });
     });
 
     it('navigates to CreateWallet with testnet param after switching to Testnet tab', () => {
       const screen = renderWithTheme(<WalletListScreen />);
-      fireEvent.press(screen.getByText('Testnet'));
-      fireEvent.press(screen.getByLabelText('Create wallet'));
+      fireEvent.press(screen.getByText('walletList.testnet'));
+      fireEvent.press(screen.getByLabelText('walletList.createWallet'));
       expect(mockNavigate).toHaveBeenCalledWith('CreateWallet', { network: 'testnet' });
     });
 
     it('navigates to ImportWallet with testnet param after switching to Testnet tab', () => {
       const screen = renderWithTheme(<WalletListScreen />);
-      fireEvent.press(screen.getByText('Testnet'));
-      fireEvent.press(screen.getByLabelText('Import wallet'));
+      fireEvent.press(screen.getByText('walletList.testnet'));
+      fireEvent.press(screen.getByLabelText('walletList.importWallet'));
       expect(mockNavigate).toHaveBeenCalledWith('ImportWallet', { network: 'testnet' });
     });
   });
@@ -86,8 +86,8 @@ describe('WalletListScreen', () => {
   describe('Network tabs', () => {
     it('renders Mainnet and Testnet tabs', () => {
       const screen = renderWithTheme(<WalletListScreen />);
-      expect(screen.getByText('Mainnet')).toBeTruthy();
-      expect(screen.getByText('Testnet')).toBeTruthy();
+      expect(screen.getByText('walletList.mainnet')).toBeTruthy();
+      expect(screen.getByText('walletList.testnet')).toBeTruthy();
     });
 
     it('does not render Testnet3, Testnet4 or Node tabs', () => {
@@ -99,14 +99,14 @@ describe('WalletListScreen', () => {
 
     it('shows mainnet tab as active by default', () => {
       const screen = renderWithTheme(<WalletListScreen />);
-      const mainnetTab = screen.getByRole('tab', { name: 'Mainnet' });
+      const mainnetTab = screen.getByRole('tab', { name: 'walletList.mainnet' });
       expect(mainnetTab.props.accessibilityState?.selected).toBe(true);
     });
 
     it('switches to testnet tab when pressed', () => {
       const screen = renderWithTheme(<WalletListScreen />);
-      fireEvent.press(screen.getByRole('tab', { name: 'Testnet' }));
-      const testnetTab = screen.getByRole('tab', { name: 'Testnet' });
+      fireEvent.press(screen.getByRole('tab', { name: 'walletList.testnet' }));
+      const testnetTab = screen.getByRole('tab', { name: 'walletList.testnet' });
       expect(testnetTab.props.accessibilityState?.selected).toBe(true);
     });
   });
@@ -115,31 +115,31 @@ describe('WalletListScreen', () => {
     it('shows empty state text for mainnet when no wallets on mainnet', () => {
       mockWallets = [makeWallet({ network: 'testnet' })];
       const screen = renderWithTheme(<WalletListScreen />);
-      expect(screen.getByText('No mainnet wallets')).toBeTruthy();
+      expect(screen.getByText('walletList.noWallets')).toBeTruthy();
     });
 
     it('shows empty state text for testnet when no wallets on testnet', () => {
       mockWallets = [makeWallet({ network: 'mainnet' })];
       const screen = renderWithTheme(<WalletListScreen />);
-      fireEvent.press(screen.getByText('Testnet'));
-      expect(screen.getByText('No testnet wallets')).toBeTruthy();
+      fireEvent.press(screen.getByText('walletList.testnet'));
+      expect(screen.getByText('walletList.noWallets')).toBeTruthy();
     });
 
     it('shows Create and Import buttons in empty state', () => {
       const screen = renderWithTheme(<WalletListScreen />);
-      expect(screen.getByText('+ Create wallet')).toBeTruthy();
-      expect(screen.getByText('↓ Import wallet')).toBeTruthy();
+      expect(screen.getByText('walletList.createWallet')).toBeTruthy();
+      expect(screen.getByText('walletList.importWallet')).toBeTruthy();
     });
 
     it('navigates to CreateWallet from empty state CTA with active network', () => {
       const screen = renderWithTheme(<WalletListScreen />);
-      fireEvent.press(screen.getByText('+ Create wallet'));
+      fireEvent.press(screen.getByText('walletList.createWallet'));
       expect(mockNavigate).toHaveBeenCalledWith('CreateWallet', { network: 'mainnet' });
     });
 
     it('navigates to ImportWallet from empty state CTA with active network', () => {
       const screen = renderWithTheme(<WalletListScreen />);
-      fireEvent.press(screen.getByText('↓ Import wallet'));
+      fireEvent.press(screen.getByText('walletList.importWallet'));
       expect(mockNavigate).toHaveBeenCalledWith('ImportWallet', { network: 'mainnet' });
     });
   });
@@ -160,21 +160,21 @@ describe('WalletListScreen', () => {
     it('shows testnet wallet under Testnet tab', () => {
       mockWallets = [makeWallet({ name: 'Testnet Wallet', network: 'testnet' })];
       const screen = renderWithTheme(<WalletListScreen />);
-      fireEvent.press(screen.getByText('Testnet'));
+      fireEvent.press(screen.getByText('walletList.testnet'));
       expect(screen.getByText('Testnet Wallet')).toBeTruthy();
     });
 
     it('shows legacy testnet4 wallet under Testnet tab', () => {
       mockWallets = [makeWallet({ name: 'Legacy Wallet', network: 'testnet4' })];
       const screen = renderWithTheme(<WalletListScreen />);
-      fireEvent.press(screen.getByText('Testnet'));
+      fireEvent.press(screen.getByText('walletList.testnet'));
       expect(screen.getByText('Legacy Wallet')).toBeTruthy();
     });
 
     it('shows legacy testnet3 wallet under Testnet tab', () => {
       mockWallets = [makeWallet({ name: 'Old Testnet3 Wallet', network: 'testnet3' })];
       const screen = renderWithTheme(<WalletListScreen />);
-      fireEvent.press(screen.getByText('Testnet'));
+      fireEvent.press(screen.getByText('walletList.testnet'));
       expect(screen.getByText('Old Testnet3 Wallet')).toBeTruthy();
     });
 

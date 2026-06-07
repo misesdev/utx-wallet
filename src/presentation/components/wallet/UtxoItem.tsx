@@ -2,7 +2,9 @@ import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import type { Utxo } from '../../../core/domain/entities/Utxo';
 import { useTheme } from '../../hooks/useTheme';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { AppText } from '../base/AppText';
+import { AppIcon } from '../base/AppIcon';
 
 type UtxoItemProps = {
   utxo: Utxo;
@@ -10,10 +12,10 @@ type UtxoItemProps = {
   onUnfreeze: (txid: string, vout: number) => void;
 };
 
-const STATUS_LABELS = {
-  frozen: '❄ Frozen',
-  confirmed: 'Confirmed',
-  pending: 'Pending',
+const STATUS_KEYS = {
+  frozen: 'utxos.frozen',
+  confirmed: 'utxos.confirmed',
+  pending: 'utxos.pending',
 } as const;
 
 function shortTxid(txid: string): string {
@@ -22,9 +24,9 @@ function shortTxid(txid: string): string {
 
 export function UtxoItem({ utxo, onFreeze, onUnfreeze }: UtxoItemProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const frozen = utxo.isFrozen ?? false;
   const statusKey = frozen ? 'frozen' : utxo.isConfirmed ? 'confirmed' : 'pending';
-  const statusLabel = STATUS_LABELS[statusKey];
 
   const dotBg =
     statusKey === 'frozen'
@@ -65,13 +67,13 @@ export function UtxoItem({ utxo, onFreeze, onUnfreeze }: UtxoItemProps) {
           <AppText variant="subtitle" style={frozen ? styles.amountFrozen : styles.amount}>
             {utxo.valueSats.toLocaleString()}
           </AppText>
-          <AppText variant="caption" color="muted"> sats</AppText>
+          <AppText variant="caption" color="muted"> {t('common.sats')}</AppText>
         </View>
 
         {/* Freeze / unfreeze button */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={frozen ? 'Descongelar UTXO' : 'Congelar UTXO'}
+          accessibilityLabel={frozen ? t('utxos.unfreeze') : t('utxos.freeze')}
           onPress={() =>
             frozen ? onUnfreeze(utxo.txid, utxo.vout) : onFreeze(utxo.txid, utxo.vout)
           }
@@ -85,8 +87,9 @@ export function UtxoItem({ utxo, onFreeze, onUnfreeze }: UtxoItemProps) {
             },
           ]}
         >
+          <AppIcon name={frozen ? 'unfreeze' : 'freeze'} size={16} color={frozen ? theme.colors.accent : theme.colors.textMuted} />
           <AppText variant="label" color={frozen ? 'accent' : 'muted'}>
-            {frozen ? '⊘ Unfreeze' : '❄ Freeze'}
+            {frozen ? t('utxos.unfreeze') : t('utxos.freeze')}
           </AppText>
         </Pressable>
       </View>
@@ -106,7 +109,7 @@ export function UtxoItem({ utxo, onFreeze, onUnfreeze }: UtxoItemProps) {
         >
           <View style={[styles.statusDot, { backgroundColor: dotBg }]} />
           <AppText variant="label" style={[styles.statusText, { color: dotPillColor }]}>
-            {statusLabel}
+            {t(STATUS_KEYS[statusKey] as any)}
           </AppText>
         </View>
       </View>

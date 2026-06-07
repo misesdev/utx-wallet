@@ -7,6 +7,7 @@ import { AppError } from '../../core/application/errors/AppError';
 import { useOfflineModeService } from '../../app/providers/OfflineModeProvider';
 import { useNetwork } from './useNetwork';
 import { useWallet } from './useWallet';
+import { useAppTranslation } from './useAppTranslation';
 
 export type PrepareParams = Omit<PrepareOfflineTxParams, 'walletId' | 'walletNetwork'>;
 
@@ -28,6 +29,7 @@ export type UseOfflineModeState = {
 
 export function useOfflineMode(): UseOfflineModeState {
   const { selectedWallet, listTransactions, listUtxos } = useWallet();
+  const { t } = useAppTranslation();
   const { isOnline } = useNetwork();
   const offlineService = useOfflineModeService();
 
@@ -56,11 +58,11 @@ export function useOfflineMode(): UseOfflineModeState {
       setUtxos(localUtxos);
       setOfflineTransactions(offlineTxs);
     } catch (err) {
-      setDataError(err instanceof AppError ? err.message : 'Erro ao carregar dados locais');
+      setDataError(err instanceof AppError ? err.message : t('offline.errorLoadLocal'));
     } finally {
       setIsLoadingData(false);
     }
-  }, [selectedWallet, listTransactions, listUtxos, offlineService]);
+  }, [selectedWallet, listTransactions, listUtxos, offlineService, t]);
 
   useEffect(() => {
     load();
@@ -78,7 +80,7 @@ export function useOfflineMode(): UseOfflineModeState {
 
   const prepareTransaction = useCallback(
     async (params: PrepareParams): Promise<OfflineTransaction> => {
-      if (!selectedWallet) throw new AppError('Nenhuma carteira selecionada', 'NO_WALLET');
+      if (!selectedWallet) throw new AppError(t('wallet.errorNoWalletSelected'), 'NO_WALLET');
       const offlineTx = await offlineService.prepareTransaction({
         ...params,
         walletId: selectedWallet.id,
@@ -87,17 +89,17 @@ export function useOfflineMode(): UseOfflineModeState {
       setOfflineTransactions(prev => [offlineTx, ...prev]);
       return offlineTx;
     },
-    [selectedWallet, offlineService],
+    [selectedWallet, offlineService, t],
   );
 
   const importRawHex = useCallback(
     async (rawHex: string): Promise<OfflineTransaction> => {
-      if (!selectedWallet) throw new AppError('Nenhuma carteira selecionada', 'NO_WALLET');
+      if (!selectedWallet) throw new AppError(t('wallet.errorNoWalletSelected'), 'NO_WALLET');
       const offlineTx = await offlineService.importRawHex(selectedWallet.id, rawHex);
       setOfflineTransactions(prev => [offlineTx, ...prev]);
       return offlineTx;
     },
-    [selectedWallet, offlineService],
+    [selectedWallet, offlineService, t],
   );
 
   const deleteOfflineTransaction = useCallback(
@@ -111,7 +113,7 @@ export function useOfflineMode(): UseOfflineModeState {
   const broadcastOfflineTransaction = useCallback(
     async (tx: OfflineTransaction): Promise<string> => {
       const txid = await offlineService.broadcastTransaction(tx);
-      setOfflineTransactions(prev => prev.filter(t => t.id !== tx.id));
+      setOfflineTransactions(prev => prev.filter(item => item.id !== tx.id));
       return txid;
     },
     [offlineService],

@@ -58,13 +58,13 @@ describe('OfflineModeScreen', () => {
   describe('Online/offline status badge', () => {
     it('shows online badge when isOnline is true', () => {
       const screen = renderWithTheme(<OfflineModeScreen />);
-      expect(screen.getByText('Online — dados locais + blockchain')).toBeTruthy();
+      expect(screen.getByText('offline.onlineMode')).toBeTruthy();
     });
 
     it('shows offline badge when isOnline is false', () => {
       mockState = { ...BASE_STATE, isOnline: false };
       const screen = renderWithTheme(<OfflineModeScreen />);
-      expect(screen.getByText('Offline — apenas dados locais')).toBeTruthy();
+      expect(screen.getByText('offline.offlineMode')).toBeTruthy();
     });
   });
 
@@ -72,7 +72,7 @@ describe('OfflineModeScreen', () => {
     it('renders loading indicator when isLoadingData is true', () => {
       mockState = { ...BASE_STATE, isLoadingData: true };
       const screen = renderWithTheme(<OfflineModeScreen />);
-      expect(screen.getByText('Carregando dados locais…')).toBeTruthy();
+      expect(screen.getByText('offline.loadingLocal')).toBeTruthy();
     });
   });
 
@@ -87,7 +87,7 @@ describe('OfflineModeScreen', () => {
   describe('Empty offline transactions', () => {
     it('renders empty state when no offline transactions are stored', () => {
       const screen = renderWithTheme(<OfflineModeScreen />);
-      expect(screen.getByText('Nenhuma transação salva')).toBeTruthy();
+      expect(screen.getByText('offline.noSaved')).toBeTruthy();
     });
   });
 
@@ -115,45 +115,45 @@ describe('OfflineModeScreen', () => {
   describe('Action buttons', () => {
     it('renders prepare button disabled when hasLocalUtxos is false', () => {
       const screen = renderWithTheme(<OfflineModeScreen />);
-      const btn = screen.getByText('◈ Preparar transação offline');
+      const btn = screen.getByText('offline.prepareTxAction');
       expect(btn).toBeTruthy();
     });
 
     it('renders import hex button', () => {
       const screen = renderWithTheme(<OfflineModeScreen />);
-      expect(screen.getByText('↓ Importar hex assinado')).toBeTruthy();
+      expect(screen.getByText('offline.importHexAction')).toBeTruthy();
     });
 
     it('shows prepare form when prepare button is pressed', () => {
       mockState = { ...BASE_STATE, hasLocalUtxos: true };
       const screen = renderWithTheme(<OfflineModeScreen />);
-      fireEvent.press(screen.getByText('◈ Preparar transação offline'));
-      expect(screen.getByText('Preparar transação offline')).toBeTruthy();
+      fireEvent.press(screen.getByText('offline.prepareTxAction'));
+      expect(screen.getByText('offline.prepareTxTitle')).toBeTruthy();
     });
 
     it('shows import form when import button is pressed', () => {
       const screen = renderWithTheme(<OfflineModeScreen />);
-      fireEvent.press(screen.getByText('↓ Importar hex assinado'));
-      expect(screen.getByText('Importar transação assinada')).toBeTruthy();
+      fireEvent.press(screen.getByText('offline.importHexAction'));
+      expect(screen.getByText('offline.importSigned')).toBeTruthy();
     });
 
     it('hides main action buttons when a form is active', () => {
       const screen = renderWithTheme(<OfflineModeScreen />);
-      fireEvent.press(screen.getByText('↓ Importar hex assinado'));
-      expect(screen.queryByText('◈ Preparar transação offline')).toBeNull();
+      fireEvent.press(screen.getByText('offline.importHexAction'));
+      expect(screen.queryByText('offline.prepareTxAction')).toBeNull();
     });
   });
 
   describe('Pending balance', () => {
     it('does not render pending section when pendingBalanceSats is 0', () => {
       const screen = renderWithTheme(<OfflineModeScreen />);
-      expect(screen.queryByText('Pendente')).toBeNull();
+      expect(screen.queryByText('offline.pending')).toBeNull();
     });
 
     it('renders pending balance when pendingBalanceSats is positive', () => {
       mockState = { ...BASE_STATE, pendingBalanceSats: 10_000 };
       const screen = renderWithTheme(<OfflineModeScreen />);
-      expect(screen.getByText('Pendente')).toBeTruthy();
+      expect(screen.getByText('offline.pending')).toBeTruthy();
       expect(screen.getByText('+10,000 sats')).toBeTruthy();
     });
   });

@@ -1,7 +1,9 @@
 import React from 'react';
 import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { AppText } from '../base/AppText';
+import { AppIcon } from '../base/AppIcon';
 import { useTheme } from '../../hooks/useTheme';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 
 type AddressInputProps = {
   value: string;
@@ -11,12 +13,13 @@ type AddressInputProps = {
   error?: string | null;
 };
 
-function handleQrScan() {
-  Alert.alert('QR Scan', 'Camera scanning will be available in a future update.');
-}
-
 export function AddressInput({ value, onChangeText, placeholder, testID, error }: AddressInputProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
+
+  function handleQrScan() {
+    Alert.alert(t('qrScan.title'), t('qrScan.unavailableMessage'));
+  }
 
   return (
     <View style={styles.wrapper}>
@@ -45,7 +48,7 @@ export function AddressInput({ value, onChangeText, placeholder, testID, error }
         <Pressable
           onPress={handleQrScan}
           accessibilityRole="button"
-          accessibilityLabel="Scan QR code"
+          accessibilityLabel={t('qrScan.accessibilityLabel')}
           testID="btn-qr-scan"
           style={({ pressed }) => [
             styles.qrBtn,
@@ -57,8 +60,8 @@ export function AddressInput({ value, onChangeText, placeholder, testID, error }
             },
           ]}
         >
-          <AppText style={[styles.qrIcon, { color: theme.colors.textMuted }]}>⬛</AppText>
-          <AppText variant="label" color="muted">QR</AppText>
+          <AppIcon name="qrCode" size={22} color={theme.colors.textMuted} />
+          <AppText variant="label" color="muted">{t('common.qrCode')}</AppText>
         </Pressable>
       </View>
 

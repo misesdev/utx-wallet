@@ -2,7 +2,10 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
+import type { IconName } from '../../../shared/icons/iconNames';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useNetwork } from '../../hooks/useNetwork';
 import { useTheme } from '../../hooks/useTheme';
 import { AppRoutes } from '../../../app/navigation/routes';
@@ -16,47 +19,49 @@ type SettingsRoute = keyof Pick<
   | 'BackupSettings'
   | 'OfflineMode'
   | 'SafeMode'
+  | 'LanguageSettings'
 >;
 
 type NavItem = {
-  icon: string;
-  title: string;
-  description: string;
+  icon: IconName;
+  titleKey: string;
+  descKey: string;
   route: SettingsRoute;
   testID?: string;
   danger?: boolean;
 };
 
 type NavGroup = {
-  label: string;
+  labelKey: string;
   items: NavItem[];
 };
 
 const GROUPS: NavGroup[] = [
   {
-    label: 'Wallet',
+    labelKey: 'settings.groupWallet',
     items: [
-      { icon: '◈', title: 'Security', description: 'PIN, biometrics, auto-lock, hide balance', route: 'SecuritySettings', testID: 'settings-security', danger: true },
-      { icon: '⊠', title: 'Backup', description: 'View and export your seed phrase', route: 'BackupSettings', testID: 'settings-backup' },
+      { icon: 'language', titleKey: 'settings.language', descKey: 'settings.languageDesc', route: 'LanguageSettings', testID: 'settings-language' },
+      { icon: 'security', titleKey: 'settings.security', descKey: 'settings.securityDesc', route: 'SecuritySettings', testID: 'settings-security', danger: true },
+      { icon: 'backup', titleKey: 'settings.backup', descKey: 'settings.backupDesc', route: 'BackupSettings', testID: 'settings-backup' },
     ],
   },
   {
-    label: 'Network',
+    labelKey: 'settings.groupNetwork',
     items: [
-      { icon: '⊛', title: 'Network', description: 'Mainnet / testnet, connectivity mode', route: 'NetworkSettings', testID: 'settings-network' },
-      { icon: '⬡', title: 'Node', description: 'Connect to your own Bitcoin node', route: 'NodeSettings', testID: 'settings-node' },
+      { icon: 'network', titleKey: 'settings.network', descKey: 'settings.networkDesc', route: 'NetworkSettings', testID: 'settings-network' },
+      { icon: 'node', titleKey: 'settings.node', descKey: 'settings.nodeDesc', route: 'NodeSettings', testID: 'settings-node' },
     ],
   },
   {
-    label: 'Advanced',
+    labelKey: 'settings.groupAdvanced',
     items: [
-      { icon: '◌', title: 'Offline Mode', description: 'Build transactions without internet', route: 'OfflineMode', testID: 'settings-offline' },
-      { icon: '◎', title: 'Safe Mode', description: 'Restrict outgoing transactions', route: 'SafeMode', testID: 'settings-safe-mode' },
+      { icon: 'offline', titleKey: 'settings.offline', descKey: 'settings.offlineDesc', route: 'OfflineMode', testID: 'settings-offline' },
+      { icon: 'safeMode', titleKey: 'settings.safeMode', descKey: 'settings.safeModeDesc', route: 'SafeMode', testID: 'settings-safe-mode' },
     ],
   },
 ];
 
-type NavRowProps = NavItem & { onPress: () => void; isLast: boolean };
+type NavRowProps = NavItem & { title: string; description: string; onPress: () => void; isLast: boolean };
 
 function NavRow({ icon, title, description, testID, danger, onPress, isLast }: NavRowProps) {
   const { theme } = useTheme();
@@ -72,13 +77,13 @@ function NavRow({ icon, title, description, testID, danger, onPress, isLast }: N
         style={({ pressed }) => [styles.navRow, { opacity: pressed ? 0.72 : 1 }]}
       >
         <View style={[styles.navIcon, { backgroundColor: iconBg, borderRadius: theme.radii.md }]}>
-          <AppText style={[styles.navIconText, { color: iconColor }]}>{icon}</AppText>
+          <AppIcon name={icon} size={22} color={iconColor} />
         </View>
         <View style={styles.navBody}>
           <AppText variant="body" style={styles.navTitle}>{title}</AppText>
           <AppText variant="caption" color="muted" numberOfLines={1}>{description}</AppText>
         </View>
-        <AppText variant="subtitle" color="muted" style={styles.navChevron}>›</AppText>
+        <AppIcon name="chevronRight" size={22} color={theme.colors.textMuted} />
       </Pressable>
       {!isLast && <View style={[styles.rowDivider, { backgroundColor: theme.colors.border }]} />}
     </>
@@ -90,20 +95,20 @@ export function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
   const { networkConfig } = useNetwork();
+  const { t } = useAppTranslation();
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
-      {/* Header */}
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.back')}
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <AppText variant="title" color="muted">←</AppText>
+          <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
-        <AppText variant="subtitle" style={styles.headerTitle}>Settings</AppText>
+        <AppText variant="subtitle" style={styles.headerTitle}>{t('settings.title')}</AppText>
         <View style={styles.backBtn} />
       </View>
 
@@ -111,7 +116,6 @@ export function SettingsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: Math.max(insets.bottom, 16) + 24 }]}
       >
-        {/* Network strip */}
         <View
           style={[
             styles.networkStrip,
@@ -122,16 +126,15 @@ export function SettingsScreen() {
             },
           ]}
         >
-          <AppText variant="caption" color="muted">Active network</AppText>
+          <AppText variant="caption" color="muted">{t('settings.activeNetwork')}</AppText>
           <View style={[styles.networkBadge, { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radii.sm }]}>
             <AppText variant="label" color="accent">{networkConfig.network}</AppText>
           </View>
         </View>
 
-        {/* Nav groups */}
         {GROUPS.map(group => (
-          <View key={group.label} style={styles.group}>
-            <AppText variant="label" color="muted" style={styles.groupLabel}>{group.label}</AppText>
+          <View key={group.labelKey} style={styles.group}>
+            <AppText variant="label" color="muted" style={styles.groupLabel}>{t(group.labelKey as any)}</AppText>
             <View
               style={[
                 styles.groupCard,
@@ -146,6 +149,8 @@ export function SettingsScreen() {
                 <NavRow
                   key={item.route}
                   {...item}
+                  title={t(item.titleKey as any)}
+                  description={t(item.descKey as any)}
                   onPress={() => navigation.navigate(AppRoutes[item.route])}
                   isLast={idx === group.items.length - 1}
                 />

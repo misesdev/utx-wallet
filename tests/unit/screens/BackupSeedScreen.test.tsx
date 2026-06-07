@@ -37,23 +37,23 @@ describe('BackupSeedScreen', () => {
 
   it('renders the screen title', () => {
     const screen = renderWithTheme(<BackupSeedScreen />);
-    expect(screen.getByText('Back up seed')).toBeTruthy();
+    expect(screen.getByText('backupSeed.title')).toBeTruthy();
   });
 
   it('hides words by default (shows reveal prompt)', () => {
     const screen = renderWithTheme(<BackupSeedScreen />);
-    expect(screen.getByText('Tap to reveal')).toBeTruthy();
+    expect(screen.getByText('backupSeed.tapReveal')).toBeTruthy();
   });
 
   it('reveals words when reveal button is pressed', () => {
     const screen = renderWithTheme(<BackupSeedScreen />);
-    fireEvent.press(screen.getByLabelText('Reveal seed words'));
+    fireEvent.press(screen.getByLabelText('backupSeed.tapReveal'));
     expect(screen.getByText('abandon')).toBeTruthy();
   });
 
   it('renders all 12 word indices after reveal', () => {
     const screen = renderWithTheme(<BackupSeedScreen />);
-    fireEvent.press(screen.getByLabelText('Reveal seed words'));
+    fireEvent.press(screen.getByLabelText('backupSeed.tapReveal'));
     for (let i = 1; i <= 12; i++) {
       expect(screen.getByText(String(i))).toBeTruthy();
     }
@@ -62,8 +62,8 @@ describe('BackupSeedScreen', () => {
   it("calls proceedToConfirm and navigates when pressing continue after reveal", () => {
     const screen = renderWithTheme(<BackupSeedScreen />);
     // Reveal first so the button becomes active
-    fireEvent.press(screen.getByLabelText('Reveal seed words'));
-    fireEvent.press(screen.getByLabelText("I've written it down"));
+    fireEvent.press(screen.getByLabelText('backupSeed.tapReveal'));
+    fireEvent.press(screen.getByLabelText('backupSeed.written'));
     expect(mockProceedToConfirm).toHaveBeenCalledTimes(1);
     expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.ConfirmSeed);
   });
@@ -79,6 +79,6 @@ describe('BackupSeedScreen', () => {
       proceedToConfirm: mockProceedToConfirm,
     });
     const screen = renderWithTheme(<BackupSeedScreen />);
-    expect(screen.getByText('Passphrase active — back it up separately')).toBeTruthy();
+    expect(screen.getByText('backupSeed.passphraseActive')).toBeTruthy();
   });
 });

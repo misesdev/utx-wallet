@@ -22,6 +22,7 @@ export const darkTheme: AppTheme = {
     success: colors.success,
     successMuted: colors.successMuted,
     warning: colors.warning,
+    warningMuted: colors.warningMuted,
     danger: colors.danger,
     dangerMuted: colors.dangerMuted,
   },

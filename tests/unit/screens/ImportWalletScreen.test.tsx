@@ -64,17 +64,17 @@ describe('ImportWalletScreen', () => {
 
   it('renders the screen title', () => {
     const screen = renderWithTheme(<ImportWalletScreen />);
-    expect(screen.getByText('Import wallet')).toBeTruthy();
+    expect(screen.getByText('importWallet.title')).toBeTruthy();
   });
 
   it('renders wallet name input with placeholder', () => {
     const screen = renderWithTheme(<ImportWalletScreen />);
-    expect(screen.getByPlaceholderText('e.g. Savings')).toBeTruthy();
+    expect(screen.getByPlaceholderText('importWallet.namePlaceholder')).toBeTruthy();
   });
 
   it('renders seed phrase input with placeholder', () => {
     const screen = renderWithTheme(<ImportWalletScreen />);
-    expect(screen.getByPlaceholderText('Enter your 12 or 24 word seed phrase')).toBeTruthy();
+    expect(screen.getByPlaceholderText('importWallet.seedPlaceholder')).toBeTruthy();
   });
 
   it('renders Mainnet and Testnet network options only', () => {
@@ -87,12 +87,12 @@ describe('ImportWalletScreen', () => {
 
   it('renders the import button', () => {
     const screen = renderWithTheme(<ImportWalletScreen />);
-    expect(screen.getByLabelText('Import wallet')).toBeTruthy();
+    expect(screen.getByLabelText('importWallet.importAction')).toBeTruthy();
   });
 
   it('calls setWalletName when name input changes', () => {
     const screen = renderWithTheme(<ImportWalletScreen />);
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Savings'), 'Savings');
+    fireEvent.changeText(screen.getByPlaceholderText('importWallet.namePlaceholder'), 'Savings');
     expect(mockSetWalletName).toHaveBeenCalledWith('Savings');
   });
 
@@ -100,7 +100,7 @@ describe('ImportWalletScreen', () => {
     const screen = renderWithTheme(<ImportWalletScreen />);
     const mnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
     fireEvent.changeText(
-      screen.getByPlaceholderText('Enter your 12 or 24 word seed phrase'),
+      screen.getByPlaceholderText('importWallet.seedPlaceholder'),
       mnemonic,
     );
     expect(mockSetSeed).toHaveBeenCalledWith(mnemonic);
@@ -121,7 +121,7 @@ describe('ImportWalletScreen', () => {
   it('calls submit when import button is pressed', async () => {
     mockSubmit.mockResolvedValue(null);
     const screen = renderWithTheme(<ImportWalletScreen />);
-    fireEvent.press(screen.getByLabelText('Import wallet'));
+    fireEvent.press(screen.getByLabelText('importWallet.importAction'));
     await waitFor(() => expect(mockSubmit).toHaveBeenCalledTimes(1));
   });
 
@@ -134,14 +134,14 @@ describe('ImportWalletScreen', () => {
       createdAt: new Date().toISOString(),
     });
     const screen = renderWithTheme(<ImportWalletScreen />);
-    fireEvent.press(screen.getByLabelText('Import wallet'));
+    fireEvent.press(screen.getByLabelText('importWallet.importAction'));
     await waitFor(() => expect(mockGoBack).toHaveBeenCalledTimes(1));
   });
 
   it('does not navigate back when submit returns null', async () => {
     mockSubmit.mockResolvedValue(null);
     const screen = renderWithTheme(<ImportWalletScreen />);
-    fireEvent.press(screen.getByLabelText('Import wallet'));
+    fireEvent.press(screen.getByLabelText('importWallet.importAction'));
     await waitFor(() => expect(mockSubmit).toHaveBeenCalled());
     expect(mockGoBack).not.toHaveBeenCalled();
   });
@@ -163,7 +163,7 @@ describe('ImportWalletScreen', () => {
   it('calls clearError when name input changes while error is visible', () => {
     mockError = 'Some error';
     const screen = renderWithTheme(<ImportWalletScreen />);
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Savings'), 'New name');
+    fireEvent.changeText(screen.getByPlaceholderText('importWallet.namePlaceholder'), 'New name');
     expect(mockClearError).toHaveBeenCalledTimes(1);
   });
 
@@ -171,7 +171,7 @@ describe('ImportWalletScreen', () => {
     mockError = 'Some error';
     const screen = renderWithTheme(<ImportWalletScreen />);
     fireEvent.changeText(
-      screen.getByPlaceholderText('Enter your 12 or 24 word seed phrase'),
+      screen.getByPlaceholderText('importWallet.seedPlaceholder'),
       'new seed',
     );
     expect(mockClearError).toHaveBeenCalledTimes(1);
@@ -179,8 +179,8 @@ describe('ImportWalletScreen', () => {
 
   it('shows passphrase fields when toggle is pressed', () => {
     const screen = renderWithTheme(<ImportWalletScreen />);
-    fireEvent.press(screen.getByLabelText('Use passphrase'));
-    expect(screen.getByLabelText('Passphrase')).toBeTruthy();
-    expect(screen.getByLabelText('Confirm passphrase')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('importWallet.passphraseSection'));
+    expect(screen.getByLabelText('importWallet.passphraseLabel')).toBeTruthy();
+    expect(screen.getByLabelText('importWallet.confirmPassphraseLabel')).toBeTruthy();
   });
 });

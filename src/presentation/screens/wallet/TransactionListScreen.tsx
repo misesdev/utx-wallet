@@ -4,8 +4,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppEmptyState } from '../../components/base/AppEmptyState';
 import { AppLoading } from '../../components/base/AppLoading';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
 import { TransactionItem } from '../../components/wallet/TransactionItem';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useHomeWallet } from '../../hooks/useHomeWallet';
 import { useTheme } from '../../hooks/useTheme';
 import { AppRoutes } from '../../../app/navigation/routes';
@@ -17,6 +19,7 @@ function formatSats(n: number): string {
 
 export function TransactionListScreen() {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
   const { transactions, isLoading, error } = useHomeWallet();
@@ -26,11 +29,11 @@ export function TransactionListScreen() {
   }, [navigation]);
 
   const received = transactions
-    .filter(t => t.direction === 'incoming')
-    .reduce((s, t) => s + t.amountSats, 0);
+    .filter(tx => tx.direction === 'incoming')
+    .reduce((sum, tx) => sum + tx.amountSats, 0);
   const sent = transactions
-    .filter(t => t.direction === 'outgoing')
-    .reduce((s, t) => s + t.amountSats, 0);
+    .filter(tx => tx.direction === 'outgoing')
+    .reduce((sum, tx) => sum + tx.amountSats, 0);
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
@@ -38,15 +41,15 @@ export function TransactionListScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.back')}
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <AppText variant="title" color="muted">←</AppText>
+          <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
         <View style={styles.headerCenter}>
-          <AppText variant="subtitle" style={styles.headerTitle}>Transactions</AppText>
-          <AppText variant="caption" color="muted">{transactions.length} total</AppText>
+          <AppText variant="subtitle" style={styles.headerTitle}>{t('transactions.title')}</AppText>
+          <AppText variant="caption" color="muted">{t('transactions.total', { count: transactions.length })}</AppText>
         </View>
         <View style={styles.backBtn} />
       </View>
@@ -64,14 +67,14 @@ export function TransactionListScreen() {
           ]}
         >
           <View style={styles.summaryItem}>
-            <AppText variant="label" color="muted">Received</AppText>
+            <AppText variant="label" color="muted">{t('transactions.received')}</AppText>
             <AppText variant="body" style={[styles.summaryAmountIn, { color: theme.colors.success }]}>
               +{formatSats(received)}
             </AppText>
           </View>
           <View style={[styles.summaryDivider, { backgroundColor: theme.colors.border }]} />
           <View style={styles.summaryItem}>
-            <AppText variant="label" color="muted">Sent</AppText>
+            <AppText variant="label" color="muted">{t('transactions.sent')}</AppText>
             <AppText variant="body" style={styles.summaryAmountOut}>
               −{formatSats(sent)}
             </AppText>
@@ -81,16 +84,16 @@ export function TransactionListScreen() {
 
       {/* List */}
       {isLoading ? (
-        <AppLoading label="Loading transactions…" />
+        <AppLoading label={t('transactions.loading')} />
       ) : error ? (
         <View style={styles.feedback}>
           <AppText variant="caption" color="danger">{error}</AppText>
         </View>
       ) : transactions.length === 0 ? (
         <AppEmptyState
-          icon="◌"
-          title="No transactions yet"
-          description="Your sent and received transactions will appear here."
+          icon="transactions"
+          title={t('transactions.empty')}
+          description={t('transactions.emptyDesc')}
         />
       ) : (
         <ScrollView

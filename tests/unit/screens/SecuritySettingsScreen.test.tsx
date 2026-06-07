@@ -61,18 +61,18 @@ describe('SecuritySettingsScreen', () => {
   describe('PIN section', () => {
     it('renders the PIN toggle row', () => {
       const screen = renderWithTheme(<SecuritySettingsScreen />);
-      expect(screen.getByText('Ativar PIN')).toBeTruthy();
+      expect(screen.getByText('security.enablePin')).toBeTruthy();
     });
 
     it('shows "Sem PIN configurado" description when PIN is disabled', () => {
       const screen = renderWithTheme(<SecuritySettingsScreen />);
-      expect(screen.getByText('Sem PIN configurado')).toBeTruthy();
+      expect(screen.getByText('security.noPinConfigured')).toBeTruthy();
     });
 
     it('shows "PIN configurado" description when PIN is enabled', () => {
       mockState = { ...BASE_STATE, settings: { ...DEFAULT_SECURITY_SETTINGS, pinEnabled: true } };
       const screen = renderWithTheme(<SecuritySettingsScreen />);
-      expect(screen.getByText('PIN configurado')).toBeTruthy();
+      expect(screen.getByText('security.pinConfigured')).toBeTruthy();
     });
 
     it('calls openPinSetup when PIN switch is toggled with PIN disabled', () => {
@@ -93,33 +93,33 @@ describe('SecuritySettingsScreen', () => {
     it('shows "Alterar PIN" button when PIN is enabled', () => {
       mockState = { ...BASE_STATE, settings: { ...DEFAULT_SECURITY_SETTINGS, pinEnabled: true } };
       const screen = renderWithTheme(<SecuritySettingsScreen />);
-      expect(screen.getByText('Alterar PIN')).toBeTruthy();
+      expect(screen.getByText('security.changePin')).toBeTruthy();
     });
 
     it('does not show "Alterar PIN" button when PIN is disabled', () => {
       const screen = renderWithTheme(<SecuritySettingsScreen />);
-      expect(screen.queryByText('Alterar PIN')).toBeNull();
+      expect(screen.queryByText('security.changePin')).toBeNull();
     });
   });
 
   describe('Biometric section', () => {
     it('does not render biometric section when biometrics are unavailable', () => {
       const screen = renderWithTheme(<SecuritySettingsScreen />);
-      expect(screen.queryByText('Biometria')).toBeNull();
+      expect(screen.queryByText('security.biometrics')).toBeNull();
     });
 
     it('renders biometric section when biometrics are available', () => {
       mockState = { ...BASE_STATE, biometricAvailable: true };
       const screen = renderWithTheme(<SecuritySettingsScreen />);
-      expect(screen.getByText('Biometria')).toBeTruthy();
-      expect(screen.getByText('Ativar Biometria')).toBeTruthy();
+      expect(screen.getByText('security.biometrics')).toBeTruthy();
+      expect(screen.getByText('security.enableBiometrics')).toBeTruthy();
     });
   });
 
   describe('Auto-lock options', () => {
     it('renders the auto-lock section', () => {
       const screen = renderWithTheme(<SecuritySettingsScreen />);
-      expect(screen.getByText('Bloqueio Automático')).toBeTruthy();
+      expect(screen.getByText('security.autoLock')).toBeTruthy();
     });
 
     it('renders lock option for 5 minutes', () => {
@@ -137,8 +137,8 @@ describe('SecuritySettingsScreen', () => {
   describe('Privacy section', () => {
     it('renders hide balance and block screenshots rows', () => {
       const screen = renderWithTheme(<SecuritySettingsScreen />);
-      expect(screen.getByText('Ocultar Saldo')).toBeTruthy();
-      expect(screen.getByText('Bloquear Screenshots')).toBeTruthy();
+      expect(screen.getByText('security.hideBalance')).toBeTruthy();
+      expect(screen.getByText('security.blockScreenshots')).toBeTruthy();
     });
   });
 

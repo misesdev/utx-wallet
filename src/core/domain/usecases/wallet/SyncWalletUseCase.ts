@@ -59,16 +59,14 @@ export class SyncWalletUseCase {
     const legacyAddresses = storedAddresses.map(a => a.value);
     const allAddresses = [...new Set([...legacyAddresses, ...hdAddresses])];
 
-    const [utxoResult, txResult] = await Promise.all([
-      this.syncUtxos.execute(walletId, allAddresses, wallet.network),
-      this.syncTransactions.execute(walletId, allAddresses, wallet.network),
-    ]);
+    const utxoResult = await this.syncUtxos.execute(walletId, allAddresses, wallet.network);
+    const txResult = await this.syncTransactions.execute(walletId, allAddresses, wallet.network);
 
     await this.syncBalance.execute(walletId);
 
-    // Sync HD address statuses after UTXO/tx data is refreshed
+    // Sync HD address statuses — pass pre-fetched TX data to avoid duplicate API calls
     if (this.syncAddressStatus) {
-      await this.syncAddressStatus.execute(walletId, wallet.network);
+      await this.syncAddressStatus.execute(walletId, wallet.network, txResult.fetchedTransactions);
     }
 
     const syncedAt = new Date().toISOString();

@@ -11,8 +11,9 @@ import { AppButton } from '../../components/base/AppButton';
 import { AppEmptyState } from '../../components/base/AppEmptyState';
 import { AppScreen } from '../../components/base/AppScreen';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
 import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
-import { useNetwork } from '../../hooks/useNetwork';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
 import { useWallet } from '../../hooks/useWallet';
 import type { AddressOrigin } from '../../../core/domain/entities/AddressOrigin';
@@ -34,6 +35,7 @@ type OriginCardProps = {
 
 function OriginCard({ origin, coinType }: OriginCardProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const isDefault = origin.type === 'default';
 
   return (
@@ -56,7 +58,7 @@ function OriginCard({ origin, coinType }: OriginCardProps) {
           },
         ]}
       >
-        <AppText style={styles.originIconText}>{isDefault ? '◎' : '⊡'}</AppText>
+        <AppIcon name={isDefault ? "wallet" : "accounts"} size={22} color={isDefault ? theme.colors.accent : theme.colors.textMuted} />
       </View>
       <View style={styles.originInfo}>
         <View style={styles.originNameRow}>
@@ -71,7 +73,7 @@ function OriginCard({ origin, coinType }: OriginCardProps) {
                 },
               ]}
             >
-              <AppText variant="label" color="accent">Default</AppText>
+              <AppText variant="label" color="accent">{t('segregation.default')}</AppText>
             </View>
           )}
         </View>
@@ -93,6 +95,7 @@ type CreateModalProps = {
 
 function CreateModal({ visible, isLoading, error, onClose, onConfirm }: CreateModalProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const [name, setName] = useState('');
 
   const handleConfirm = useCallback(() => {
@@ -120,15 +123,15 @@ function CreateModal({ visible, isLoading, error, onClose, onConfirm }: CreateMo
           ]}
           onPress={() => undefined}
         >
-          <AppText variant="subtitle" style={styles.modalTitle}>New Segregation</AppText>
+          <AppText variant="subtitle" style={styles.modalTitle}>{t('segregation.modalTitle')}</AppText>
           <AppText variant="caption" color="muted" style={styles.modalDesc}>
-            Each segregation is an independent BIP84 account with its own receive and change address pool.
+            {t('segregation.modalDesc')}
           </AppText>
 
           <TextInput
             value={name}
             onChangeText={setName}
-            placeholder="Name (e.g. Savings, Exchange)"
+            placeholder={t('segregation.modalPlaceholder')}
             placeholderTextColor={theme.colors.textFaint}
             style={[
               styles.input,
@@ -148,9 +151,9 @@ function CreateModal({ visible, isLoading, error, onClose, onConfirm }: CreateMo
           ) : null}
 
           <View style={styles.modalActions}>
-            <AppButton title="Cancel" variant="ghost" onPress={handleClose} />
+            <AppButton title={t('common.cancel')} variant="ghost" onPress={handleClose} />
             <AppButton
-              title={isLoading ? 'Creating…' : 'Create'}
+              title={isLoading ? t('segregation.creating') : t('segregation.create')}
               onPress={handleConfirm}
               disabled={isLoading || name.trim().length === 0}
             />
@@ -166,8 +169,8 @@ function CreateModal({ visible, isLoading, error, onClose, onConfirm }: CreateMo
 export function SegregationScreen() {
   const { getOrigins, createAddressOrigin } = useAddressManager();
   const { selectedWallet } = useWallet();
-  const { networkConfig } = useNetwork();
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
 
   const [origins, setOrigins] = useState<AddressOrigin[]>([]);
   const [isLoadingOrigins, setIsLoadingOrigins] = useState(false);
@@ -175,7 +178,8 @@ export function SegregationScreen() {
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  const coinType = COIN_TYPE[networkConfig.network] ?? "0'";
+  const walletNetwork = selectedWallet?.network ?? 'mainnet';
+  const coinType = COIN_TYPE[walletNetwork] ?? "0'";
 
   const loadOrigins = useCallback(async () => {
     if (!selectedWallet) return;
@@ -199,19 +203,19 @@ export function SegregationScreen() {
     setIsCreating(true);
     setCreateError(null);
     try {
-      await createAddressOrigin(selectedWallet.id, name, networkConfig.network);
+      await createAddressOrigin(selectedWallet.id, name, selectedWallet.network);
       setShowCreateModal(false);
       await loadOrigins();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to create segregation';
+      const msg = err instanceof Error ? err.message : t('segregation.errorCreate');
       setCreateError(msg);
     } finally {
       setIsCreating(false);
     }
-  }, [selectedWallet, networkConfig.network, createAddressOrigin, loadOrigins]);
+  }, [selectedWallet, createAddressOrigin, loadOrigins, t]);
 
   return (
-    <AppScreen title="Segregation" subtitle="Logical fund accounts">
+    <AppScreen title={t('segregation.title')} subtitle={t('segregation.subtitle')}>
       <View style={styles.infoCard}>
         <View
           style={[
@@ -224,18 +228,18 @@ export function SegregationScreen() {
           ]}
         >
           <AppText variant="caption" color="muted">
-            Each segregation is an independent BIP84 account (accountIndex). Funds in different segregations remain separate and never mix automatically.
+            {t('segregation.info')}
           </AppText>
         </View>
       </View>
 
       {isLoadingOrigins ? (
-        <AppText variant="caption" color="muted" style={styles.loadingText}>Loading…</AppText>
+        <AppText variant="caption" color="muted" style={styles.loadingText}>{t('common.loading')}</AppText>
       ) : origins.length === 0 ? (
         <AppEmptyState
-          icon="⊡"
-          title="No segregations yet"
-          description="Your Default account is created automatically when you first sync."
+          icon="accounts"
+          title={t('segregation.empty')}
+          description={t('segregation.emptyDesc')}
         />
       ) : (
         <View style={styles.originList}>
@@ -246,7 +250,7 @@ export function SegregationScreen() {
       )}
 
       <AppButton
-        title="+ New Segregation"
+        title={t('segregation.newButton')}
         onPress={() => { setCreateError(null); setShowCreateModal(true); }}
       />
 

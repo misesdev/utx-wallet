@@ -3,8 +3,10 @@ import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton } from '../../components/base/AppButton';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
 import { PinInputModal } from '../../components/security/PinInputModal';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useSecuritySettings } from '../../hooks/useSecuritySettings';
 import { useTheme } from '../../hooks/useTheme';
 import { AUTO_LOCK_OPTIONS } from '../../../core/domain/entities/SecuritySettings';
@@ -104,6 +106,7 @@ function SectionCard({ title, description, children }: SectionCardProps) {
 
 export function SecuritySettingsScreen() {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
 
@@ -134,13 +137,13 @@ export function SecuritySettingsScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.back')}
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <AppText variant="title" color="muted">←</AppText>
+          <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
-        <AppText variant="subtitle" style={styles.headerTitle}>Segurança</AppText>
+        <AppText variant="subtitle" style={styles.headerTitle}>{t('security.title')}</AppText>
         <View style={styles.backBtn} />
       </View>
 
@@ -150,12 +153,12 @@ export function SecuritySettingsScreen() {
       >
         {/* PIN Section */}
         <SectionCard
-          title="PIN"
-          description="Bloqueie a carteira com um código PIN numérico"
+          title={t('security.pin')}
+          description={t('security.pinDesc')}
         >
           <ToggleRow
-            label="Ativar PIN"
-            description={settings.pinEnabled ? 'PIN configurado' : 'Sem PIN configurado'}
+            label={t('security.enablePin')}
+            description={settings.pinEnabled ? t('security.pinConfigured') : t('security.noPinConfigured')}
             value={settings.pinEnabled}
             onToggle={settings.pinEnabled ? openPinRemove : openPinSetup}
           />
@@ -163,7 +166,7 @@ export function SecuritySettingsScreen() {
             <>
               <View style={[styles.cardDivider, { backgroundColor: theme.colors.border }]} />
               <AppButton
-                title="Alterar PIN"
+                title={t('security.changePin')}
                 variant="ghost"
                 size="sm"
                 onPress={openPinSetup}
@@ -175,12 +178,12 @@ export function SecuritySettingsScreen() {
         {/* Biometric Section */}
         {biometricAvailable && (
           <SectionCard
-            title="Biometria"
-            description="Desbloqueie usando digital ou reconhecimento facial"
+            title={t('security.biometrics')}
+            description={t('security.biometricsDesc')}
           >
             <ToggleRow
-              label="Ativar Biometria"
-              description={settings.pinEnabled ? undefined : 'Configure um PIN primeiro'}
+              label={t('security.enableBiometrics')}
+              description={settings.pinEnabled ? undefined : t('security.configurePinFirst')}
               value={settings.biometricEnabled}
               onToggle={toggleBiometric}
               disabled={!settings.pinEnabled}
@@ -190,8 +193,8 @@ export function SecuritySettingsScreen() {
 
         {/* Auto-lock Section */}
         <SectionCard
-          title="Bloqueio Automático"
-          description="Tempo de inatividade antes de bloquear a carteira"
+          title={t('security.autoLock')}
+          description={t('security.autoLockDesc')}
         >
           <View style={styles.lockGrid}>
             {AUTO_LOCK_OPTIONS.map(opt => (
@@ -208,19 +211,19 @@ export function SecuritySettingsScreen() {
 
         {/* Privacy Section */}
         <SectionCard
-          title="Privacidade"
-          description="Proteções adicionais de privacidade"
+          title={t('security.privacy')}
+          description={t('security.privacyDesc')}
         >
           <ToggleRow
-            label="Ocultar Saldo"
-            description="Exibe asteriscos no lugar do saldo"
+            label={t('security.hideBalance')}
+            description={t('security.hideBalanceDesc')}
             value={settings.hideBalance}
             onToggle={toggleHideBalance}
           />
           <View style={[styles.cardDivider, { backgroundColor: theme.colors.border }]} />
           <ToggleRow
-            label="Bloquear Screenshots"
-            description="Impede capturas de tela em telas sensíveis"
+            label={t('security.blockScreenshots')}
+            description={t('security.blockScreenshotsDesc')}
             value={settings.blockScreenshots}
             onToggle={toggleBlockScreenshots}
           />
@@ -238,7 +241,7 @@ export function SecuritySettingsScreen() {
           ]}
         >
           <AppText variant="caption" color="muted">
-            PIN ou biometria serão solicitados antes de visualizar a seed, enviar bitcoin e exportar dados sensíveis.
+            {t('security.footnote')}
           </AppText>
         </View>
 

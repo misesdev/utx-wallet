@@ -121,7 +121,7 @@ describe('TransactionDetailsScreen', () => {
 
     it('shows "Enviado" label for outgoing transactions', () => {
       const screen = renderWithTheme(<TransactionDetailsScreen />);
-      expect(screen.getByTestId('tx-direction-tx-out').props.children).toBe('Enviado');
+      expect(screen.getByTestId('tx-direction-tx-out').props.children).toBe('transactions.sent');
     });
 
     it('shows the amount for outgoing transactions', () => {
@@ -153,21 +153,21 @@ describe('TransactionDetailsScreen', () => {
 
     it('shows "Recebido" label for incoming transactions', () => {
       const screen = renderWithTheme(<TransactionDetailsScreen />);
-      expect(screen.getByTestId('tx-direction-tx-in').props.children).toBe('Recebido');
+      expect(screen.getByTestId('tx-direction-tx-in').props.children).toBe('transactions.received');
     });
   });
 
   describe('confirmed transaction', () => {
     it('shows "Confirmado" status label', () => {
       const screen = renderWithTheme(<TransactionDetailsScreen />);
-      expect(screen.getByTestId('tx-status-tx-out').props.children).toBe('Confirmado');
+      expect(screen.getByTestId('tx-status-tx-out').props.children).toBe('transactions.confirmed');
     });
   });
 
   describe('pending transaction', () => {
     it('shows "Pendente" status label for pending transaction', () => {
       const screen = renderWithTheme(<TransactionDetailsScreen />);
-      expect(screen.getByTestId('tx-status-tx-in').props.children).toBe('Pendente');
+      expect(screen.getByTestId('tx-status-tx-in').props.children).toBe('transactions.pending');
     });
 
     it('does not show confirmations for pending transaction', () => {

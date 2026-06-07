@@ -5,11 +5,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BitcoinNetwork } from '../../../core/domain/entities/Network';
 import { AppRoutes, AppStackParamList } from '../../../app/navigation/routes';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
 import { AppLoading } from '../../components/base/AppLoading';
 import { FormInput } from '../../components/forms/FormInput';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useImportWallet } from '../../hooks/useImportWallet';
 import { useTheme } from '../../hooks/useTheme';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 
 type ImportWalletRoute = RouteProp<AppStackParamList, typeof AppRoutes.ImportWallet>;
 
@@ -41,6 +43,7 @@ export function ImportWalletScreen() {
     submit,
   } = useImportWallet(routeNetwork);
 
+  const { t } = useAppTranslation();
   const [passphraseEnabled, setPassphraseEnabled] = useState(false);
   const [showPassphrase, setShowPassphrase] = useState(false);
 
@@ -57,15 +60,15 @@ export function ImportWalletScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.back')}
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <AppText variant="title" color="muted">←</AppText>
+          <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
         <View style={styles.headerCenter}>
-          <AppText variant="subtitle" style={styles.headerTitle}>Import wallet</AppText>
-          <AppText variant="caption" color="muted">Restore from seed phrase</AppText>
+          <AppText variant="subtitle" style={styles.headerTitle}>{t('importWallet.title')}</AppText>
+          <AppText variant="caption" color="muted">{t('importWallet.subtitle')}</AppText>
         </View>
         <View style={styles.backBtn} />
       </View>
@@ -90,8 +93,8 @@ export function ImportWalletScreen() {
           ]}
         >
           <FormInput
-            label="Wallet name"
-            placeholder="e.g. Savings"
+            label={t('importWallet.nameLabel')}
+            placeholder={t('importWallet.namePlaceholder')}
             value={walletName}
             onChangeText={v => {
               setWalletName(v);
@@ -100,14 +103,14 @@ export function ImportWalletScreen() {
             autoFocus
             returnKeyType="next"
             maxLength={48}
-            accessibilityLabel="Wallet name"
+            accessibilityLabel={t('importWallet.nameLabel')}
           />
 
           <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
 
           <FormInput
-            label="Seed phrase"
-            placeholder="Enter your 12 or 24 word seed phrase"
+            label={t('importWallet.seedLabel')}
+            placeholder={t('importWallet.seedPlaceholder')}
             value={seed}
             onChangeText={v => {
               setSeed(v);
@@ -120,14 +123,14 @@ export function ImportWalletScreen() {
             autoCorrect={false}
             spellCheck={false}
             returnKeyType="done"
-            accessibilityLabel="Seed phrase"
+            accessibilityLabel={t('importWallet.seedLabel')}
           />
 
           <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
 
           {/* Network selector */}
           <View style={styles.networkSection}>
-            <AppText variant="label" color="muted">Network</AppText>
+            <AppText variant="label" color="muted">{t('importWallet.networkLabel')}</AppText>
             <View style={styles.networkRow}>
               {IMPORT_NETWORKS.map(net => {
                 const active = selectedNetwork === net.key;
@@ -164,7 +167,7 @@ export function ImportWalletScreen() {
         <Pressable
           accessibilityRole="switch"
           accessibilityState={{ checked: passphraseEnabled }}
-          accessibilityLabel="Use passphrase"
+          accessibilityLabel={t('importWallet.passphraseSection')}
           onPress={() => {
             setPassphraseEnabled(prev => !prev);
             setPassphrase('');
@@ -181,10 +184,10 @@ export function ImportWalletScreen() {
           ]}
         >
           <View style={styles.toggleLeft}>
-            <AppText style={styles.toggleIcon}>🔐</AppText>
+            <AppIcon name="key" size={22} color={theme.colors.textMuted} />
             <View style={styles.toggleText}>
-              <AppText variant="body" style={styles.toggleLabel}>Passphrase (25th word)</AppText>
-              <AppText variant="caption" color="muted">If your wallet uses one</AppText>
+              <AppText variant="body" style={styles.toggleLabel}>{t('importWallet.passphraseSection')}</AppText>
+              <AppText variant="caption" color="muted">{t('importWallet.passphraseDesc')}</AppText>
             </View>
           </View>
           <View
@@ -218,8 +221,8 @@ export function ImportWalletScreen() {
             ]}
           >
             <FormInput
-              label="Passphrase"
-              placeholder="Enter your passphrase"
+              label={t('importWallet.passphraseLabel')}
+              placeholder={t('importWallet.passphrasePlaceholder')}
               value={passphrase}
               onChangeText={v => {
                 setPassphrase(v);
@@ -230,14 +233,14 @@ export function ImportWalletScreen() {
               autoCorrect={false}
               spellCheck={false}
               returnKeyType="next"
-              accessibilityLabel="Passphrase"
+              accessibilityLabel={t('importWallet.passphraseLabel')}
             />
 
             <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
 
             <FormInput
-              label="Confirm passphrase"
-              placeholder="Repeat your passphrase"
+              label={t('importWallet.confirmPassphraseLabel')}
+              placeholder={t('importWallet.confirmPassphrasePlaceholder')}
               value={confirmPassphrase}
               onChangeText={v => {
                 setConfirmPassphrase(v);
@@ -249,17 +252,17 @@ export function ImportWalletScreen() {
               spellCheck={false}
               returnKeyType="done"
               onSubmitEditing={handleImport}
-              accessibilityLabel="Confirm passphrase"
+              accessibilityLabel={t('importWallet.confirmPassphraseLabel')}
             />
 
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={showPassphrase ? 'Hide passphrase' : 'Show passphrase'}
+              accessibilityLabel={showPassphrase ? t('importWallet.hidePassphrase') : t('importWallet.showPassphrase')}
               onPress={() => setShowPassphrase(v => !v)}
               style={styles.revealRow}
             >
               <AppText variant="caption" style={{ color: theme.colors.accent }}>
-                {showPassphrase ? '● Hide passphrase' : '○ Show passphrase'}
+                {showPassphrase ? t('importWallet.hidePassphrase') : t('importWallet.showPassphrase')}
               </AppText>
             </Pressable>
           </View>
@@ -274,11 +277,11 @@ export function ImportWalletScreen() {
 
         {/* CTA */}
         {isLoading ? (
-          <AppLoading label="Importing wallet…" />
+          <AppLoading label={t('importWallet.importing')} />
         ) : (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Import wallet"
+            accessibilityLabel={t('importWallet.importAction')}
             onPress={handleImport}
             disabled={isLoading}
             style={({ pressed }) => [
@@ -291,7 +294,7 @@ export function ImportWalletScreen() {
             ]}
           >
             <AppText variant="subtitle" style={styles.ctaText}>
-              Import wallet →
+              {t('importWallet.importAction')}
             </AppText>
           </Pressable>
         )}
@@ -390,9 +393,6 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     gap: 12,
-  },
-  toggleIcon: {
-    fontSize: 22,
   },
   toggleText: {
     flex: 1,

@@ -30,7 +30,7 @@ describe('BalanceCard', () => {
 
   it('uses default label when not provided', () => {
     const screen = renderWithTheme(<BalanceCard balanceSats={100} />);
-    expect(screen.getByText('Total balance')).toBeTruthy();
+    expect(screen.getByText('wallet.balanceTotal')).toBeTruthy();
   });
 
   describe('hidden mode', () => {
@@ -52,7 +52,7 @@ describe('BalanceCard', () => {
     it('shows real balance when hidden is false', () => {
       const screen = renderWithTheme(<BalanceCard balanceSats={500_000} hidden={false} />);
       expect(screen.getByText('500,000')).toBeTruthy();
-      expect(screen.getByText('sats')).toBeTruthy();
+      expect(screen.getByText('common.sats')).toBeTruthy();
     });
   });
 });

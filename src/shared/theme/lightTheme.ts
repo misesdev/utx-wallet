@@ -22,6 +22,7 @@ export const lightTheme: AppTheme = {
     success: '#10B981',
     successMuted: 'rgba(16,185,129,0.10)',
     warning: colors.warning,
+    warningMuted: 'rgba(245,158,11,0.12)',
     danger: '#EF4444',
     dangerMuted: 'rgba(239,68,68,0.10)',
   },

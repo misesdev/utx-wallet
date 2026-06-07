@@ -6,12 +6,15 @@ import type { BitcoinNetwork } from '../../../core/domain/entities/Network';
 import { AppButton } from '../../components/base/AppButton';
 import { AppInput } from '../../components/base/AppInput';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
 import { useSafeMode } from '../../hooks/useSafeMode';
 
 export function NodeSettingsScreen() {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
 
@@ -34,15 +37,15 @@ export function NodeSettingsScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.back')}
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <AppText variant="title" color="muted">←</AppText>
+          <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
         <View style={styles.headerCenter}>
-          <AppText variant="subtitle" style={styles.headerTitle}>Node settings</AppText>
-          <AppText variant="caption" color="muted">Personal node connection</AppText>
+          <AppText variant="subtitle" style={styles.headerTitle}>{t('nodeSettings.title')}</AppText>
+          <AppText variant="caption" color="muted">{t('nodeSettings.subtitle')}</AppText>
         </View>
         <View style={styles.backBtn} />
       </View>
@@ -53,7 +56,7 @@ export function NodeSettingsScreen() {
       >
         {/* Connection inputs */}
         <View style={styles.section}>
-          <AppText variant="label" color="muted" style={styles.sectionLabel}>Conexão</AppText>
+          <AppText variant="label" color="muted" style={styles.sectionLabel}>{t('nodeSettings.connection')}</AppText>
           <View
             style={[
               styles.formCard,
@@ -65,36 +68,36 @@ export function NodeSettingsScreen() {
             ]}
           >
             <View style={styles.inputGroup}>
-              <AppText variant="caption" color="muted" style={styles.inputLabel}>URL do node</AppText>
+              <AppText variant="caption" color="muted" style={styles.inputLabel}>{t('nodeSettings.nodeUrl')}</AppText>
               <AppInput
-                accessibilityLabel="Node URL"
+                accessibilityLabel={t('nodeSettings.nodeUrl')}
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="url"
-                placeholder="https://node.example.com/api"
+                placeholder={t('nodeSettings.nodeUrlPlaceholder')}
                 value={form.url}
                 onChangeText={setUrl}
               />
             </View>
             <View style={[styles.inputDivider, { backgroundColor: theme.colors.border }]} />
             <View style={styles.inputGroup}>
-              <AppText variant="caption" color="muted" style={styles.inputLabel}>Porta</AppText>
+              <AppText variant="caption" color="muted" style={styles.inputLabel}>{t('nodeSettings.port')}</AppText>
               <AppInput
-                accessibilityLabel="Node port"
+                accessibilityLabel={t('nodeSettings.port')}
                 keyboardType="number-pad"
-                placeholder="Porta"
+                placeholder={t('nodeSettings.port')}
                 value={form.port}
                 onChangeText={setPort}
               />
             </View>
             <View style={[styles.inputDivider, { backgroundColor: theme.colors.border }]} />
             <View style={styles.inputGroup}>
-              <AppText variant="caption" color="muted" style={styles.inputLabel}>Token de autenticação</AppText>
+              <AppText variant="caption" color="muted" style={styles.inputLabel}>{t('nodeSettings.authToken')}</AppText>
               <AppInput
-                accessibilityLabel="Node auth token"
+                accessibilityLabel={t('nodeSettings.authToken')}
                 autoCapitalize="none"
                 autoCorrect={false}
-                placeholder="Token de autenticação"
+                placeholder={t('nodeSettings.authToken')}
                 secureTextEntry
                 value={form.authToken}
                 onChangeText={setAuthToken}
@@ -105,7 +108,7 @@ export function NodeSettingsScreen() {
 
         {/* Network selector */}
         <View style={styles.section}>
-          <AppText variant="label" color="muted" style={styles.sectionLabel}>Rede</AppText>
+          <AppText variant="label" color="muted" style={styles.sectionLabel}>{t('common.network')}</AppText>
           <View style={styles.networkGrid}>
             {SUPPORTED_NETWORKS.map(network => {
               const isSelected = form.network === network;
@@ -146,7 +149,7 @@ export function NodeSettingsScreen() {
             },
           ]}
         >
-          <AppText variant="label" color="muted">Status</AppText>
+          <AppText variant="label" color="muted">{t('nodeSettings.status')}</AppText>
           <View style={styles.statusRow}>
             <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
             <AppText variant="body" style={{ color: statusColor }}>{statusLabel}</AppText>
@@ -154,8 +157,8 @@ export function NodeSettingsScreen() {
         </View>
 
         {/* Actions */}
-        <AppButton title="Testar conexão" variant="secondary" onPress={testConnection} />
-        <AppButton title="Salvar e ativar modo seguro" onPress={activateSafeMode} />
+        <AppButton title={t('nodeSettings.testConnection')} variant="secondary" onPress={testConnection} />
+        <AppButton title={t('nodeSettings.saveAndActivate')} onPress={activateSafeMode} />
       </ScrollView>
     </View>
   );

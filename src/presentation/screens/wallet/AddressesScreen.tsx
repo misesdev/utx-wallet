@@ -6,19 +6,10 @@ import { AppLoading } from '../../components/base/AppLoading';
 import { AppText } from '../../components/base/AppText';
 import { AppHeader } from '../../components/base/AppHeader';
 import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
 import { useWallet } from '../../hooks/useWallet';
 import type { AddressStatus, WalletAddress } from '../../../core/domain/entities/WalletAddress';
-
-const STATUS_LABEL: Record<AddressStatus, string> = {
-  fresh: 'Fresh',
-  reserved: 'Reserved',
-  received: 'Received',
-  spent_once: 'Spent',
-  change: 'Change',
-  archived: 'Archived',
-  inconsistent: 'Inconsistent',
-};
 
 const STATUS_COLOR: Record<AddressStatus, 'muted' | 'success' | 'warning' | 'danger' | 'accent'> = {
   fresh: 'muted',
@@ -40,7 +31,17 @@ type AddressRowProps = {
 
 function AddressRow({ address }: AddressRowProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const statusColor = STATUS_COLOR[address.status];
+  const STATUS_TRANSLATIONS: Record<AddressStatus, string> = {
+    fresh: t('addresses.statusFresh'),
+    reserved: t('addresses.statusReserved'),
+    received: t('addresses.statusReceived'),
+    spent_once: t('addresses.statusSpent'),
+    change: t('addresses.statusChange'),
+    archived: t('addresses.statusArchived'),
+    inconsistent: t('addresses.statusInconsistent'),
+  };
 
   return (
     <View
@@ -56,9 +57,9 @@ function AddressRow({ address }: AddressRowProps) {
       <View style={styles.rowLeft}>
         <AppText variant="body" style={styles.address}>{truncate(address.address)}</AppText>
         <View style={styles.meta}>
-          <AppText variant="caption" color={statusColor}>{STATUS_LABEL[address.status]}</AppText>
+          <AppText variant="caption" color={statusColor}>{STATUS_TRANSLATIONS[address.status]}</AppText>
           <AppText variant="caption" color="faint">·</AppText>
-          <AppText variant="caption" color="muted">{address.chain === 'change' ? 'Change' : 'Receive'}</AppText>
+          <AppText variant="caption" color="muted">{address.chain === 'change' ? t('addresses.chainChange') : t('addresses.chainReceive')}</AppText>
           <AppText variant="caption" color="faint">·</AppText>
           <AppText variant="caption" color="muted">#{address.index}</AppText>
         </View>
@@ -66,7 +67,7 @@ function AddressRow({ address }: AddressRowProps) {
       <View style={styles.rowRight}>
         {address.txCount > 0 ? (
           <>
-            <AppText variant="caption" color="muted">{address.txCount} tx</AppText>
+            <AppText variant="caption" color="muted">{t('addresses.txCount', { count: address.txCount })}</AppText>
             {address.totalReceivedSats > 0 ? (
               <AppText variant="caption" color="muted">
                 {address.totalReceivedSats.toLocaleString()} sats
@@ -114,6 +115,7 @@ type SectionProps = {
 
 function OriginSection({ group }: SectionProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
@@ -124,13 +126,13 @@ function OriginSection({ group }: SectionProps) {
             { backgroundColor: theme.colors.surfaceMuted, borderRadius: theme.radii.sm },
           ]}
         >
-          <AppText variant="caption" color="muted">Account {group.accountIndex}</AppText>
+          <AppText variant="caption" color="muted">{t('common.account', { accountIndex: group.accountIndex })}</AppText>
         </View>
       </View>
 
       {group.receive.length > 0 && (
         <View style={styles.chainGroup}>
-          <AppText variant="label" color="muted" style={styles.chainLabel}>Receive</AppText>
+          <AppText variant="label" color="muted" style={styles.chainLabel}>{t('addresses.chainReceive')}</AppText>
           <View style={styles.addressList}>
             {group.receive.map(a => <AddressRow key={a.id} address={a} />)}
           </View>
@@ -139,7 +141,7 @@ function OriginSection({ group }: SectionProps) {
 
       {group.change.length > 0 && (
         <View style={styles.chainGroup}>
-          <AppText variant="label" color="muted" style={styles.chainLabel}>Change</AppText>
+          <AppText variant="label" color="muted" style={styles.chainLabel}>{t('addresses.chainChange')}</AppText>
           <View style={styles.addressList}>
             {group.change.map(a => <AddressRow key={a.id} address={a} />)}
           </View>
@@ -151,6 +153,7 @@ function OriginSection({ group }: SectionProps) {
 
 export function AddressesScreen() {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const { listAddresses } = useAddressManager();
   const { selectedWallet } = useWallet();
@@ -179,17 +182,17 @@ export function AddressesScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
-      <AppHeader title="Addresses" subtitle={`${addresses.length} total`} />
+      <AppHeader title={t('addresses.title')} subtitle={t('addresses.total', { count: addresses.length })} />
       {isLoading ? (
         <View style={styles.center}>
-          <AppLoading label="Loading addresses…" />
+          <AppLoading label={t('addresses.loading')} />
         </View>
       ) : addresses.length === 0 ? (
         <View style={styles.center}>
           <AppEmptyState
-            icon="◉"
-            title="No addresses yet"
-            description="Addresses are generated when you sync or receive bitcoin."
+            icon="addresses"
+            title={t('addresses.empty')}
+            description={t('addresses.emptyDesc')}
           />
         </View>
       ) : (

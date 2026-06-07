@@ -5,8 +5,10 @@ import type { Utxo } from '../../../core/domain/entities/Utxo';
 import type { WalletAddress } from '../../../core/domain/entities/WalletAddress';
 import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
 import { UtxoItem } from '../../components/wallet/UtxoItem';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
 import { useUtxos, type UtxoFilter } from '../../hooks/useUtxos';
 import { useWallet } from '../../hooks/useWallet';
@@ -15,13 +17,13 @@ import { useWallet } from '../../hooks/useWallet';
 // Constants
 // ---------------------------------------------------------------------------
 
-const FILTERS: { key: UtxoFilter; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'highest-value', label: '↑ Value' },
-  { key: 'lowest-value', label: '↓ Value' },
-  { key: 'confirmed', label: 'Confirmed' },
-  { key: 'pending', label: 'Pending' },
-  { key: 'frozen', label: '❄ Frozen' },
+const FILTERS: { key: UtxoFilter }[] = [
+  { key: 'all' },
+  { key: 'highest-value' },
+  { key: 'lowest-value' },
+  { key: 'confirmed' },
+  { key: 'pending' },
+  { key: 'frozen' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -77,6 +79,7 @@ type OriginHeaderProps = {
 
 function OriginHeader({ name, isDefault, count, totalSats }: OriginHeaderProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   return (
     <View style={styles.originHeader}>
       <View
@@ -88,7 +91,7 @@ function OriginHeader({ name, isDefault, count, totalSats }: OriginHeaderProps) 
           },
         ]}
       >
-        <AppText style={styles.originIconText}>{isDefault ? '◎' : '⊡'}</AppText>
+        <AppIcon name={isDefault ? "wallet" : "accounts"} size={22} color={isDefault ? theme.colors.accent : theme.colors.textMuted} />
       </View>
       <View style={styles.originInfo}>
         <View style={styles.originTitleRow}>
@@ -100,12 +103,12 @@ function OriginHeader({ name, isDefault, count, totalSats }: OriginHeaderProps) 
                 { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radii.sm },
               ]}
             >
-              <AppText variant="label" style={{ color: theme.colors.accent }}>Default</AppText>
+              <AppText variant="label" style={{ color: theme.colors.accent }}>{t('common.default')}</AppText>
             </View>
           )}
         </View>
         <AppText variant="caption" color="muted">
-          {count} UTXO{count !== 1 ? 's' : ''} · {totalSats.toLocaleString()} sats
+          {t('utxos.originSummary', { count, total: totalSats.toLocaleString() })}
         </AppText>
       </View>
     </View>
@@ -118,11 +121,21 @@ function OriginHeader({ name, isDefault, count, totalSats }: OriginHeaderProps) 
 
 export function UtxosScreen() {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
   const { selectedWallet } = useWallet();
   const { listAddresses } = useAddressManager();
   const { utxos, isLoading, error, filter, setFilter, freeze, unfreeze } = useUtxos();
+
+  const FILTER_LABELS: Record<UtxoFilter, string> = {
+    'all': t('utxos.all'),
+    'highest-value': t('utxos.sortValueAsc'),
+    'lowest-value': t('utxos.sortValueDesc'),
+    'confirmed': t('utxos.confirmed'),
+    'pending': t('utxos.pending'),
+    'frozen': t('utxos.frozen'),
+  };
 
   const [walletAddresses, setWalletAddresses] = useState<WalletAddress[]>([]);
 
@@ -159,7 +172,7 @@ export function UtxosScreen() {
       } else {
         groupMap.set(key, {
           originId: key,
-          originName: info?.originName ?? 'Other',
+          originName: info?.originName ?? t('utxos.otherOrigin'),
           isDefault: info?.isDefault ?? false,
           utxos: [utxo],
         });
@@ -170,7 +183,7 @@ export function UtxosScreen() {
       if (b.isDefault) return 1;
       return a.originName.localeCompare(b.originName);
     });
-  }, [utxos, addressOriginMap]);
+  }, [utxos, addressOriginMap, t]);
 
   const handleFreeze = useCallback(
     (txid: string, vout: number) => { freeze(txid, vout).catch(() => undefined); },
@@ -186,10 +199,10 @@ export function UtxosScreen() {
 
   const emptyMessage =
     filter === 'frozen'
-      ? 'No frozen UTXOs.'
+      ? t('utxos.noFrozen')
       : filter === 'pending'
-        ? 'No pending UTXOs.'
-        : 'Sync the wallet to load UTXOs.';
+        ? t('utxos.noPending')
+        : t('utxos.syncToLoad');
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
@@ -197,13 +210,13 @@ export function UtxosScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.back')}
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <AppText variant="title" color="muted">←</AppText>
+          <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
-        <AppText variant="subtitle" style={styles.headerTitle}>UTXOs</AppText>
+        <AppText variant="subtitle" style={styles.headerTitle}>{t('utxos.title')}</AppText>
         <View style={styles.backBtn} />
       </View>
 
@@ -217,7 +230,7 @@ export function UtxosScreen() {
         {FILTERS.map(f => (
           <FilterChip
             key={f.key}
-            label={f.label}
+            label={FILTER_LABELS[f.key]}
             active={filter === f.key}
             onPress={() => setFilter(f.key)}
           />
@@ -236,10 +249,10 @@ export function UtxosScreen() {
           ]}
         >
           <AppText variant="caption" color="muted">
-            {utxos.length} UTXO{utxos.length !== 1 ? 's' : ''}
+            {t('utxos.count', { count: utxos.length })}
           </AppText>
           <AppText variant="caption" color="muted">
-            {totalSats.toLocaleString()} sats total
+            {t('utxos.total', { total: totalSats.toLocaleString() })}
           </AppText>
         </View>
       )}
@@ -247,7 +260,7 @@ export function UtxosScreen() {
       {/* Content */}
       {isLoading ? (
         <View style={styles.center}>
-          <AppText variant="body" color="muted">Loading UTXOs…</AppText>
+          <AppText variant="body" color="muted">{t('utxos.loading')}</AppText>
         </View>
       ) : error ? (
         <View style={styles.center}>
@@ -255,7 +268,7 @@ export function UtxosScreen() {
         </View>
       ) : utxos.length === 0 ? (
         <View style={styles.center}>
-          <AppText variant="subtitle" style={styles.emptyTitle}>No UTXOs</AppText>
+          <AppText variant="subtitle" style={styles.emptyTitle}>{t('utxos.empty')}</AppText>
           <AppText variant="body" color="muted" style={styles.emptyDesc}>{emptyMessage}</AppText>
         </View>
       ) : (

@@ -12,7 +12,9 @@ import { AppConfirmModal } from '../../components/base/AppConfirmModal';
 import { AppLoading } from '../../components/base/AppLoading';
 import { AppLogo } from '../../components/base/AppLogo';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
 import { useWallet } from '../../hooks/useWallet';
 import { AppRoutes } from '../../../app/navigation/routes';
@@ -22,11 +24,6 @@ import { AppRoutes } from '../../../app/navigation/routes';
 // ---------------------------------------------------------------------------
 
 type NetworkTab = 'mainnet' | 'testnet';
-
-const NETWORK_TABS: { key: NetworkTab; label: string }[] = [
-  { key: 'mainnet', label: 'Mainnet' },
-  { key: 'testnet', label: 'Testnet' },
-];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -129,7 +126,7 @@ function WalletCard({ wallet, onOpen, onDeleteRequest }: WalletCardProps) {
         {/* Top row: icon + name + delete */}
         <View style={styles.cardTopRow}>
           <View style={[styles.cardIcon, { backgroundColor: accentBg, borderRadius: theme.radii.md }]}>
-            <AppText style={styles.cardIconText}>₿</AppText>
+            <AppIcon name="wallet" size={22} color={accent} />
           </View>
           <View style={styles.cardNameBlock}>
             <AppText variant="subtitle" style={styles.cardName} numberOfLines={1}>
@@ -148,7 +145,7 @@ function WalletCard({ wallet, onOpen, onDeleteRequest }: WalletCardProps) {
             onPress={onDeleteRequest}
             style={({ pressed }) => [styles.deleteBtn, { opacity: pressed ? 0.5 : 0.65 }]}
           >
-            <AppText variant="label" color="muted">✕</AppText>
+            <AppIcon name="close" size={20} color={theme.colors.textMuted} />
           </Pressable>
         </View>
 
@@ -163,7 +160,7 @@ function WalletCard({ wallet, onOpen, onDeleteRequest }: WalletCardProps) {
           <View style={[styles.statusBadge, { backgroundColor: theme.colors.surfaceMuted, borderRadius: theme.radii.sm }]}>
             <AppText variant="label" color="muted">{wallet.status}</AppText>
           </View>
-          <AppText variant="subtitle" color="muted" style={styles.cardArrow}>›</AppText>
+          <AppIcon name="chevronRight" size={22} color={theme.colors.textMuted} />
         </View>
       </View>
     </Pressable>
@@ -182,15 +179,16 @@ type EmptyStateProps = {
 
 function EmptyState({ network, onCreateWallet, onImportWallet }: EmptyStateProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const accent = NETWORK_ACCENT[network];
   return (
     <View style={styles.emptyWrap}>
       <View style={[styles.emptyIcon, { backgroundColor: accent + '18', borderRadius: theme.radii.xl }]}>
-        <AppText style={styles.emptyIconText}>₿</AppText>
+        <AppIcon name="wallet" size={42} color={accent} />
       </View>
-      <AppText variant="subtitle" style={styles.emptyTitle}>No {network} wallets</AppText>
+      <AppText variant="subtitle" style={styles.emptyTitle}>{t('walletList.noWallets', { network })}</AppText>
       <AppText variant="body" color="muted" style={styles.emptyDesc}>
-        Create a new wallet or import an existing one to get started.
+        {t('walletList.noWalletsDesc')}
       </AppText>
       <View style={styles.emptyActions}>
         <Pressable
@@ -202,7 +200,7 @@ function EmptyState({ network, onCreateWallet, onImportWallet }: EmptyStateProps
             { backgroundColor: theme.colors.accent, borderRadius: theme.radii.lg, opacity: pressed ? 0.8 : 1 },
           ]}
         >
-          <AppText variant="label" style={styles.emptyBtnPrimaryText}>+ Create wallet</AppText>
+          <AppText variant="label" style={styles.emptyBtnPrimaryText}>{t('walletList.createWallet')}</AppText>
         </Pressable>
         <Pressable
           accessibilityRole="button"
@@ -218,7 +216,7 @@ function EmptyState({ network, onCreateWallet, onImportWallet }: EmptyStateProps
             },
           ]}
         >
-          <AppText variant="label" color="muted">↓ Import wallet</AppText>
+          <AppText variant="label" color="muted">{t('walletList.importWallet')}</AppText>
         </Pressable>
       </View>
     </View>
@@ -231,9 +229,15 @@ function EmptyState({ network, onCreateWallet, onImportWallet }: EmptyStateProps
 
 export function WalletListScreen() {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
   const { wallets, isLoading, selectWallet, deleteWallet } = useWallet();
+
+  const NETWORK_TABS: { key: NetworkTab; label: string }[] = [
+    { key: 'mainnet', label: t('walletList.mainnet') },
+    { key: 'testnet', label: t('walletList.testnet') },
+  ];
 
   const [activeTab, setActiveTab] = useState<NetworkTab>('mainnet');
   const [pendingDelete, setPendingDelete] = useState<Wallet | null>(null);
@@ -270,19 +274,19 @@ export function WalletListScreen() {
       {/* Header */}
       <View style={styles.header}>
         <AppLogo size="sm" showName={false} />
-        <AppText variant="subtitle" style={styles.headerTitle}>Wallets</AppText>
+        <AppText variant="subtitle" style={styles.headerTitle}>{t('walletList.title')}</AppText>
         <View style={styles.headerActions}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Import wallet"
+            accessibilityLabel={t('walletList.importWallet')}
             onPress={handleNavigateImport}
             style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1 }]}
           >
-            <AppText variant="label" color="muted">↓</AppText>
+            <AppIcon name="import" size={20} color={theme.colors.textMuted} />
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Create wallet"
+            accessibilityLabel={t('walletList.createWallet')}
             onPress={handleNavigateCreate}
             style={({ pressed }) => [
               styles.headerBtn,
@@ -342,8 +346,8 @@ export function WalletListScreen() {
       {/* Delete confirmation */}
       <AppConfirmModal
         visible={!!pendingDelete}
-        title="Delete wallet"
-        message={`Delete "${pendingDelete?.name}"? This cannot be undone. Make sure you have backed up your seed phrase.`}
+        title={t('walletList.deleteTitle')}
+        message={t('walletList.deleteMessage', { name: pendingDelete?.name ?? '' })}
         confirmLabel="Delete"
         variant="danger"
         isLoading={isDeleting}
@@ -449,9 +453,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 40,
   },
-  cardIconText: {
-    fontSize: 18,
-  },
   cardNameBlock: {
     flex: 1,
     gap: 2,
@@ -506,9 +507,6 @@ const styles = StyleSheet.create({
     height: 72,
     justifyContent: 'center',
     width: 72,
-  },
-  emptyIconText: {
-    fontSize: 32,
   },
   emptyTitle: {
     fontWeight: '700',

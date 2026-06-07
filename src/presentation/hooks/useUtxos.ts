@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Utxo } from '../../core/domain/entities/Utxo';
 import { AppError } from '../../core/application/errors/AppError';
 import { useWallet } from './useWallet';
+import { useAppTranslation } from './useAppTranslation';
 
 export type UtxoFilter =
   | 'all'
@@ -41,6 +42,7 @@ function applyFilter(utxos: Utxo[], filter: UtxoFilter): Utxo[] {
 
 export function useUtxos(): UseUtxosState {
   const { selectedWallet, listUtxos, freezeUtxo, unfreezeUtxo } = useWallet();
+  const { t } = useAppTranslation();
 
   const [allUtxos, setAllUtxos] = useState<Utxo[]>([]);
   const [filter, setFilter] = useState<UtxoFilter>('all');
@@ -58,11 +60,11 @@ export function useUtxos(): UseUtxosState {
       const utxos = await listUtxos(selectedWallet.id);
       setAllUtxos(utxos);
     } catch (err) {
-      setError(err instanceof AppError ? err.message : 'Erro ao carregar UTXOs');
+      setError(err instanceof AppError ? err.message : t('utxos.errorLoad'));
     } finally {
       setIsLoading(false);
     }
-  }, [selectedWallet, listUtxos]);
+  }, [selectedWallet, listUtxos, t]);
 
   useEffect(() => {
     load();

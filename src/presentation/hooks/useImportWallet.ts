@@ -3,6 +3,7 @@ import type { Wallet } from '../../core/domain/entities/Wallet';
 import type { BitcoinNetwork } from '../../core/domain/entities/Network';
 import { AppError } from '../../core/application/errors/AppError';
 import { useWallet } from './useWallet';
+import { useAppTranslation } from './useAppTranslation';
 
 export type ImportWalletHook = {
   walletName: string;
@@ -23,6 +24,7 @@ export type ImportWalletHook = {
 
 export function useImportWallet(initialNetwork: BitcoinNetwork = 'testnet'): ImportWalletHook {
   const { importWallet } = useWallet();
+  const { t } = useAppTranslation();
   const [walletName, setWalletName] = useState('');
   const [seed, setSeed] = useState('');
   const [passphrase, setPassphrase] = useState('');
@@ -36,19 +38,19 @@ export function useImportWallet(initialNetwork: BitcoinNetwork = 'testnet'): Imp
     const trimmedSeed = seed.trim();
 
     if (!trimmedName) {
-      setError('Wallet name is required');
+      setError(t('createWallet.errorNameRequired'));
       return null;
     }
     if (trimmedName.length > 48) {
-      setError('Name must be 48 characters or fewer');
+      setError(t('createWallet.errorNameTooLong'));
       return null;
     }
     if (!trimmedSeed) {
-      setError('Seed phrase is required');
+      setError(t('importWallet.errorSeedRequired'));
       return null;
     }
     if (passphrase && passphrase !== confirmPassphrase) {
-      setError('Passphrases do not match');
+      setError(t('createWallet.errorPassphraseMismatch'));
       return null;
     }
 
@@ -60,14 +62,14 @@ export function useImportWallet(initialNetwork: BitcoinNetwork = 'testnet'): Imp
     } catch (err) {
       if (err instanceof AppError) {
         if (err.code === 'INVALID_SECRET') {
-          setError('Invalid seed phrase. Please check your words and try again.');
+          setError(t('importWallet.errorInvalidSeed'));
         } else if (err.code === 'WALLET_EXISTS') {
-          setError(`A wallet named "${trimmedName}" already exists.`);
+          setError(t('importWallet.errorWalletExists', { name: trimmedName }));
         } else {
-          setError('Failed to import wallet. Please try again.');
+          setError(t('importWallet.errorImportFailed'));
         }
       } else {
-        setError('Failed to import wallet. Please try again.');
+        setError(t('importWallet.errorImportFailed'));
       }
       return null;
     } finally {

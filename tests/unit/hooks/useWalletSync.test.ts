@@ -127,7 +127,7 @@ describe('useWalletSync', () => {
       mockSyncWallet.mockRejectedValue(new Error('network failure'));
       const { result } = renderHook(() => useWalletSync());
       await act(async () => { await result.current.sync(); });
-      expect(result.current.syncError).toMatch(/sync failed/i);
+      expect(result.current.syncError).toBe('home.errorSyncFailed');
     });
 
     it('resets isSyncing to false even when sync throws', async () => {

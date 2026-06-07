@@ -36,7 +36,7 @@ describe('TransactionSuccessScreen', () => {
   it('renders the success heading', () => {
     const screen = renderWithTheme(<TransactionSuccessScreen />);
     expect(screen.getByTestId('success-heading')).toBeTruthy();
-    expect(screen.getByText('Envio realizado!')).toBeTruthy();
+    expect(screen.getByText('txSuccess.title')).toBeTruthy();
   });
 
   it('renders the success icon', () => {

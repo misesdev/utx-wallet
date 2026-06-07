@@ -4,6 +4,7 @@ import { AppError } from '../../core/application/errors/AppError';
 import { useTransactionHistory } from '../../app/providers/TransactionHistoryProvider';
 import { useNetwork } from './useNetwork';
 import { useWallet } from './useWallet';
+import { useAppTranslation } from './useAppTranslation';
 
 export type UseTransactionDetailsState = {
   transactions: TransactionDetail[];
@@ -14,6 +15,7 @@ export type UseTransactionDetailsState = {
 
 export function useTransactionDetails(): UseTransactionDetailsState {
   const { selectedWallet, listTransactions } = useWallet();
+  const { t } = useAppTranslation();
   const { networkConfig } = useNetwork();
   const { getDetail } = useTransactionHistory();
 
@@ -52,11 +54,11 @@ export function useTransactionDetails(): UseTransactionDetailsState {
         ),
       );
     } catch (err) {
-      setError(err instanceof AppError ? err.message : 'Erro ao carregar transações');
+      setError(err instanceof AppError ? err.message : t('transactions.errorLoad'));
     } finally {
       setIsLoading(false);
     }
-  }, [selectedWallet, listTransactions, networkConfig.network, getDetail]);
+  }, [selectedWallet, listTransactions, networkConfig.network, getDetail, t]);
 
   useEffect(() => {
     load();

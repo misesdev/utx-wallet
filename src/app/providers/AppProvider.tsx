@@ -1,4 +1,10 @@
 import React, { PropsWithChildren, useRef } from 'react';
+import { LanguageStorage } from '../../core/infrastructure/storage/LanguageStorage';
+import { LanguageService } from '../../core/application/services/LanguageService';
+import { DetectDeviceLanguageUseCase } from '../../core/domain/usecases/language/DetectDeviceLanguageUseCase';
+import { GetCurrentLanguageUseCase } from '../../core/domain/usecases/language/GetCurrentLanguageUseCase';
+import { SetLanguageUseCase } from '../../core/domain/usecases/language/SetLanguageUseCase';
+import { LanguageProvider } from './LanguageProvider';
 import { AddressService } from '../../core/application/services/AddressService';
 import { AddressManagerService } from '../../core/application/services/AddressManagerService';
 import { NetworkService } from '../../core/application/services/NetworkService';
@@ -91,6 +97,7 @@ import { SendProvider } from './SendProvider';
 import { ThemeProvider } from './ThemeProvider';
 import { TransactionHistoryProvider } from './TransactionHistoryProvider';
 import { WalletProvider } from './WalletProvider';
+import { WalletNetworkSync } from './WalletNetworkSync';
 
 type Dependencies = {
   walletService: WalletService;
@@ -101,6 +108,8 @@ type Dependencies = {
   transactionHistoryService: TransactionHistoryService;
   offlineModeService: OfflineModeService;
   securityService: SecurityService;
+  getCurrentLanguage: GetCurrentLanguageUseCase;
+  setLanguageUseCase: SetLanguageUseCase;
 };
 
 export function AppProvider({ children }: PropsWithChildren) {
@@ -183,8 +192,9 @@ export function AppProvider({ children }: PropsWithChildren) {
       new MarkAddressUsedUseCase(addressRepository),
     );
 
-    const syncUtxos = new SyncUtxosUseCase(utxoRepository, nodeRepository);
-    const syncTransactions = new SyncTransactionsUseCase(transactionRepository, nodeRepository);
+    const SYNC_REQUEST_DELAY_MS = 200;
+    const syncUtxos = new SyncUtxosUseCase(utxoRepository, nodeRepository, SYNC_REQUEST_DELAY_MS);
+    const syncTransactions = new SyncTransactionsUseCase(transactionRepository, nodeRepository, SYNC_REQUEST_DELAY_MS);
     const syncBalance = new SyncBalanceUseCase(utxoRepository);
     const syncWalletUseCase = new SyncWalletUseCase(
       walletRepository,
@@ -272,6 +282,12 @@ export function AppProvider({ children }: PropsWithChildren) {
       new ReauthenticateUseCase(verifyPinUseCase, new AuthenticateWithBiometricUseCase(biometricProvider)),
     );
 
+    const languageStorage = new LanguageStorage();
+    const languageService = new LanguageService(languageStorage);
+    const detectDeviceLanguage = new DetectDeviceLanguageUseCase();
+    const getCurrentLanguage = new GetCurrentLanguageUseCase(languageService, detectDeviceLanguage);
+    const setLanguageUseCase = new SetLanguageUseCase(languageService);
+
     depsRef.current = {
       walletService,
       networkService,
@@ -281,16 +297,20 @@ export function AppProvider({ children }: PropsWithChildren) {
       transactionHistoryService,
       offlineModeService,
       securityService,
+      getCurrentLanguage,
+      setLanguageUseCase,
     };
   }
 
-  const { walletService, networkService, addressService, addressManagerService, sendService, transactionHistoryService, offlineModeService, securityService } = depsRef.current;
+  const { walletService, networkService, addressService, addressManagerService, sendService, transactionHistoryService, offlineModeService, securityService, getCurrentLanguage, setLanguageUseCase } = depsRef.current;
 
   return (
+    <LanguageProvider getCurrentLanguage={getCurrentLanguage} setLanguage={setLanguageUseCase}>
     <ThemeProvider>
       <SecurityProvider service={securityService}>
         <NetworkProvider networkService={networkService}>
           <WalletProvider walletService={walletService}>
+            <WalletNetworkSync />
             <AddressManagerProvider service={addressManagerService}>
             <AddressProvider addressService={addressService}>
               <SendProvider sendService={sendService}>
@@ -306,5 +326,6 @@ export function AppProvider({ children }: PropsWithChildren) {
         </NetworkProvider>
       </SecurityProvider>
     </ThemeProvider>
+    </LanguageProvider>
   );
 }

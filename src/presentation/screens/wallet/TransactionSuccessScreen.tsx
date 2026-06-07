@@ -7,6 +7,7 @@ import { AppButton } from '../../components/base/AppButton';
 import { AppCard } from '../../components/base/AppCard';
 import { AppScreen } from '../../components/base/AppScreen';
 import { AppText } from '../../components/base/AppText';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import type { AppStackParamList } from '../../../app/navigation/routes';
 import { AppRoutes } from '../../../app/navigation/routes';
 
@@ -20,6 +21,7 @@ function formatSats(sats: number): string {
 export function TransactionSuccessScreen() {
   const route = useRoute<SuccessRouteProp>();
   const navigation = useNavigation<SuccessNavProp>();
+  const { t } = useAppTranslation();
   const { txid, amountSats, feeSats } = route.params;
 
   function copyTxid() {
@@ -31,7 +33,7 @@ export function TransactionSuccessScreen() {
   }
 
   return (
-    <AppScreen title="Transação enviada">
+    <AppScreen title={t('txSuccess.title')}>
       <View style={styles.iconRow}>
         <AppText variant="display" color="success" testID="success-icon">
           ✓
@@ -39,34 +41,34 @@ export function TransactionSuccessScreen() {
       </View>
 
       <AppText variant="title" style={styles.heading} testID="success-heading">
-        Envio realizado!
+        {t('txSuccess.message')}
       </AppText>
       <AppText variant="body" color="muted" style={styles.subtitle}>
-        Sua transação foi transmitida para a rede Bitcoin.
+        {t('txSuccess.description')}
       </AppText>
 
       <AppCard>
         <View style={styles.row}>
-          <AppText color="muted">Valor enviado</AppText>
+          <AppText color="muted">{t('txSuccess.amountSent')}</AppText>
           <AppText variant="subtitle" testID="success-amount">
             {`${formatSats(amountSats)} sats`}
           </AppText>
         </View>
         <View style={styles.row}>
-          <AppText color="muted">Taxa paga</AppText>
+          <AppText color="muted">{t('txSuccess.feePaid')}</AppText>
           <AppText testID="success-fee">{`${formatSats(feeSats)} sats`}</AppText>
         </View>
       </AppCard>
 
       <AppCard>
         <AppText variant="label" color="muted">
-          ID da transação (txid)
+          {t('txSuccess.txid')}
         </AppText>
         <AppText style={styles.txid} testID="success-txid">
           {txid}
         </AppText>
         <AppButton
-          title="Copiar txid"
+          title={t('txSuccess.copyTxid')}
           variant="secondary"
           size="sm"
           onPress={copyTxid}
@@ -75,7 +77,7 @@ export function TransactionSuccessScreen() {
       </AppCard>
 
       <AppButton
-        title="Ir para início"
+        title={t('txSuccess.goHome')}
         onPress={goHome}
         testID="btn-go-home"
       />

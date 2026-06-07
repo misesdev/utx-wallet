@@ -1,19 +1,20 @@
 import React from 'react';
 import { Pressable, type PressableProps, type StyleProp, StyleSheet, type ViewStyle } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
-import { AppText } from './AppText';
+import { AppIcon } from './AppIcon';
+import type { IconName } from '../../../shared/icons/iconNames';
 
 type AppIconButtonProps = Omit<PressableProps, 'style'> & {
   label: string;
-  symbol: string;
+  icon: IconName;
   size?: 'sm' | 'md';
   style?: StyleProp<ViewStyle>;
 };
 
-export function AppIconButton({ label, symbol, size = 'md', style, ...props }: AppIconButtonProps) {
+export function AppIconButton({ label, icon, size = 'md', style, ...props }: AppIconButtonProps) {
   const { theme } = useTheme();
   const dimension = size === 'sm' ? 36 : 44;
-  const textStyle = size === 'sm' ? styles.smallText : styles.defaultText;
+  const iconSize = size === 'sm' ? 20 : 24;
 
   return (
     <Pressable
@@ -33,7 +34,7 @@ export function AppIconButton({ label, symbol, size = 'md', style, ...props }: A
       ]}
       {...props}
     >
-      <AppText style={textStyle}>{symbol}</AppText>
+      <AppIcon name={icon} size={iconSize} color={theme.colors.textMuted} />
     </Pressable>
   );
 }
@@ -43,11 +44,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  smallText: {
-    fontSize: 14,
-  },
-  defaultText: {
-    fontSize: 17,
   },
 });

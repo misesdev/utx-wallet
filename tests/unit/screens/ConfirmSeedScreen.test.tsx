@@ -49,12 +49,12 @@ describe('ConfirmSeedScreen', () => {
 
   it('renders the confirm screen title', () => {
     const screen = renderWithTheme(<ConfirmSeedScreen />);
-    expect(screen.getByText('Confirm seed')).toBeTruthy();
+    expect(screen.getByText('confirmSeed.title')).toBeTruthy();
   });
 
   it('renders the confirm button', () => {
     const screen = renderWithTheme(<ConfirmSeedScreen />);
-    expect(screen.getByLabelText('Confirm and create wallet')).toBeTruthy();
+    expect(screen.getByLabelText('confirmSeed.confirmCreate')).toBeTruthy();
   });
 
   it('renders 8 word option chips', () => {
@@ -75,7 +75,7 @@ describe('ConfirmSeedScreen', () => {
       reset: mockReset,
     });
     const screen = renderWithTheme(<ConfirmSeedScreen />);
-    expect(screen.getByText('Creating wallet…')).toBeTruthy();
+    expect(screen.getByText('confirmSeed.creating')).toBeTruthy();
   });
 
   it('shows an error when error is present', () => {
@@ -101,13 +101,13 @@ describe('ConfirmSeedScreen', () => {
       b =>
         b.props.accessibilityRole === 'button' &&
         !b.props.accessibilityState?.disabled &&
-        b.props.accessibilityLabel !== 'Go back' &&
-        b.props.accessibilityLabel !== 'Confirm and create wallet',
+        b.props.accessibilityLabel !== 'common.back' &&
+        b.props.accessibilityLabel !== 'confirmSeed.confirmCreate',
     );
     if (wordBtn) {
       fireEvent.press(wordBtn);
     }
-    expect(screen.getByLabelText('Confirm and create wallet')).toBeTruthy();
+    expect(screen.getByLabelText('confirmSeed.confirmCreate')).toBeTruthy();
   });
 
   it('navigates to WalletList when save completes successfully', () => {

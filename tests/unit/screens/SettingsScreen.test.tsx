@@ -30,7 +30,7 @@ describe('SettingsScreen', () => {
 
   it('renders the Settings screen title', () => {
     const screen = renderWithTheme(<SettingsScreen />);
-    expect(screen.getByText('Settings')).toBeTruthy();
+    expect(screen.getByText('settings.title')).toBeTruthy();
   });
 
   it('displays the current network', () => {
@@ -40,12 +40,19 @@ describe('SettingsScreen', () => {
 
   it('renders all setting section buttons', () => {
     const screen = renderWithTheme(<SettingsScreen />);
+    expect(screen.getByTestId('settings-language')).toBeTruthy();
     expect(screen.getByTestId('settings-security')).toBeTruthy();
     expect(screen.getByTestId('settings-network')).toBeTruthy();
     expect(screen.getByTestId('settings-node')).toBeTruthy();
     expect(screen.getByTestId('settings-backup')).toBeTruthy();
     expect(screen.getByTestId('settings-offline')).toBeTruthy();
     expect(screen.getByTestId('settings-safe-mode')).toBeTruthy();
+  });
+
+  it('navigates to LanguageSettings when Language is pressed', () => {
+    const screen = renderWithTheme(<SettingsScreen />);
+    fireEvent.press(screen.getByTestId('settings-language'));
+    expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.LanguageSettings);
   });
 
   it('navigates to SecuritySettings when Security is pressed', () => {

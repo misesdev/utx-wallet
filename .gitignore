@@ -104,3 +104,4 @@ sentry.properties
 
 # OS
 Thumbs.db
+.claude/

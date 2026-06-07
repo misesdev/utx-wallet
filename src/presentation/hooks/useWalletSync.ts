@@ -3,6 +3,7 @@ import type { SyncResult } from '../../core/domain/usecases/wallet/SyncWalletUse
 import { AppError } from '../../core/application/errors/AppError';
 import { useNetwork } from './useNetwork';
 import { useWallet } from './useWallet';
+import { useAppTranslation } from './useAppTranslation';
 
 export type WalletSyncState = {
   isSyncing: boolean;
@@ -14,6 +15,7 @@ export type WalletSyncState = {
 
 export function useWalletSync(): WalletSyncState {
   const { selectedWallet, syncWallet } = useWallet();
+  const { t } = useAppTranslation();
   const { isOnline } = useNetwork();
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
@@ -23,7 +25,7 @@ export function useWalletSync(): WalletSyncState {
   const sync = useCallback(async () => {
     if (!selectedWallet || isSyncing) return;
     if (!isOnline) {
-      setSyncError('No internet connection');
+      setSyncError(t('networkSettings.errorNoInternet'));
       return;
     }
     setIsSyncing(true);
@@ -33,11 +35,11 @@ export function useWalletSync(): WalletSyncState {
       setSyncResult(result);
       setLastSyncAt(result.syncedAt);
     } catch (err) {
-      setSyncError(err instanceof AppError ? err.message : 'Sync failed. Try again.');
+      setSyncError(err instanceof AppError ? err.message : t('home.errorSyncFailed'));
     } finally {
       setIsSyncing(false);
     }
-  }, [selectedWallet, syncWallet, isOnline, isSyncing]);
+  }, [selectedWallet, syncWallet, isOnline, isSyncing, t]);
 
   return { isSyncing, lastSyncAt, syncResult, syncError, sync };
 }

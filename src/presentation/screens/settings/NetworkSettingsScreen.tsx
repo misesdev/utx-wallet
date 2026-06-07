@@ -3,12 +3,15 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton } from '../../components/base/AppButton';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useNetworkSettings } from '../../hooks/useNetworkSettings';
 import { useTheme } from '../../hooks/useTheme';
 
 export function NetworkSettingsScreen() {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
 
@@ -29,15 +32,15 @@ export function NetworkSettingsScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.back')}
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <AppText variant="title" color="muted">←</AppText>
+          <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
         <View style={styles.headerCenter}>
-          <AppText variant="subtitle" style={styles.headerTitle}>Network settings</AppText>
-          <AppText variant="caption" color="muted">Choose the active Bitcoin network</AppText>
+          <AppText variant="subtitle" style={styles.headerTitle}>{t('networkSettings.title')}</AppText>
+          <AppText variant="caption" color="muted">{t('networkSettings.subtitle')}</AppText>
         </View>
         <View style={styles.backBtn} />
       </View>
@@ -57,7 +60,7 @@ export function NetworkSettingsScreen() {
             },
           ]}
         >
-          <AppText variant="label" color="muted" style={styles.cardLabel}>Rede ativa</AppText>
+          <AppText variant="label" color="muted" style={styles.cardLabel}>{t('networkSettings.activeNetwork')}</AppText>
           <View style={styles.activeRow}>
             <View style={[styles.activeDot, { backgroundColor: theme.colors.success }]} />
             <AppText variant="subtitle" style={styles.activeText}>{activeNetwork}</AppText>
@@ -66,7 +69,7 @@ export function NetworkSettingsScreen() {
 
         {/* Network selector */}
         <View style={styles.section}>
-          <AppText variant="label" color="muted" style={styles.sectionLabel}>Selecionar rede</AppText>
+          <AppText variant="label" color="muted" style={styles.sectionLabel}>{t('networkSettings.selectNetwork')}</AppText>
           <View style={styles.networkGrid}>
             {options.map(option => {
               const isSelected = pendingNetwork === option.network;
@@ -98,7 +101,7 @@ export function NetworkSettingsScreen() {
             })}
           </View>
           <AppText variant="caption" color="muted" style={styles.hintText}>
-            Redes incompatíveis com a carteira atual ficam bloqueadas.
+            {t('networkSettings.incompatibleNote')}
           </AppText>
         </View>
 
@@ -114,7 +117,7 @@ export function NetworkSettingsScreen() {
               },
             ]}
           >
-            <AppText variant="body" style={[styles.alertTitle, { color: theme.colors.warning }]}>Atenção</AppText>
+            <AppText variant="body" style={[styles.alertTitle, { color: theme.colors.warning }]}>{t('networkSettings.incompatibleTitle')}</AppText>
             <AppText variant="caption" color="muted">{warning}</AppText>
           </View>
         ) : null}
@@ -131,14 +134,14 @@ export function NetworkSettingsScreen() {
               },
             ]}
           >
-            <AppText variant="body" style={[styles.alertTitle, { color: theme.colors.danger }]}>Rede incompatível</AppText>
+            <AppText variant="body" style={[styles.alertTitle, { color: theme.colors.danger }]}>{t('networkSettings.incompatibleNetwork')}</AppText>
             <AppText variant="caption" color="muted">{error}</AppText>
           </View>
         ) : null}
 
         {/* Apply button */}
         <AppButton
-          title={isSaving ? 'Salvando...' : 'Aplicar rede'}
+          title={isSaving ? t('networkSettings.saving') : t('networkSettings.apply')}
           disabled={isSaving || activeNetwork === pendingNetwork}
           onPress={confirmNetworkChange}
         />

@@ -4,6 +4,7 @@ import type { Wallet } from '../../core/domain/entities/Wallet';
 import type { NetworkConfig } from '../../core/domain/entities/Network';
 import { useNetwork } from './useNetwork';
 import { useWallet } from './useWallet';
+import { useAppTranslation } from './useAppTranslation';
 
 export type HomeWalletState = {
   wallet: Wallet | null;
@@ -20,6 +21,7 @@ export type HomeWalletState = {
 
 export function useHomeWallet(): HomeWalletState {
   const { selectedWallet, listTransactions, listUtxos } = useWallet();
+  const { t } = useAppTranslation();
   const { networkConfig, isOnline } = useNetwork();
   const isSafeMode = networkConfig.nodeMode === 'personal-node';
 
@@ -52,11 +54,11 @@ export function useHomeWallet(): HomeWalletState {
         utxos.filter(u => !u.isConfirmed).reduce((acc, u) => acc + u.valueSats, 0),
       );
     } catch {
-      setError('Failed to load wallet data. Pull to refresh.');
+      setError(t('home.errorLoadWalletData'));
     } finally {
       setIsLoading(false);
     }
-  }, [selectedWallet, listTransactions, listUtxos]);
+  }, [selectedWallet, listTransactions, listUtxos, t]);
 
   useEffect(() => {
     refresh().catch(() => undefined);

@@ -1,5 +1,6 @@
 import type { AddressStatus } from '../../entities/WalletAddress';
 import type { BitcoinNetwork } from '../../entities/Network';
+import type { Transaction } from '../../entities/Transaction';
 import type { WalletAddressRepository } from '../../repositories/WalletAddressRepository';
 import type { AddressOriginRepository } from '../../repositories/AddressOriginRepository';
 import type { UtxoRepository } from '../../repositories/UtxoRepository';
@@ -15,7 +16,11 @@ export class SyncAddressStatusUseCase {
     private readonly ensureAddressPool: EnsureAddressPoolUseCase,
   ) {}
 
-  async execute(walletId: string, network: BitcoinNetwork): Promise<void> {
+  async execute(
+    walletId: string,
+    network: BitcoinNetwork,
+    prefetchedTransactions?: Map<string, Transaction[]>,
+  ): Promise<void> {
     const addresses = await this.walletAddressRepository.findByWallet(walletId);
     if (addresses.length === 0) return;
 
@@ -28,7 +33,8 @@ export class SyncAddressStatusUseCase {
     for (const walletAddr of addresses) {
       if (walletAddr.status === 'archived') continue;
 
-      const txs = await this.blockchainProvider.getTransactions(walletAddr.address, network);
+      const txs = prefetchedTransactions?.get(walletAddr.address)
+        ?? await this.blockchainProvider.getTransactions(walletAddr.address, network);
 
       const incomingTxs = txs.filter(t => t.direction === 'incoming');
       const outgoingTxs = txs.filter(t => t.direction === 'outgoing');

@@ -107,13 +107,13 @@ describe('UtxosScreen', () => {
     it('renders loading indicator when isLoading is true', () => {
       mockState = { ...BASE_STATE, isLoading: true };
       const screen = renderWithTheme(<UtxosScreen />);
-      expect(screen.getByText('Loading UTXOs…')).toBeTruthy();
+      expect(screen.getByText('utxos.loading')).toBeTruthy();
     });
 
     it('does not render empty state while loading', () => {
       mockState = { ...BASE_STATE, isLoading: true };
       const screen = renderWithTheme(<UtxosScreen />);
-      expect(screen.queryByText('No UTXOs')).toBeNull();
+      expect(screen.queryByText('utxos.empty')).toBeNull();
     });
   });
 
@@ -128,20 +128,20 @@ describe('UtxosScreen', () => {
   describe('Empty state', () => {
     it('renders default empty state when no UTXOs', () => {
       const screen = renderWithTheme(<UtxosScreen />);
-      expect(screen.getByText('No UTXOs')).toBeTruthy();
-      expect(screen.getByText('Sync the wallet to load UTXOs.')).toBeTruthy();
+      expect(screen.getByText('utxos.empty')).toBeTruthy();
+      expect(screen.getByText('utxos.syncToLoad')).toBeTruthy();
     });
 
     it('renders frozen-specific empty state for frozen filter', () => {
       mockState = { ...BASE_STATE, filter: 'frozen' };
       const screen = renderWithTheme(<UtxosScreen />);
-      expect(screen.getByText('No frozen UTXOs.')).toBeTruthy();
+      expect(screen.getByText('utxos.noFrozen')).toBeTruthy();
     });
 
     it('renders pending-specific empty state for pending filter', () => {
       mockState = { ...BASE_STATE, filter: 'pending' };
       const screen = renderWithTheme(<UtxosScreen />);
-      expect(screen.getByText('No pending UTXOs.')).toBeTruthy();
+      expect(screen.getByText('utxos.noPending')).toBeTruthy();
     });
   });
 
@@ -152,33 +152,33 @@ describe('UtxosScreen', () => {
         utxos: [makeUtxo('a'.repeat(64), 100_000), makeUtxo('b'.repeat(64), 200_000)],
       };
       const screen = renderWithTheme(<UtxosScreen />);
-      expect(screen.getByText('2 UTXOs')).toBeTruthy();
-      expect(screen.getByText('300,000 sats total')).toBeTruthy();
+      expect(screen.getByText('utxos.count')).toBeTruthy();
+      expect(screen.getByText('utxos.total')).toBeTruthy();
     });
 
     it('shows singular UTXO count when there is exactly 1', () => {
       mockState = { ...BASE_STATE, utxos: [makeUtxo('a'.repeat(64), 50_000)] };
       const screen = renderWithTheme(<UtxosScreen />);
-      expect(screen.getByText('1 UTXO')).toBeTruthy();
+      expect(screen.getByText('utxos.count')).toBeTruthy();
     });
 
     it('does not show summary row when there are no UTXOs', () => {
       const screen = renderWithTheme(<UtxosScreen />);
-      expect(screen.queryByText(/sats total/)).toBeNull();
+      expect(screen.queryByText('utxos.total')).toBeNull();
     });
   });
 
   describe('Filter chips', () => {
     it('renders all filter chip labels', () => {
       const screen = renderWithTheme(<UtxosScreen />);
-      expect(screen.getByText('All')).toBeTruthy();
-      expect(screen.getByText('Confirmed')).toBeTruthy();
-      expect(screen.getByText('Pending')).toBeTruthy();
+      expect(screen.getByText('utxos.all')).toBeTruthy();
+      expect(screen.getByText('utxos.confirmed')).toBeTruthy();
+      expect(screen.getByText('utxos.pending')).toBeTruthy();
     });
 
     it('calls setFilter when a filter chip is pressed', () => {
       const screen = renderWithTheme(<UtxosScreen />);
-      fireEvent.press(screen.getByText('Confirmed'));
+      fireEvent.press(screen.getByText('utxos.confirmed'));
       expect(mockSetFilter).toHaveBeenCalledWith('confirmed');
     });
   });
@@ -186,7 +186,7 @@ describe('UtxosScreen', () => {
   describe('Screen title', () => {
     it('renders UTXOs as screen title', () => {
       const screen = renderWithTheme(<UtxosScreen />);
-      expect(screen.getByText('UTXOs')).toBeTruthy();
+      expect(screen.getByText('utxos.title')).toBeTruthy();
     });
   });
 
@@ -212,7 +212,7 @@ describe('UtxosScreen', () => {
         utxos: [makeUtxo('a'.repeat(64), 50_000)],
       };
       const screen = renderWithTheme(<UtxosScreen />);
-      expect(screen.getByText('Other')).toBeTruthy();
+      expect(screen.getByText('utxos.otherOrigin')).toBeTruthy();
     });
   });
 });

@@ -4,9 +4,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NoopScreenCaptureAdapter } from '../../../core/infrastructure/adapters/ScreenCaptureAdapter';
 import { AppRoutes } from '../../../app/navigation/routes';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useCreateWallet } from '../../hooks/useCreateWallet';
 import { useTheme } from '../../hooks/useTheme';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 
 const screenCaptureGuard = new NoopScreenCaptureAdapter();
 
@@ -15,6 +17,7 @@ export function BackupSeedScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
   const { words, walletName, passphrase, proceedToConfirm } = useCreateWallet();
+  const { t } = useAppTranslation();
 
   const [revealed, setRevealed] = useState(false);
 
@@ -34,14 +37,14 @@ export function BackupSeedScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.back')}
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <AppText variant="title" color="muted">←</AppText>
+          <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
         <View style={styles.headerCenter}>
-          <AppText variant="subtitle" style={styles.headerTitle}>Back up seed</AppText>
+          <AppText variant="subtitle" style={styles.headerTitle}>{t('backupSeed.title')}</AppText>
           <AppText variant="caption" color="muted" numberOfLines={1}>{walletName}</AppText>
         </View>
         <View style={styles.backBtn} />
@@ -65,11 +68,11 @@ export function BackupSeedScreen() {
             },
           ]}
         >
-          <AppText style={styles.warningIcon}>⚠</AppText>
+          <AppIcon name="warning" size={22} color={theme.colors.danger} />
           <View style={styles.warningBody}>
-            <AppText variant="label" color="danger" style={styles.warningTitle}>Keep this private</AppText>
+            <AppText variant="label" color="danger" style={styles.warningTitle}>{t('backupSeed.keepPrivate')}</AppText>
             <AppText variant="caption" color="muted">
-              Write these words on paper. Anyone with this phrase can access your funds. Never share or store digitally.
+              {t('backupSeed.warning')}
             </AppText>
           </View>
         </View>
@@ -86,9 +89,9 @@ export function BackupSeedScreen() {
               },
             ]}
           >
-            <AppText style={styles.passphraseBadgeIcon}>🔐</AppText>
+            <AppIcon name="key" size={20} color={theme.colors.accent} />
             <AppText variant="caption" style={{ color: theme.colors.accent }}>
-              Passphrase active — back it up separately
+              {t('backupSeed.passphraseActive')}
             </AppText>
           </View>
         ) : null}
@@ -108,16 +111,16 @@ export function BackupSeedScreen() {
           {!revealed ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Reveal seed words"
+              accessibilityLabel={t('backupSeed.tapReveal')}
               onPress={() => setRevealed(true)}
               style={[
                 styles.revealOverlay,
                 { backgroundColor: theme.colors.surfaceRaised, borderRadius: theme.radii.xl },
               ]}
             >
-              <AppText style={styles.revealIcon}>👁</AppText>
-              <AppText variant="subtitle" style={styles.revealTitle}>Tap to reveal</AppText>
-              <AppText variant="caption" color="muted">Make sure no one can see your screen</AppText>
+              <AppIcon name="eye" size={32} color={theme.colors.text} />
+              <AppText variant="subtitle" style={styles.revealTitle}>{t('backupSeed.tapReveal')}</AppText>
+              <AppText variant="caption" color="muted">{t('backupSeed.noCamera')}</AppText>
             </Pressable>
           ) : (
             <View style={styles.seedGrid}>
@@ -155,9 +158,9 @@ export function BackupSeedScreen() {
           ]}
         >
           {[
-            'Never share your seed phrase with anyone',
-            'Never store it digitally or take a screenshot',
-            'Without this phrase, lost funds cannot be recovered',
+            t('backupSeed.neverShare'),
+            t('backupSeed.noDigital'),
+            t('backupSeed.noRecovery'),
           ].map((tip, i) => (
             <View key={i} style={styles.tipRow}>
               <View style={[styles.tipDot, { backgroundColor: theme.colors.textMuted }]} />
@@ -169,7 +172,7 @@ export function BackupSeedScreen() {
         {/* CTA */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="I've written it down"
+          accessibilityLabel={t('backupSeed.written')}
           onPress={handleContinue}
           disabled={!revealed}
           style={({ pressed }) => [
@@ -185,7 +188,7 @@ export function BackupSeedScreen() {
             variant="subtitle"
             style={revealed ? styles.ctaTextActive : styles.ctaTextInactive}
           >
-            I've written it down →
+            {t('backupSeed.written')}
           </AppText>
         </Pressable>
       </ScrollView>
@@ -237,10 +240,6 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 14,
   },
-  warningIcon: {
-    fontSize: 18,
-    marginTop: 1,
-  },
   warningBody: {
     flex: 1,
     gap: 4,
@@ -257,9 +256,6 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 12,
   },
-  passphraseBadgeIcon: {
-    fontSize: 18,
-  },
 
   // Seed card
   seedCard: {
@@ -273,9 +269,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 200,
     padding: 32,
-  },
-  revealIcon: {
-    fontSize: 36,
   },
   revealTitle: {
     fontWeight: '700',

@@ -4,9 +4,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppEmptyState } from '../../components/base/AppEmptyState';
 import { AppLoading } from '../../components/base/AppLoading';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
+import type { IconName } from '../../../shared/icons/iconNames';
 import { NetworkBadge } from '../../components/wallet/NetworkBadge';
 import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useHomeWallet } from '../../hooks/useHomeWallet';
 import { useWalletSync } from '../../hooks/useWalletSync';
 import { useTheme } from '../../hooks/useTheme';
@@ -26,13 +29,14 @@ type HomeHeaderProps = {
 
 function HomeHeader({ walletName, networkConfig, isSafeMode }: HomeHeaderProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   return (
     <View style={styles.header}>
       <AppText variant="subtitle" style={styles.headerName} numberOfLines={1}>{walletName}</AppText>
       <View style={styles.headerRight}>
         {isSafeMode && (
           <View style={[styles.safeModeBadge, { backgroundColor: theme.colors.dangerMuted, borderRadius: theme.radii.sm }]}>
-            <AppText variant="label" color="warning">Safe mode</AppText>
+            <AppText variant="label" color="warning">{t('home.safeMode')}</AppText>
           </View>
         )}
         <NetworkBadge config={networkConfig} />
@@ -52,14 +56,15 @@ type BalanceHeroProps = {
 
 function BalanceHero({ confirmedSats, pendingSats, hidden, onPress }: BalanceHeroProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const btc = (confirmedSats / SATS_PER_BTC).toFixed(8);
 
   return (
     <View style={styles.heroWrap}>
-      <AppText variant="label" color="muted" style={styles.heroLabel}>Balance</AppText>
+      <AppText variant="label" color="muted" style={styles.heroLabel}>{t('home.balance')}</AppText>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="View transactions"
+        accessibilityLabel={t('transactions.title')}
         onPress={onPress}
         style={({ pressed }) => [styles.heroRow, { opacity: pressed ? 0.72 : 1 }]}
       >
@@ -67,9 +72,9 @@ function BalanceHero({ confirmedSats, pendingSats, hidden, onPress }: BalanceHer
           {hidden ? HIDDEN_PLACEHOLDER : confirmedSats.toLocaleString()}
         </AppText>
         {!hidden && (
-          <AppText variant="subtitle" color="muted" style={styles.heroUnit}>sats</AppText>
+          <AppText variant="subtitle" color="muted" style={styles.heroUnit}>{t('common.sats')}</AppText>
         )}
-        <AppText variant="title" color="muted" style={styles.heroChevron}>›</AppText>
+        <AppIcon name="chevronRight" size={26} color={theme.colors.textMuted} />
       </Pressable>
       <AppText variant="body" color="muted" style={styles.heroBtc}>
         {hidden ? HIDDEN_PLACEHOLDER : `≈ ${btc} BTC`}
@@ -77,7 +82,7 @@ function BalanceHero({ confirmedSats, pendingSats, hidden, onPress }: BalanceHer
       {pendingSats > 0 && (
         <View style={styles.pendingRow}>
           <View style={[styles.pendingDot, { backgroundColor: theme.colors.warning }]} />
-          <AppText variant="caption" color="warning">Pending</AppText>
+          <AppText variant="caption" color="warning">{t('home.pending')}</AppText>
           <AppText variant="caption" color="warning">
             +{pendingSats.toLocaleString()} sats
           </AppText>
@@ -98,18 +103,19 @@ type SyncPillProps = {
 
 function SyncPill({ isSyncing, lastSyncAt, syncError, onSync }: SyncPillProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const label = isSyncing
-    ? 'Syncing…'
+    ? t('home.syncing')
     : syncError
       ? syncError
       : lastSyncAt
-        ? `Last sync: ${new Date(lastSyncAt).toLocaleTimeString()}`
-        : 'Tap to sync';
+        ? t('home.lastSync', { time: new Date(lastSyncAt).toLocaleTimeString() })
+        : t('home.tapToSync');
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Sync wallet"
+      accessibilityLabel={t('home.tapToSync')}
       onPress={onSync}
       disabled={isSyncing}
       style={({ pressed }) => [
@@ -125,7 +131,7 @@ function SyncPill({ isSyncing, lastSyncAt, syncError, onSync }: SyncPillProps) {
       <AppText variant="caption" color={syncError ? 'danger' : 'muted'} numberOfLines={1}>
         {label}
       </AppText>
-      {!isSyncing && <AppText variant="caption" color="muted">↺</AppText>}
+      {!isSyncing && <AppIcon name="sync" size={16} color={theme.colors.textMuted} />}
     </Pressable>
   );
 }
@@ -133,7 +139,7 @@ function SyncPill({ isSyncing, lastSyncAt, syncError, onSync }: SyncPillProps) {
 // ─── Quick action buttons ─────────────────────────────────────────────────────
 
 type QuickActionProps = {
-  icon: string;
+  icon: IconName;
   label: string;
   a11yLabel?: string;
   onPress: () => void;
@@ -158,9 +164,7 @@ function QuickAction({ icon, label, a11yLabel, onPress, accentColor }: QuickActi
           },
         ]}
       >
-        <AppText style={[styles.quickIcon, { color: accentColor ?? theme.colors.text }]}>
-          {icon}
-        </AppText>
+        <AppIcon name={icon} size={28} color={accentColor ?? theme.colors.text} />
       </View>
       <AppText variant="caption" color="muted" style={styles.quickLabel}>{label}</AppText>
     </Pressable>
@@ -176,6 +180,7 @@ type OriginCardProps = {
 
 function OriginCard({ origin, isOnly }: OriginCardProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const isDefault = origin.type === 'default';
 
   return (
@@ -198,23 +203,23 @@ function OriginCard({ origin, isOnly }: OriginCardProps) {
           },
         ]}
       >
-        <AppText style={styles.originIconText}>{isDefault ? '◎' : '⊡'}</AppText>
+        <AppIcon name={isDefault ? "wallet" : "accounts"} size={24} color={isDefault ? theme.colors.accent : theme.colors.textMuted} />
       </View>
       <View style={styles.originBody}>
         <View style={styles.originNameRow}>
           <AppText variant="body" style={styles.originName}>{origin.name}</AppText>
           {isDefault && (
             <View style={[styles.defaultBadge, { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radii.sm }]}>
-              <AppText variant="label" color="accent">Default</AppText>
+              <AppText variant="label" color="accent">{t('common.default')}</AppText>
             </View>
           )}
         </View>
         <AppText variant="caption" color="muted">
-          Account {origin.accountIndex}
+          {t('common.account', { accountIndex: origin.accountIndex })}
         </AppText>
       </View>
       {!isOnly && (
-        <AppText variant="body" color="faint" style={styles.originChevron}>›</AppText>
+        <AppIcon name="chevronRight" size={20} color={theme.colors.textFaint} />
       )}
     </View>
   );
@@ -229,6 +234,7 @@ type BottomDockProps = {
 
 function BottomDock({ onReceive, onSend }: BottomDockProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
 
   return (
@@ -249,27 +255,27 @@ function BottomDock({ onReceive, onSend }: BottomDockProps) {
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Receive bitcoin"
+          accessibilityLabel={t('receive.title')}
           onPress={onReceive}
           style={({ pressed }) => [
             styles.dockBtn,
             { backgroundColor: theme.colors.surfaceRaised, borderRadius: theme.radii.lg, opacity: pressed ? 0.78 : 1 },
           ]}
         >
-          <AppText variant="subtitle" style={{ color: theme.colors.success }}>↙</AppText>
-          <AppText variant="body" style={[styles.dockBtnLabel, { color: theme.colors.text }]}>Receive</AppText>
+          <AppIcon name="receive" size={26} color={theme.colors.success} />
+          <AppText variant="body" style={[styles.dockBtnLabel, { color: theme.colors.text }]}>{t('receive.title')}</AppText>
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Send bitcoin"
+          accessibilityLabel={t('send.title')}
           onPress={onSend}
           style={({ pressed }) => [
             styles.dockBtn,
             { backgroundColor: theme.colors.primary, borderRadius: theme.radii.lg, opacity: pressed ? 0.78 : 1 },
           ]}
         >
-          <AppText variant="subtitle" style={{ color: theme.colors.primaryText }}>↗</AppText>
-          <AppText variant="body" style={[styles.dockBtnLabel, { color: theme.colors.primaryText }]}>Send</AppText>
+          <AppIcon name="send" size={26} color={theme.colors.primaryText} />
+          <AppText variant="body" style={[styles.dockBtnLabel, { color: theme.colors.primaryText }]}>{t('send.title')}</AppText>
         </Pressable>
       </View>
     </View>
@@ -282,6 +288,7 @@ export function HomeScreen() {
   const navigation = useAppNavigation();
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const { getOrigins } = useAddressManager();
 
   const {
@@ -322,9 +329,9 @@ export function HomeScreen() {
     return (
       <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
         <AppEmptyState
-          icon="◌"
-          title="No wallet selected"
-          description="Create or import a wallet to get started."
+          icon="wallet"
+          title={t('home.noWallet')}
+          description={t('home.noWalletDesc')}
         />
       </View>
     );
@@ -365,28 +372,28 @@ export function HomeScreen() {
         {/* Quick action buttons */}
         <View style={styles.quickActionsRow}>
           <QuickAction
-            icon="⊞"
-            label="Segregação"
-            a11yLabel="Segregation"
+            icon="accounts"
+            label={t('home.segregation')}
+            a11yLabel={t('home.segregation')}
             onPress={() => navigation.navigate(AppRoutes.Segregation)}
             accentColor={theme.colors.accent}
           />
           <QuickAction
-            icon="⚙"
-            label="Configurações"
-            a11yLabel="Settings"
+            icon="settings"
+            label={t('common.settings')}
+            a11yLabel={t('common.settings')}
             onPress={() => navigation.navigate(AppRoutes.Settings)}
           />
           <QuickAction
-            icon="◈"
-            label="UTXOs"
-            a11yLabel="UTXOs"
+            icon="wallet"
+            label={t('home.utxos')}
+            a11yLabel={t('home.utxos')}
             onPress={() => navigation.navigate(AppRoutes.Utxos)}
           />
           <QuickAction
-            icon="◉"
-            label="Endereços"
-            a11yLabel="Addresses"
+            icon="addresses"
+            label={t('home.addresses')}
+            a11yLabel={t('home.addresses')}
             onPress={() => navigation.navigate(AppRoutes.Addresses)}
           />
         </View>
@@ -395,9 +402,9 @@ export function HomeScreen() {
         {origins.length > 0 && (
           <View style={styles.originsSection}>
             <View style={styles.sectionHeader}>
-              <AppText variant="subtitle">Accounts</AppText>
+              <AppText variant="subtitle">{t('home.accounts')}</AppText>
               <Pressable onPress={() => navigation.navigate(AppRoutes.Segregation)}>
-                <AppText variant="caption" color="accent">Manage</AppText>
+                <AppText variant="caption" color="accent">{t('home.manage')}</AppText>
               </Pressable>
             </View>
             <View style={styles.originList}>
@@ -411,23 +418,23 @@ export function HomeScreen() {
         {/* Recent activity preview */}
         <View style={styles.activitySection}>
           <View style={styles.sectionHeader}>
-            <AppText variant="subtitle">Recent Activity</AppText>
+            <AppText variant="subtitle">{t('home.recentActivity')}</AppText>
             {transactions.length > 0 && (
               <Pressable onPress={() => navigation.navigate(AppRoutes.Transactions)}>
-                <AppText variant="caption" color="accent">See all</AppText>
+                <AppText variant="caption" color="accent">{t('home.seeAll')}</AppText>
               </Pressable>
             )}
           </View>
 
           {isLoading ? (
-            <AppLoading label="Loading…" />
+            <AppLoading label={t('home.loading')} />
           ) : error ? (
             <AppText variant="caption" color="danger">{error}</AppText>
           ) : transactions.length === 0 ? (
             <AppEmptyState
-              icon="◌"
-              title="No transactions yet"
-              description="Transactions appear here once you send or receive."
+              icon="transactions"
+              title={t('home.noTransactions')}
+              description={t('home.noTransactionsDesc')}
             />
           ) : (
             <View style={styles.activityList}>
@@ -458,13 +465,11 @@ export function HomeScreen() {
                         },
                       ]}
                     >
-                      <AppText style={[styles.activityIconText, { color: isIn ? theme.colors.success : theme.colors.textMuted }]}>
-                        {isIn ? '↙' : '↗'}
-                      </AppText>
+                      <AppIcon name={isIn ? "receive" : "send"} size={22} color={isIn ? theme.colors.success : theme.colors.textMuted} />
                     </View>
                     <View style={styles.activityInfo}>
                       <AppText variant="body" style={styles.activityTitle}>
-                        {isIn ? 'Received' : 'Sent'}
+                        {isIn ? t('home.received') : t('home.sent')}
                       </AppText>
                       <AppText variant="caption" color="muted">
                         {tx.status} · {new Date(tx.createdAt).toLocaleDateString()}

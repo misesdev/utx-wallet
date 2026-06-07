@@ -99,13 +99,13 @@ describe('HomeScreen', () => {
 
     it('does not show pending section when pendingBalanceSats is zero', () => {
       const screen = renderWithTheme(<HomeScreen />);
-      expect(screen.queryByText('Pending')).toBeNull();
+      expect(screen.queryByText('home.pending')).toBeNull();
     });
 
     it('renders pending balance when pendingBalanceSats is positive', () => {
       mockHomeState = { ...WALLET_STATE, pendingBalanceSats: 12_000 };
       const screen = renderWithTheme(<HomeScreen />);
-      expect(screen.getByText('Pending')).toBeTruthy();
+      expect(screen.getByText('home.pending')).toBeTruthy();
       expect(screen.getByText('+12,000 sats')).toBeTruthy();
     });
   });
@@ -123,44 +123,44 @@ describe('HomeScreen', () => {
 
     it('does not show safe mode badge when isSafeMode is false', () => {
       const screen = renderWithTheme(<HomeScreen />);
-      expect(screen.queryByText('Safe mode')).toBeNull();
+      expect(screen.queryByText('home.safeMode')).toBeNull();
     });
 
     it('shows safe mode badge when isSafeMode is true', () => {
       mockHomeState = { ...WALLET_STATE, isSafeMode: true };
       const screen = renderWithTheme(<HomeScreen />);
-      expect(screen.getByText('Safe mode')).toBeTruthy();
+      expect(screen.getByText('home.safeMode')).toBeTruthy();
     });
   });
 
   describe('Action buttons navigation', () => {
     it('navigates to Receive screen when Receive is pressed', () => {
       const screen = renderWithTheme(<HomeScreen />);
-      fireEvent.press(screen.getByText('Receive'));
+      fireEvent.press(screen.getByText('receive.title'));
       expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.Receive);
     });
 
     it('navigates to Send screen when Send is pressed', () => {
       const screen = renderWithTheme(<HomeScreen />);
-      fireEvent.press(screen.getByText('Send'));
+      fireEvent.press(screen.getByText('send.title'));
       expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.Send);
     });
 
     it('navigates to Transactions screen when balance is tapped', () => {
       const screen = renderWithTheme(<HomeScreen />);
-      fireEvent.press(screen.getByLabelText('View transactions'));
+      fireEvent.press(screen.getByLabelText('transactions.title'));
       expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.Transactions);
     });
 
     it('navigates to Utxos screen when UTXOs is pressed', () => {
       const screen = renderWithTheme(<HomeScreen />);
-      fireEvent.press(screen.getByLabelText('UTXOs'));
+      fireEvent.press(screen.getByLabelText('home.utxos'));
       expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.Utxos);
     });
 
     it('navigates to Settings screen when Settings is pressed', () => {
       const screen = renderWithTheme(<HomeScreen />);
-      fireEvent.press(screen.getByLabelText('Settings'));
+      fireEvent.press(screen.getByLabelText('common.settings'));
       expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.Settings);
     });
   });
@@ -168,12 +168,12 @@ describe('HomeScreen', () => {
   describe('Sync button', () => {
     it('renders the Tap to sync button when idle with no prior sync', () => {
       const screen = renderWithTheme(<HomeScreen />);
-      expect(screen.getByText('Tap to sync')).toBeTruthy();
+      expect(screen.getByText('home.tapToSync')).toBeTruthy();
     });
 
     it('calls sync and refresh when Tap to sync is pressed', async () => {
       const screen = renderWithTheme(<HomeScreen />);
-      fireEvent.press(screen.getByText('Tap to sync'));
+      fireEvent.press(screen.getByText('home.tapToSync'));
       await waitFor(() => {
         expect(mockSync).toHaveBeenCalledTimes(1);
         expect(mockRefresh).toHaveBeenCalledTimes(1);
@@ -183,7 +183,7 @@ describe('HomeScreen', () => {
     it('shows Syncing… text while isSyncing is true', () => {
       mockSyncState = { ...SYNC_STATE, isSyncing: true };
       const screen = renderWithTheme(<HomeScreen />);
-      expect(screen.getByText('Syncing…')).toBeTruthy();
+      expect(screen.getByText('home.syncing')).toBeTruthy();
     });
 
     it('shows last sync time when lastSyncAt is set', () => {
@@ -192,7 +192,7 @@ describe('HomeScreen', () => {
         lastSyncAt: '2026-06-05T12:00:00.000Z',
       };
       const screen = renderWithTheme(<HomeScreen />);
-      expect(screen.getByText(/Last sync:/i)).toBeTruthy();
+      expect(screen.getByText('home.lastSync')).toBeTruthy();
     });
 
     it('shows sync error message when syncError is set', () => {
@@ -209,21 +209,21 @@ describe('HomeScreen', () => {
     it('renders empty state when wallet is null', () => {
       mockHomeState = { ...WALLET_STATE, wallet: null };
       const screen = renderWithTheme(<HomeScreen />);
-      expect(screen.getByText('No wallet selected')).toBeTruthy();
+      expect(screen.getByText('home.noWallet')).toBeTruthy();
     });
 
     it('does not render action buttons when wallet is null', () => {
       mockHomeState = { ...WALLET_STATE, wallet: null };
       const screen = renderWithTheme(<HomeScreen />);
-      expect(screen.queryByText('Receive')).toBeNull();
-      expect(screen.queryByText('Send')).toBeNull();
+      expect(screen.queryByText('receive.title')).toBeNull();
+      expect(screen.queryByText('send.title')).toBeNull();
     });
   });
 
   describe('No transactions state', () => {
     it('renders empty activity state when transactions list is empty', () => {
       const screen = renderWithTheme(<HomeScreen />);
-      expect(screen.getByText('No transactions yet')).toBeTruthy();
+      expect(screen.getByText('home.noTransactions')).toBeTruthy();
     });
   });
 
@@ -247,8 +247,8 @@ describe('HomeScreen', () => {
       ];
       mockHomeState = { ...WALLET_STATE, transactions: txs };
       const screen = renderWithTheme(<HomeScreen />);
-      expect(screen.getByText('Received')).toBeTruthy();
-      expect(screen.getByText('Sent')).toBeTruthy();
+      expect(screen.getByText('home.received')).toBeTruthy();
+      expect(screen.getByText('home.sent')).toBeTruthy();
     });
 
     it('opens transaction details when a transaction is pressed', () => {
@@ -280,7 +280,7 @@ describe('HomeScreen', () => {
       }));
       mockHomeState = { ...WALLET_STATE, transactions: txs };
       const screen = renderWithTheme(<HomeScreen />);
-      const receivedItems = screen.getAllByText('Received');
+      const receivedItems = screen.getAllByText('home.received');
       expect(receivedItems.length).toBe(8);
     });
   });
@@ -289,13 +289,13 @@ describe('HomeScreen', () => {
     it('shows loading indicator when isLoading is true', () => {
       mockHomeState = { ...WALLET_STATE, isLoading: true };
       const screen = renderWithTheme(<HomeScreen />);
-      expect(screen.getByText('Loading…')).toBeTruthy();
+      expect(screen.getByText('home.loading')).toBeTruthy();
     });
 
     it('does not show empty state while loading', () => {
       mockHomeState = { ...WALLET_STATE, isLoading: true, transactions: [] };
       const screen = renderWithTheme(<HomeScreen />);
-      expect(screen.queryByText('No transactions yet')).toBeNull();
+      expect(screen.queryByText('home.noTransactions')).toBeNull();
     });
   });
 
@@ -316,14 +316,14 @@ describe('HomeScreen', () => {
         transactions: [],
       };
       const screen = renderWithTheme(<HomeScreen />);
-      expect(screen.queryByText('No transactions yet')).toBeNull();
+      expect(screen.queryByText('home.noTransactions')).toBeNull();
     });
   });
 
   describe('Recent Activity section', () => {
     it('renders the Recent Activity header', () => {
       const screen = renderWithTheme(<HomeScreen />);
-      expect(screen.getByText('Recent Activity')).toBeTruthy();
+      expect(screen.getByText('home.recentActivity')).toBeTruthy();
     });
   });
 });

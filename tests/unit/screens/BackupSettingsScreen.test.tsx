@@ -52,7 +52,7 @@ jest.mock('react-native-safe-area-context', () => ({
 describe('BackupSettingsScreen', () => {
   it('renders the screen title', () => {
     const screen = renderWithTheme(<BackupSettingsScreen />);
-    expect(screen.getByText('Backup settings')).toBeTruthy();
+    expect(screen.getByText('backup.title')).toBeTruthy();
   });
 
   it('displays the network config info', () => {
@@ -62,11 +62,11 @@ describe('BackupSettingsScreen', () => {
 
   it('displays the wallet count', () => {
     const screen = renderWithTheme(<BackupSettingsScreen />);
-    expect(screen.getByText('Wallets loaded: 1')).toBeTruthy();
+    expect(screen.getByText('backup.walletsLoaded')).toBeTruthy();
   });
 
   it('renders the verify backup button', () => {
     const screen = renderWithTheme(<BackupSettingsScreen />);
-    expect(screen.getByText('Verify backup')).toBeTruthy();
+    expect(screen.getByText('backup.verifyBackup')).toBeTruthy();
   });
 });

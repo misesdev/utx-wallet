@@ -37,31 +37,31 @@ describe('CreateWalletScreen', () => {
 
   it('renders the wallet name input', () => {
     const screen = renderWithTheme(<CreateWalletScreen />);
-    expect(screen.getByPlaceholderText('e.g. Main wallet')).toBeTruthy();
+    expect(screen.getByPlaceholderText('createWallet.namePlaceholder')).toBeTruthy();
   });
 
   it('shows network badge for testnet by default (no route params)', () => {
     const screen = renderWithTheme(<CreateWalletScreen />);
-    expect(screen.getByText('Creating on Testnet')).toBeTruthy();
+    expect(screen.getByText('createWallet.networkBadge')).toBeTruthy();
   });
 
   it('shows network badge for mainnet when route param is mainnet', () => {
     mockRouteParams = { network: 'mainnet' };
     const screen = renderWithTheme(<CreateWalletScreen />);
-    expect(screen.getByText('Creating on Mainnet')).toBeTruthy();
+    expect(screen.getByText('createWallet.networkBadge')).toBeTruthy();
   });
 
   it('shows an error when name is empty', () => {
     const screen = renderWithTheme(<CreateWalletScreen />);
-    fireEvent.press(screen.getByLabelText('Generate seed phrase'));
-    expect(screen.getByText('Wallet name is required')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('createWallet.generateSeed'));
+    expect(screen.getByText('createWallet.errorNameRequired')).toBeTruthy();
     expect(mockInitiate).not.toHaveBeenCalled();
   });
 
   it('calls initiate with testnet and navigates to BackupSeed with a valid name', () => {
     const screen = renderWithTheme(<CreateWalletScreen />);
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Main wallet'), 'My Wallet');
-    fireEvent.press(screen.getByLabelText('Generate seed phrase'));
+    fireEvent.changeText(screen.getByPlaceholderText('createWallet.namePlaceholder'), 'My Wallet');
+    fireEvent.press(screen.getByLabelText('createWallet.generateSeed'));
     expect(mockInitiate).toHaveBeenCalledWith('My Wallet', undefined, 'testnet');
     expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.BackupSeed);
   });
@@ -69,60 +69,60 @@ describe('CreateWalletScreen', () => {
   it('calls initiate with mainnet when route param is mainnet', () => {
     mockRouteParams = { network: 'mainnet' };
     const screen = renderWithTheme(<CreateWalletScreen />);
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Main wallet'), 'My Wallet');
-    fireEvent.press(screen.getByLabelText('Generate seed phrase'));
+    fireEvent.changeText(screen.getByPlaceholderText('createWallet.namePlaceholder'), 'My Wallet');
+    fireEvent.press(screen.getByLabelText('createWallet.generateSeed'));
     expect(mockInitiate).toHaveBeenCalledWith('My Wallet', undefined, 'mainnet');
   });
 
   it('trims the wallet name before calling initiate', () => {
     const screen = renderWithTheme(<CreateWalletScreen />);
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Main wallet'), '  Padded  ');
-    fireEvent.press(screen.getByLabelText('Generate seed phrase'));
+    fireEvent.changeText(screen.getByPlaceholderText('createWallet.namePlaceholder'), '  Padded  ');
+    fireEvent.press(screen.getByLabelText('createWallet.generateSeed'));
     expect(mockInitiate).toHaveBeenCalledWith('Padded', undefined, 'testnet');
   });
 
   it('shows an error when name exceeds 48 characters', () => {
     const screen = renderWithTheme(<CreateWalletScreen />);
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Main wallet'), 'a'.repeat(49));
-    fireEvent.press(screen.getByLabelText('Generate seed phrase'));
-    expect(screen.getByText('Name must be 48 characters or fewer')).toBeTruthy();
+    fireEvent.changeText(screen.getByPlaceholderText('createWallet.namePlaceholder'), 'a'.repeat(49));
+    fireEvent.press(screen.getByLabelText('createWallet.generateSeed'));
+    expect(screen.getByText('createWallet.errorNameTooLong')).toBeTruthy();
     expect(mockInitiate).not.toHaveBeenCalled();
   });
 
   it('shows passphrase section when toggle is pressed', () => {
     const screen = renderWithTheme(<CreateWalletScreen />);
-    fireEvent.press(screen.getByLabelText('Use passphrase'));
-    expect(screen.getByLabelText('Passphrase')).toBeTruthy();
-    expect(screen.getByLabelText('Confirm passphrase')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('createWallet.passphraseSection'));
+    expect(screen.getByLabelText('createWallet.passphraseLabel')).toBeTruthy();
+    expect(screen.getByLabelText('createWallet.confirmPassphraseLabel')).toBeTruthy();
   });
 
   it('shows error when passphrase is enabled but empty', () => {
     const screen = renderWithTheme(<CreateWalletScreen />);
-    fireEvent.press(screen.getByLabelText('Use passphrase'));
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Main wallet'), 'My Wallet');
-    fireEvent.press(screen.getByLabelText('Generate seed phrase'));
-    expect(screen.getByText('Passphrase cannot be empty when enabled')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('createWallet.passphraseSection'));
+    fireEvent.changeText(screen.getByPlaceholderText('createWallet.namePlaceholder'), 'My Wallet');
+    fireEvent.press(screen.getByLabelText('createWallet.generateSeed'));
+    expect(screen.getByText('createWallet.errorPassphraseEmpty')).toBeTruthy();
     expect(mockInitiate).not.toHaveBeenCalled();
   });
 
   it('shows error when passphrases do not match', () => {
     const screen = renderWithTheme(<CreateWalletScreen />);
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Main wallet'), 'My Wallet');
-    fireEvent.press(screen.getByLabelText('Use passphrase'));
-    fireEvent.changeText(screen.getByLabelText('Passphrase'), 'secret');
-    fireEvent.changeText(screen.getByLabelText('Confirm passphrase'), 'different');
-    fireEvent.press(screen.getByLabelText('Generate seed phrase'));
-    expect(screen.getByText('Passphrases do not match')).toBeTruthy();
+    fireEvent.changeText(screen.getByPlaceholderText('createWallet.namePlaceholder'), 'My Wallet');
+    fireEvent.press(screen.getByLabelText('createWallet.passphraseSection'));
+    fireEvent.changeText(screen.getByLabelText('createWallet.passphraseLabel'), 'secret');
+    fireEvent.changeText(screen.getByLabelText('createWallet.confirmPassphraseLabel'), 'different');
+    fireEvent.press(screen.getByLabelText('createWallet.generateSeed'));
+    expect(screen.getByText('createWallet.errorPassphraseMismatch')).toBeTruthy();
     expect(mockInitiate).not.toHaveBeenCalled();
   });
 
   it('calls initiate with passphrase and network when passphrase is enabled and valid', () => {
     const screen = renderWithTheme(<CreateWalletScreen />);
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Main wallet'), 'My Wallet');
-    fireEvent.press(screen.getByLabelText('Use passphrase'));
-    fireEvent.changeText(screen.getByLabelText('Passphrase'), 'mysecret');
-    fireEvent.changeText(screen.getByLabelText('Confirm passphrase'), 'mysecret');
-    fireEvent.press(screen.getByLabelText('Generate seed phrase'));
+    fireEvent.changeText(screen.getByPlaceholderText('createWallet.namePlaceholder'), 'My Wallet');
+    fireEvent.press(screen.getByLabelText('createWallet.passphraseSection'));
+    fireEvent.changeText(screen.getByLabelText('createWallet.passphraseLabel'), 'mysecret');
+    fireEvent.changeText(screen.getByLabelText('createWallet.confirmPassphraseLabel'), 'mysecret');
+    fireEvent.press(screen.getByLabelText('createWallet.generateSeed'));
     expect(mockInitiate).toHaveBeenCalledWith('My Wallet', 'mysecret', 'testnet');
     expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.BackupSeed);
   });

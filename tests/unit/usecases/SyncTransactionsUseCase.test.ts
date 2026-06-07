@@ -123,6 +123,29 @@ describe('SyncTransactionsUseCase', () => {
     });
   });
 
+  describe('fetchedTransactions', () => {
+    it('returns a map of per-address raw transaction lists', async () => {
+      const ADDR_B = 'tb1qaddr2';
+      const tx1 = makeTx('tx1');
+      const tx2 = makeTx('tx2');
+      const provider = makeProvider([]);
+      provider.getTransactions
+        .mockResolvedValueOnce([tx1])
+        .mockResolvedValueOnce([tx2]);
+      const useCase = new SyncTransactionsUseCase(makeRepo([]), provider);
+      const result = await useCase.execute(WALLET_ID, [ADDRESS, ADDR_B], NETWORK);
+      expect(result.fetchedTransactions).toBeInstanceOf(Map);
+      expect(result.fetchedTransactions.get(ADDRESS)).toEqual([tx1]);
+      expect(result.fetchedTransactions.get(ADDR_B)).toEqual([tx2]);
+    });
+
+    it('includes an empty array entry for addresses with no transactions', async () => {
+      const useCase = new SyncTransactionsUseCase(makeRepo([]), makeProvider([]));
+      const result = await useCase.execute(WALLET_ID, [ADDRESS], NETWORK);
+      expect(result.fetchedTransactions.get(ADDRESS)).toEqual([]);
+    });
+  });
+
   describe('multiple addresses', () => {
     it('deduplicates a tx that appears in both address results', async () => {
       const ADDR_B = 'tb1qaddr2';

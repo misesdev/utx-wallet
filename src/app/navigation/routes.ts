@@ -32,6 +32,7 @@ export const AppRoutes = {
   BackupSettings: 'BackupSettings',
   OfflineMode: 'OfflineMode',
   SafeMode: 'SafeMode',
+  LanguageSettings: 'LanguageSettings',
 } as const;
 
 export type AuthStackParamList = {
@@ -68,4 +69,5 @@ export type AppStackParamList = {
   BackupSettings: undefined;
   OfflineMode: undefined;
   SafeMode: undefined;
+  LanguageSettings: undefined;
 };

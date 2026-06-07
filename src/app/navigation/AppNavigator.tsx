@@ -11,6 +11,7 @@ import { BackupSettingsScreen } from '../../presentation/screens/settings/Backup
 import { NetworkSettingsScreen } from '../../presentation/screens/settings/NetworkSettingsScreen';
 import { NodeSettingsScreen } from '../../presentation/screens/settings/NodeSettingsScreen';
 import { SecuritySettingsScreen } from '../../presentation/screens/settings/SecuritySettingsScreen';
+import { LanguageScreen } from '../../presentation/screens/settings/LanguageScreen';
 import { SettingsScreen } from '../../presentation/screens/settings/SettingsScreen';
 import { AddressesScreen } from '../../presentation/screens/wallet/AddressesScreen';
 import { ReceiveScreen } from '../../presentation/screens/wallet/ReceiveScreen';
@@ -59,6 +60,7 @@ export function AppNavigator() {
         <Stack.Screen name={AppRoutes.BackupSettings} component={BackupSettingsScreen} />
         <Stack.Screen name={AppRoutes.OfflineMode} component={OfflineModeScreen} />
         <Stack.Screen name={AppRoutes.SafeMode} component={SafeModeScreen} />
+        <Stack.Screen name={AppRoutes.LanguageSettings} component={LanguageScreen} />
       </Stack.Navigator>
     </CreateWalletProvider>
   );

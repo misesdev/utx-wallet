@@ -9,6 +9,8 @@ type NetworkContextValue = {
   setNetworkConfig: (config: NetworkConfig) => Promise<void>;
   changeNetwork: (targetNetwork: BitcoinNetwork, walletNetwork?: BitcoinNetwork) => Promise<NetworkConfig>;
   testNodeConnection: (config: NetworkConfig) => Promise<NodeConnectionTestResult>;
+  /** Update the active network to match the selected wallet without changing other settings. */
+  syncNetworkToWallet: (walletNetwork: BitcoinNetwork) => Promise<void>;
 };
 
 export const NetworkContext = createContext<NetworkContextValue | null>(null);
@@ -45,6 +47,11 @@ export function NetworkProvider({ children, networkService }: NetworkProviderPro
         return config;
       },
       testNodeConnection: config => networkService.testNodeConnection(config),
+      syncNetworkToWallet: async (walletNetwork) => {
+        const updated: NetworkConfig = { ...networkConfig, network: walletNetwork };
+        await networkService.setConfig(updated);
+        setNetworkConfigState(updated);
+      },
     }),
     [isOnline, networkConfig, networkService],
   );

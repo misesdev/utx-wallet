@@ -5,7 +5,9 @@ import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
 import { AddressInput } from '../../components/wallet/AddressInput';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useSendBitcoin } from '../../hooks/useSendBitcoin';
 import { useTheme } from '../../hooks/useTheme';
 import type { AppStackParamList } from '../../../app/navigation/routes';
@@ -20,6 +22,7 @@ function formatSats(sats: number): string {
 
 export function SendScreen() {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<SendNavProp>();
 
@@ -71,15 +74,15 @@ export function SendScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.back')}
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <AppText variant="title" color="muted">←</AppText>
+          <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
 
         <View style={styles.headerCenter}>
-          <AppText variant="subtitle" style={styles.headerTitle}>Send</AppText>
+          <AppText variant="subtitle" style={styles.headerTitle}>{t('send.title')}</AppText>
           {originId && (
             <View
               style={[
@@ -87,7 +90,7 @@ export function SendScreen() {
                 { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radii.sm },
               ]}
             >
-              <AppText variant="label" color="accent">Account selected</AppText>
+              <AppText variant="label" color="accent">{t('send.accountSelected')}</AppText>
             </View>
           )}
         </View>
@@ -97,8 +100,8 @@ export function SendScreen() {
 
       {/* Available balance */}
       <View style={styles.balanceRow}>
-        <AppText variant="caption" color="muted">Available</AppText>
-        <AppText variant="body" testID="available-balance">{formatSats(availableBalanceSats)} sats</AppText>
+        <AppText variant="caption" color="muted">{t('send.available')}</AppText>
+        <AppText variant="body" testID="available-balance">{formatSats(availableBalanceSats)} {t('common.sats')}</AppText>
       </View>
 
       {/* Big amount field (Nubank-style) */}
@@ -112,7 +115,7 @@ export function SendScreen() {
           style={[styles.bigAmount, { color: amountSats ? theme.colors.text : theme.colors.textFaint }]}
           testID="input-amount"
         />
-        <AppText variant="body" color="muted" style={styles.unitLabel}>sats</AppText>
+        <AppText variant="body" color="muted" style={styles.unitLabel}>{t('common.sats')}</AppText>
         {btcAmount && (
           <AppText variant="caption" color="muted" style={styles.btcConversion} testID="btc-conversion">
             ≈ {btcAmount} BTC
@@ -126,11 +129,11 @@ export function SendScreen() {
       {/* Address section */}
       <View style={styles.addressSection}>
         <View style={styles.addressHeader}>
-          <AppText variant="label" color="muted">Recipient address</AppText>
+          <AppText variant="label" color="muted">{t('send.recipientAddress')}</AppText>
           <Pressable
             onPress={handleMax}
             accessibilityRole="button"
-            accessibilityLabel="Send max"
+            accessibilityLabel={t('send.max')}
             testID="btn-max"
             style={({ pressed }) => [
               styles.maxBtn,
@@ -142,7 +145,7 @@ export function SendScreen() {
               },
             ]}
           >
-            <AppText variant="label" color="accent">MAX</AppText>
+            <AppText variant="label" color="accent">{t('send.max')}</AppText>
           </Pressable>
         </View>
 
@@ -175,7 +178,7 @@ export function SendScreen() {
             variant="subtitle"
             style={[styles.nextBtnLabel, { color: canNext ? theme.colors.primaryText : theme.colors.textMuted }]}
           >
-            Next →
+            {t('send.next')}
           </AppText>
         </Pressable>
       </View>

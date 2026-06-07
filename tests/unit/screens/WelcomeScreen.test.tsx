@@ -27,23 +27,23 @@ describe('WelcomeScreen', () => {
 
   it('renders the create wallet button', () => {
     const screen = renderWithTheme(<WelcomeScreen />);
-    expect(screen.getByText('Create new wallet')).toBeTruthy();
+    expect(screen.getByText('welcome.createWallet')).toBeTruthy();
   });
 
   it('renders the import wallet button', () => {
     const screen = renderWithTheme(<WelcomeScreen />);
-    expect(screen.getByText('Import wallet')).toBeTruthy();
+    expect(screen.getByText('welcome.importWallet')).toBeTruthy();
   });
 
   it('navigates to CreateWallet when "Create new wallet" is pressed', () => {
     const screen = renderWithTheme(<WelcomeScreen />);
-    fireEvent.press(screen.getByText('Create new wallet'));
+    fireEvent.press(screen.getByText('welcome.createWallet'));
     expect(mockNavigate).toHaveBeenCalledWith(AuthRoutes.CreateWallet);
   });
 
   it('navigates to ImportWallet when "Import wallet" is pressed', () => {
     const screen = renderWithTheme(<WelcomeScreen />);
-    fireEvent.press(screen.getByText('Import wallet'));
+    fireEvent.press(screen.getByText('welcome.importWallet'));
     expect(mockNavigate).toHaveBeenCalledWith(AuthRoutes.ImportWallet);
   });
 });

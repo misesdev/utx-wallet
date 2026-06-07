@@ -83,7 +83,7 @@ describe('SendScreen', () => {
     it('renders the available balance', () => {
       const screen = renderWithTheme(<SendScreen />);
       expect(screen.getByTestId('available-balance')).toBeTruthy();
-      expect(screen.getByText('1,000,000 sats')).toBeTruthy();
+      expect(screen.getByText('1,000,000 common.sats')).toBeTruthy();
     });
   });
 

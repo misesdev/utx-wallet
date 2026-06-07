@@ -47,7 +47,7 @@ describe('NetworkSettingsScreen', () => {
 
     it('renders "Rede ativa" section label', () => {
       const screen = renderWithTheme(<NetworkSettingsScreen />);
-      expect(screen.getByText('Rede ativa')).toBeTruthy();
+      expect(screen.getByText('networkSettings.activeNetwork')).toBeTruthy();
     });
   });
 
@@ -68,13 +68,13 @@ describe('NetworkSettingsScreen', () => {
   describe('Warning state', () => {
     it('does not show warning card when warning is null', () => {
       const screen = renderWithTheme(<NetworkSettingsScreen />);
-      expect(screen.queryByText('Atenção')).toBeNull();
+      expect(screen.queryByText('networkSettings.incompatibleTitle')).toBeNull();
     });
 
     it('shows warning card when warning is set', () => {
       mockState = { ...BASE_STATE, warning: 'Trocar a rede atualizará os providers.' };
       const screen = renderWithTheme(<NetworkSettingsScreen />);
-      expect(screen.getByText('Atenção')).toBeTruthy();
+      expect(screen.getByText('networkSettings.incompatibleTitle')).toBeTruthy();
       expect(screen.getByText('Trocar a rede atualizará os providers.')).toBeTruthy();
     });
   });
@@ -82,32 +82,32 @@ describe('NetworkSettingsScreen', () => {
   describe('Error state', () => {
     it('does not show error card when error is null', () => {
       const screen = renderWithTheme(<NetworkSettingsScreen />);
-      expect(screen.queryByText('Rede incompatível')).toBeNull();
+      expect(screen.queryByText('networkSettings.incompatibleNetwork')).toBeNull();
     });
 
     it('shows error card when error is set', () => {
       mockState = { ...BASE_STATE, error: 'A rede selecionada não é compatível com a carteira atual.' };
       const screen = renderWithTheme(<NetworkSettingsScreen />);
-      expect(screen.getByText('Rede incompatível')).toBeTruthy();
+      expect(screen.getByText('networkSettings.incompatibleNetwork')).toBeTruthy();
     });
   });
 
   describe('Apply button', () => {
     it('renders apply button', () => {
       const screen = renderWithTheme(<NetworkSettingsScreen />);
-      expect(screen.getByText('Aplicar rede')).toBeTruthy();
+      expect(screen.getByText('networkSettings.apply')).toBeTruthy();
     });
 
     it('shows saving text when isSaving is true', () => {
       mockState = { ...BASE_STATE, isSaving: true };
       const screen = renderWithTheme(<NetworkSettingsScreen />);
-      expect(screen.getByText('Salvando...')).toBeTruthy();
+      expect(screen.getByText('networkSettings.saving')).toBeTruthy();
     });
 
     it('calls confirmNetworkChange when apply button is pressed', () => {
       mockState = { ...BASE_STATE, pendingNetwork: 'testnet3' };
       const screen = renderWithTheme(<NetworkSettingsScreen />);
-      fireEvent.press(screen.getByText('Aplicar rede'));
+      fireEvent.press(screen.getByText('networkSettings.apply'));
       expect(mockConfirmNetworkChange).toHaveBeenCalledTimes(1);
     });
   });

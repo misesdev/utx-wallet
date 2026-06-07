@@ -3,13 +3,16 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton } from '../../components/base/AppButton';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useNetwork } from '../../hooks/useNetwork';
 import { useTheme } from '../../hooks/useTheme';
 import { useWallet } from '../../hooks/useWallet';
 
 export function BackupSettingsScreen() {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
   const { networkConfig } = useNetwork();
@@ -23,13 +26,13 @@ export function BackupSettingsScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.back')}
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <AppText variant="title" color="muted">←</AppText>
+          <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
-        <AppText variant="subtitle" style={styles.headerTitle}>Backup settings</AppText>
+        <AppText variant="subtitle" style={styles.headerTitle}>{t('backup.title')}</AppText>
         <View style={styles.backBtn} />
       </View>
 
@@ -39,7 +42,7 @@ export function BackupSettingsScreen() {
       >
         {/* Wallet info card */}
         <View style={styles.section}>
-          <AppText variant="label" color="muted" style={styles.sectionLabel}>Carteira</AppText>
+          <AppText variant="label" color="muted" style={styles.sectionLabel}>{t('walletList.title')}</AppText>
           <View
             style={[
               styles.infoCard,
@@ -51,13 +54,13 @@ export function BackupSettingsScreen() {
             ]}
           >
             <View style={styles.infoRow}>
-              <AppText variant="caption" color="muted">Rede</AppText>
+              <AppText variant="caption" color="muted">{t('common.network')}</AppText>
               <AppText variant="body">{networkSummary}</AppText>
             </View>
             <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
             <View style={styles.infoRow}>
-              <AppText variant="caption" color="muted">Carteiras</AppText>
-              <AppText variant="body">Wallets loaded: {wallets.length}</AppText>
+              <AppText variant="caption" color="muted">{t('backup.walletsLabel')}</AppText>
+              <AppText variant="body">{t('backup.walletsLoaded', { count: wallets.length })}</AppText>
             </View>
           </View>
         </View>
@@ -73,14 +76,14 @@ export function BackupSettingsScreen() {
             },
           ]}
         >
-          <AppText variant="label" style={styles.warnTitle}>Guarde sua seed em segurança</AppText>
+          <AppText variant="label" style={styles.warnTitle}>{t('backup.keepSafe')}</AppText>
           <AppText variant="caption" color="muted">
-            Sua seed phrase é a única forma de recuperar sua carteira. Nunca compartilhe ou armazene digitalmente.
+            {t('backup.seedWarning')}
           </AppText>
         </View>
 
         {/* Actions */}
-        <AppButton title="Verify backup" onPress={() => undefined} />
+        <AppButton title={t('backup.verifyBackup')} onPress={() => undefined} />
       </ScrollView>
     </View>
   );

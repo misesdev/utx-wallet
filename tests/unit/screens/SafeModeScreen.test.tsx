@@ -47,22 +47,22 @@ describe('SafeModeScreen', () => {
   describe('Inactive state', () => {
     it('shows "Modo seguro inativo" when safe mode is off', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
-      expect(screen.getByText('Modo seguro inativo')).toBeTruthy();
+      expect(screen.getByText('safeMode.inactive')).toBeTruthy();
     });
 
     it('shows the activate button when safe mode is off', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
-      expect(screen.getByText('Ativar modo seguro')).toBeTruthy();
+      expect(screen.getByText('safeMode.enable')).toBeTruthy();
     });
 
     it('does not show the deactivate button when safe mode is off', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
-      expect(screen.queryByText('Desativar modo seguro')).toBeNull();
+      expect(screen.queryByText('safeMode.disable')).toBeNull();
     });
 
     it('calls activateSafeMode when activate button is pressed', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
-      fireEvent.press(screen.getByText('Ativar modo seguro'));
+      fireEvent.press(screen.getByText('safeMode.enable'));
       expect(mockActivate).toHaveBeenCalledTimes(1);
     });
   });
@@ -80,45 +80,45 @@ describe('SafeModeScreen', () => {
 
     it('shows "Modo seguro ativo" when safe mode is on', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
-      expect(screen.getByText('Modo seguro ativo')).toBeTruthy();
+      expect(screen.getByText('safeMode.active')).toBeTruthy();
     });
 
     it('shows the deactivate button when safe mode is on', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
-      expect(screen.getByText('Desativar modo seguro')).toBeTruthy();
+      expect(screen.getByText('safeMode.disable')).toBeTruthy();
     });
 
     it('does not show the activate button when safe mode is on', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
-      expect(screen.queryByText('Ativar modo seguro')).toBeNull();
+      expect(screen.queryByText('safeMode.enable')).toBeNull();
     });
 
     it('calls deactivateSafeMode when deactivate button is pressed', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
-      fireEvent.press(screen.getByText('Desativar modo seguro'));
+      fireEvent.press(screen.getByText('safeMode.disable'));
       expect(mockDeactivate).toHaveBeenCalledTimes(1);
     });
 
     it('shows the node URL when configured', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
-      expect(screen.getByText('Node: http://my-node.local')).toBeTruthy();
+      expect(screen.getByText('http://my-node.local')).toBeTruthy();
     });
   });
 
   describe('Status display', () => {
     it('shows the status label', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
-      expect(screen.getByText('Status: desconectado')).toBeTruthy();
+      expect(screen.getByText('desconectado')).toBeTruthy();
     });
 
     it('shows "não configurado" when node URL is empty', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
-      expect(screen.getByText('Node: não configurado')).toBeTruthy();
+      expect(screen.getByText('não configurado')).toBeTruthy();
     });
 
     it('shows the network from the form', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
-      expect(screen.getByText('Rede: testnet4')).toBeTruthy();
+      expect(screen.getByText('testnet4')).toBeTruthy();
     });
   });
 });

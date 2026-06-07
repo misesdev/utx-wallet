@@ -102,7 +102,7 @@ describe('TransactionReviewModal', () => {
 
     it('shows "Enviando…" label on confirm button while sending', () => {
       const screen = renderModal({ isSending: true });
-      expect(screen.getByText('Enviando…')).toBeTruthy();
+      expect(screen.getByText('txReview.sending')).toBeTruthy();
     });
   });
 

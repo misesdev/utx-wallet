@@ -137,7 +137,7 @@ describe('useHomeWallet', () => {
     mockListTransactions.mockRejectedValue(new Error('Network error'));
     const { result } = renderHook(() => useHomeWallet());
     await act(async () => {});
-    expect(result.current.error).toBe('Failed to load wallet data. Pull to refresh.');
+    expect(result.current.error).toBe('home.errorLoadWalletData');
     expect(result.current.isLoading).toBe(false);
   });
 

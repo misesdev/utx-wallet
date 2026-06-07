@@ -3,6 +3,7 @@ import { Modal, StyleSheet, TextInput, View } from 'react-native';
 import { AppButton } from '../base/AppButton';
 import { AppText } from '../base/AppText';
 import { useTheme } from '../../hooks/useTheme';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import type { PinModalStep } from '../../hooks/useSecuritySettings';
 
 type PinInputModalProps = {
@@ -14,22 +15,23 @@ type PinInputModalProps = {
   onCancel: () => void;
 };
 
-const STEP_TITLES: Record<PinModalStep, string> = {
+const STEP_TITLE_KEYS: Record<PinModalStep, string> = {
   'none': '',
-  'set-new': 'Criar PIN',
-  'confirm-new': 'Confirmar PIN',
-  'verify-to-remove': 'Verificar PIN',
+  'set-new': 'pinModal.setNewTitle',
+  'confirm-new': 'pinModal.confirmNewTitle',
+  'verify-to-remove': 'pinModal.verifyToRemoveTitle',
 };
 
-const STEP_SUBTITLES: Record<PinModalStep, string> = {
+const STEP_SUBTITLE_KEYS: Record<PinModalStep, string> = {
   'none': '',
-  'set-new': 'Digite um PIN de 4 a 8 dígitos',
-  'confirm-new': 'Digite o PIN novamente para confirmar',
-  'verify-to-remove': 'Digite seu PIN atual para removê-lo',
+  'set-new': 'pinModal.setNewSubtitle',
+  'confirm-new': 'pinModal.confirmNewSubtitle',
+  'verify-to-remove': 'pinModal.verifyToRemoveSubtitle',
 };
 
 export function PinInputModal({ visible, step, error, isSaving, onSubmit, onCancel }: PinInputModalProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const [pin, setPin] = useState('');
   const inputRef = useRef<TextInput>(null);
 
@@ -50,8 +52,8 @@ export function PinInputModal({ visible, step, error, isSaving, onSubmit, onCanc
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <View style={styles.overlay}>
         <View style={[styles.container, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <AppText variant="title">{STEP_TITLES[step]}</AppText>
-          <AppText variant="body" color="muted">{STEP_SUBTITLES[step]}</AppText>
+          <AppText variant="title">{STEP_TITLE_KEYS[step] ? t(STEP_TITLE_KEYS[step] as any) : ''}</AppText>
+          <AppText variant="body" color="muted">{STEP_SUBTITLE_KEYS[step] ? t(STEP_SUBTITLE_KEYS[step] as any) : ''}</AppText>
 
           <View style={styles.dots}>
             {Array.from({ length: Math.max(pin.length, 4) }).map((_, i) => (
@@ -84,9 +86,9 @@ export function PinInputModal({ visible, step, error, isSaving, onSubmit, onCanc
           ) : null}
 
           <View style={styles.actions}>
-            <AppButton title="Cancelar" variant="ghost" onPress={onCancel} />
+            <AppButton title={t('common.cancel')} variant="ghost" onPress={onCancel} />
             <AppButton
-              title={isSaving ? 'Salvando...' : 'Confirmar'}
+              title={isSaving ? t('common.loading') : t('common.confirm')}
               variant="primary"
               onPress={handleConfirm}
               disabled={pin.length < 4 || isSaving}

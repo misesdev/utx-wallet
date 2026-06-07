@@ -3,12 +3,15 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton } from '../../components/base/AppButton';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useSafeMode } from '../../hooks/useSafeMode';
 import { useTheme } from '../../hooks/useTheme';
 
 export function SafeModeScreen() {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
 
@@ -23,13 +26,13 @@ export function SafeModeScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.back')}
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <AppText variant="title" color="muted">←</AppText>
+          <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
-        <AppText variant="subtitle" style={styles.headerTitle}>Modo seguro</AppText>
+        <AppText variant="subtitle" style={styles.headerTitle}>{t('safeMode.title')}</AppText>
         <View style={styles.backBtn} />
       </View>
 
@@ -49,18 +52,18 @@ export function SafeModeScreen() {
           ]}
         >
           <View style={[styles.heroIcon, { backgroundColor: isSafeModeEnabled ? theme.colors.accent : theme.colors.surfaceMuted, borderRadius: theme.radii.md }]}>
-            <AppText style={styles.heroIconText}>{isSafeModeEnabled ? '⬡' : '◌'}</AppText>
+            <AppIcon name={isSafeModeEnabled ? "safeMode" : "warning"} size={36} color={isSafeModeEnabled ? theme.colors.success : theme.colors.textMuted} />
           </View>
           <AppText
             variant="subtitle"
             style={[styles.heroTitle, isSafeModeEnabled ? { color: theme.colors.accent } : undefined]}
           >
-            {isSafeModeEnabled ? 'Modo seguro ativo' : 'Modo seguro inativo'}
+            {isSafeModeEnabled ? t('safeMode.active') : t('safeMode.inactive')}
           </AppText>
           <AppText variant="caption" color="muted">
             {isSafeModeEnabled
-              ? 'Transações roteadas pelo seu node pessoal.'
-              : 'Conectando via API pública. Ative para usar seu próprio node.'}
+              ? t('safeMode.activeDesc')
+              : t('safeMode.inactiveDesc')}
           </AppText>
         </View>
 
@@ -76,21 +79,21 @@ export function SafeModeScreen() {
           ]}
         >
           <View style={styles.infoRow}>
-            <AppText variant="caption" color="muted">Status</AppText>
+            <AppText variant="caption" color="muted">{t('safeMode.statusLabel')}</AppText>
             <View style={styles.statusRow}>
               <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-              <AppText variant="body" style={{ color: statusColor }}>Status: {statusLabel}</AppText>
+              <AppText variant="body" style={{ color: statusColor }}>{statusLabel}</AppText>
             </View>
           </View>
           <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
           <View style={styles.infoRow}>
-            <AppText variant="caption" color="muted">Node</AppText>
-            <AppText variant="body" numberOfLines={1} style={styles.nodeUrl}>Node: {nodeDisplay}</AppText>
+            <AppText variant="caption" color="muted">{t('safeMode.nodeLabel')}</AppText>
+            <AppText variant="body" numberOfLines={1} style={styles.nodeUrl}>{nodeDisplay}</AppText>
           </View>
           <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
           <View style={styles.infoRow}>
-            <AppText variant="caption" color="muted">Rede</AppText>
-            <AppText variant="body">Rede: {form.network}</AppText>
+            <AppText variant="caption" color="muted">{t('safeMode.networkLabel')}</AppText>
+            <AppText variant="body">{form.network}</AppText>
           </View>
         </View>
 
@@ -106,15 +109,15 @@ export function SafeModeScreen() {
           ]}
         >
           <AppText variant="caption" color="muted">
-            O modo seguro conecta a carteira ao seu próprio node Bitcoin, garantindo máxima privacidade e verificação independente de transações.
+            {t('safeMode.info')}
           </AppText>
         </View>
 
         {/* Actions */}
         {isSafeModeEnabled ? (
-          <AppButton title="Desativar modo seguro" variant="secondary" onPress={deactivateSafeMode} />
+          <AppButton title={t('safeMode.disable')} variant="secondary" onPress={deactivateSafeMode} />
         ) : (
-          <AppButton title="Ativar modo seguro" onPress={activateSafeMode} />
+          <AppButton title={t('safeMode.enable')} onPress={activateSafeMode} />
         )}
       </ScrollView>
     </View>

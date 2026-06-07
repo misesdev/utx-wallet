@@ -5,8 +5,10 @@ import { useRoute, type RouteProp } from '@react-navigation/native';
 import { AppButton } from '../../components/base/AppButton';
 import { AppLoading } from '../../components/base/AppLoading';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
 import { QrCodeView } from '../../components/wallet/QrCodeView';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useReceiveBitcoin } from '../../hooks/useReceiveBitcoin';
 import { useTheme } from '../../hooks/useTheme';
 import type { AppStackParamList } from '../../../app/navigation/routes';
@@ -15,6 +17,7 @@ type ReceiveRouteProps = RouteProp<AppStackParamList, 'Receive'>;
 
 export function ReceiveScreen() {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
 
@@ -48,10 +51,10 @@ export function ReceiveScreen() {
     return (
       <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
         <View style={styles.header}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Go back">
-            <AppText variant="title" color="muted">←</AppText>
+          <Pressable onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityRole="button" accessibilityLabel={t('common.back')}>
+            <AppIcon name="back" size={24} color={theme.colors.textMuted} />
           </Pressable>
-          <AppText variant="subtitle" style={styles.headerTitle}>Receive</AppText>
+          <AppText variant="subtitle" style={styles.headerTitle}>{t('receive.title')}</AppText>
           <View style={styles.backBtn} />
         </View>
         <View style={styles.center}>
@@ -69,13 +72,13 @@ export function ReceiveScreen() {
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.back')}
         >
-          <AppText variant="title" color="muted">←</AppText>
+          <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
 
         <View style={styles.headerCenter}>
-          <AppText variant="subtitle" style={styles.headerTitle}>Receive</AppText>
+          <AppText variant="subtitle" style={styles.headerTitle}>{t('receive.title')}</AppText>
           {originName && originChain !== 'change' && (
             <View
               style={[
@@ -136,7 +139,7 @@ export function ReceiveScreen() {
               ]}
             >
               <AppText variant="label" color="muted" style={styles.addressLabel}>
-                {originName ? `${originName} · Receiving address` : 'Receiving address'}
+                {originName ? `${originName} · ${t('receive.receivingAddress')}` : t('receive.receivingAddress')}
               </AppText>
               <AppText style={styles.addressText} testID="receive-address">
                 {resolvedAddress}
@@ -154,7 +157,7 @@ export function ReceiveScreen() {
                 onPress={copyAddress}
                 testID="btn-copy"
                 accessibilityRole="button"
-                accessibilityLabel="Copy address"
+                accessibilityLabel={t('common.copy')}
                 style={({ pressed }) => [
                   styles.actionBtn,
                   {
@@ -166,14 +169,14 @@ export function ReceiveScreen() {
                 ]}
               >
                 <AppText style={styles.actionIcon}>⎘</AppText>
-                <AppText variant="body" style={styles.actionLabel}>Copy</AppText>
+                <AppText variant="body" style={styles.actionLabel}>{t('common.copy')}</AppText>
               </Pressable>
 
               <Pressable
                 onPress={shareAddress}
                 testID="btn-share"
                 accessibilityRole="button"
-                accessibilityLabel="Share address"
+                accessibilityLabel={t('common.share')}
                 style={({ pressed }) => [
                   styles.actionBtn,
                   {
@@ -184,8 +187,8 @@ export function ReceiveScreen() {
                   },
                 ]}
               >
-                <AppText style={styles.actionIcon}>↑</AppText>
-                <AppText variant="body" style={styles.actionLabel}>Share</AppText>
+                <AppIcon name="share" size={24} color={theme.colors.text} />
+                <AppText variant="body" style={styles.actionLabel}>{t('common.share')}</AppText>
               </Pressable>
             </View>
 
@@ -194,7 +197,7 @@ export function ReceiveScreen() {
 
             {/* ─── Amount section ──────────────────────────────────── */}
             <View style={styles.amountSection}>
-              <AppText variant="label" color="muted">Amount (optional)</AppText>
+              <AppText variant="label" color="muted">{t('receive.amountOptional')}</AppText>
               <View
                 style={[
                   styles.inputWrap,
@@ -205,7 +208,7 @@ export function ReceiveScreen() {
                   },
                 ]}
               >
-                <AppText variant="caption" color="muted" style={styles.inputPrefix}>sats</AppText>
+                <AppText variant="caption" color="muted" style={styles.inputPrefix}>{t('common.sats')}</AppText>
                 <TextInput
                   value={amountSats}
                   onChangeText={setAmountSats}
@@ -226,7 +229,7 @@ export function ReceiveScreen() {
 
             {/* ─── New address ─────────────────────────────────────── */}
             <AppButton
-              title="↺  New address"
+              title={t('receive.newAddress')}
               variant="ghost"
               size="md"
               onPress={generateNewAddress}

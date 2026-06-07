@@ -2,7 +2,9 @@ import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import type { Transaction } from '../../../core/domain/entities/Transaction';
 import { useTheme } from '../../hooks/useTheme';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { AppText } from '../base/AppText';
+import { AppIcon } from '../base/AppIcon';
 
 type TransactionItemProps = {
   transaction: Transaction;
@@ -17,14 +19,15 @@ function formatSats(n: number): string {
   return n.toLocaleString();
 }
 
-const STATUS_LABEL: Record<Transaction['status'], string> = {
-  confirmed: 'Confirmed',
-  pending: 'Pending',
-  failed: 'Failed',
+const STATUS_KEY: Record<Transaction['status'], string> = {
+  confirmed: 'transactions.confirmed',
+  pending: 'transactions.pending',
+  failed: 'transactions.failed',
 };
 
 export function TransactionItem({ transaction, onPress }: TransactionItemProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const isIncoming = transaction.direction === 'incoming';
 
   const accentColor = isIncoming ? theme.colors.success : theme.colors.text;
@@ -51,22 +54,20 @@ export function TransactionItem({ transaction, onPress }: TransactionItemProps) 
     >
       {/* Icon */}
       <View style={[styles.iconWrap, { backgroundColor: iconBg, borderRadius: theme.radii.md }]}>
-        <AppText style={[styles.iconText, { color: iconColor }]}>
-          {isIncoming ? '↙' : '↗'}
-        </AppText>
+        <AppIcon name={isIncoming ? "receive" : "send"} size={22} color={iconColor} />
       </View>
 
       {/* Body */}
       <View style={styles.body}>
         <AppText variant="body" style={styles.title}>
-          {isIncoming ? 'Received' : 'Sent'}
+          {isIncoming ? t('transactions.received') : t('transactions.sent')}
         </AppText>
 
         <View style={styles.metaRow}>
           <View style={[styles.statusPill, { backgroundColor: statusColor[transaction.status] + '22', borderRadius: theme.radii.sm }]}>
             <View style={[styles.statusDot, { backgroundColor: statusColor[transaction.status] }]} />
             <AppText variant="label" style={{ color: statusColor[transaction.status] }}>
-              {STATUS_LABEL[transaction.status]}
+              {t(STATUS_KEY[transaction.status] as any)}
             </AppText>
           </View>
           <AppText variant="label" color="faint">·</AppText>
@@ -85,7 +86,7 @@ export function TransactionItem({ transaction, onPress }: TransactionItemProps) 
         <AppText variant="subtitle" style={[styles.amount, { color: accentColor }]}>
           {isIncoming ? '+' : '−'}{formatSats(transaction.amountSats)}
         </AppText>
-        <AppText variant="label" color="muted">sats</AppText>
+        <AppText variant="label" color="muted">{t('common.sats')}</AppText>
       </View>
     </View>
   );
@@ -95,7 +96,7 @@ export function TransactionItem({ transaction, onPress }: TransactionItemProps) 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Open ${isIncoming ? 'received' : 'sent'} transaction`}
+      accessibilityLabel={isIncoming ? t('transactions.received') : t('transactions.sent')}
       onPress={onPress}
       style={({ pressed }) => [styles.pressable, { opacity: pressed ? 0.76 : 1 }]}
     >

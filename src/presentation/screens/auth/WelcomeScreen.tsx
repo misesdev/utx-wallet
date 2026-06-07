@@ -8,6 +8,7 @@ import { NetworkBadge } from '../../components/wallet/NetworkBadge';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useNetwork } from '../../hooks/useNetwork';
 import { useTheme } from '../../hooks/useTheme';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { AuthRoutes } from '../../../app/navigation/routes';
 
 export function WelcomeScreen() {
@@ -15,6 +16,7 @@ export function WelcomeScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
+  const { t } = useAppTranslation();
 
   return (
     <View
@@ -32,17 +34,17 @@ export function WelcomeScreen() {
       <View style={styles.hero}>
         <AppLogo size="lg" showName />
         <AppText variant="body" color="muted" style={styles.tagline}>
-          Your keys. Your Bitcoin.
+          {t('welcome.tagline')}
         </AppText>
       </View>
 
       <View style={styles.actions}>
         <AppButton
-          title="Create new wallet"
+          title={t('welcome.createWallet')}
           onPress={() => navigation.navigate(AuthRoutes.CreateWallet)}
         />
         <AppButton
-          title="Import wallet"
+          title={t('welcome.importWallet')}
           variant="secondary"
           onPress={() => navigation.navigate(AuthRoutes.ImportWallet)}
         />

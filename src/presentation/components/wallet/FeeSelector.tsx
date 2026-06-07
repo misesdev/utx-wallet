@@ -5,19 +5,20 @@ import type { FeeRateTier } from '../../../core/domain/entities/TransactionPrevi
 import { AppInput } from '../base/AppInput';
 import { AppText } from '../base/AppText';
 import { useTheme } from '../../hooks/useTheme';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 
 type FeeTile = {
   tier: FeeRateTier;
-  label: string;
-  speed: string;
+  labelKey: string;
+  speedKey: string;
   rate: (r: FeeRates) => number;
 };
 
 const FEE_TILES: FeeTile[] = [
-  { tier: 'economy', label: 'Econômica', speed: '~1h', rate: r => r.economySatsPerVByte },
-  { tier: 'normal', label: 'Normal', speed: '~30min', rate: r => r.halfHourSatsPerVByte },
-  { tier: 'fast', label: 'Rápida', speed: '~10min', rate: r => r.fastSatsPerVByte },
-  { tier: 'custom', label: 'Custom', speed: 'manual', rate: () => 0 },
+  { tier: 'economy', labelKey: 'fees.tierEconomy', speedKey: 'fees.speedEconomy', rate: r => r.economySatsPerVByte },
+  { tier: 'normal', labelKey: 'fees.tierNormal', speedKey: 'fees.speedNormal', rate: r => r.halfHourSatsPerVByte },
+  { tier: 'fast', labelKey: 'fees.tierFast', speedKey: 'fees.speedFast', rate: r => r.fastSatsPerVByte },
+  { tier: 'custom', labelKey: 'fees.tierCustom', speedKey: 'fees.speedCustom', rate: () => 0 },
 ];
 
 type FeeSelectorProps = {
@@ -36,17 +37,18 @@ export function FeeSelector({
   onCustomFeeRateChange,
 }: FeeSelectorProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
 
   return (
     <View style={styles.wrapper}>
       <AppText variant="label" color="muted">
-        Taxa de rede
+        {t('fees.networkFee')}
       </AppText>
       <View style={styles.grid}>
         {FEE_TILES.map(tile => {
           const isActive = selected === tile.tier;
           const rateLabel =
-            feeRates && tile.tier !== 'custom' ? `${tile.rate(feeRates)} sat/vB` : tile.speed;
+            feeRates && tile.tier !== 'custom' ? `${tile.rate(feeRates)} sat/vB` : t(tile.speedKey as any);
           const labelStyle = { color: isActive ? theme.colors.primary : theme.colors.text };
 
           return (
@@ -66,14 +68,14 @@ export function FeeSelector({
               ]}
             >
               <AppText variant="caption" style={[styles.tileLabel, labelStyle]}>
-                {tile.label}
+                {t(tile.labelKey as any)}
               </AppText>
               <AppText variant="caption" color="muted">
                 {rateLabel}
               </AppText>
               {feeRates && tile.tier !== 'custom' && (
                 <AppText variant="caption" color="muted">
-                  {tile.speed}
+                  {t(tile.speedKey as any)}
                 </AppText>
               )}
             </Pressable>
@@ -85,7 +87,7 @@ export function FeeSelector({
         <AppInput
           value={customFeeRate}
           onChangeText={onCustomFeeRateChange}
-          placeholder="sats por vByte"
+          placeholder={t('fees.customFeePlaceholder')}
           keyboardType="numeric"
           testID="input-custom-fee"
         />

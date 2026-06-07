@@ -1,8 +1,10 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppCard } from '../base/AppCard';
+import { AppIcon } from '../base/AppIcon';
 import { AppText } from '../base/AppText';
 import { useTheme } from '../../hooks/useTheme';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 
 type BalanceCardProps = {
   balanceSats: number;
@@ -13,8 +15,9 @@ type BalanceCardProps = {
 const SATS_PER_BTC = 100_000_000;
 const HIDDEN_PLACEHOLDER = '••••••';
 
-export function BalanceCard({ balanceSats, label = 'Total balance', hidden = false }: BalanceCardProps) {
+export function BalanceCard({ balanceSats, label, hidden = false }: BalanceCardProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const btc = (balanceSats / SATS_PER_BTC).toFixed(8);
 
   return (
@@ -32,8 +35,8 @@ export function BalanceCard({ balanceSats, label = 'Total balance', hidden = fal
     >
       <View style={styles.headerRow}>
         <View>
-          <AppText variant="label" color="muted">{label}</AppText>
-          <AppText variant="caption" color="muted">Available to send</AppText>
+          <AppText variant="label" color="muted">{label ?? t('wallet.balanceTotal')}</AppText>
+          <AppText variant="caption" color="muted">{t('wallet.availableToSend')}</AppText>
         </View>
         <View
           style={[
@@ -45,7 +48,7 @@ export function BalanceCard({ balanceSats, label = 'Total balance', hidden = fal
             },
           ]}
         >
-          <AppText variant="subtitle" color="accent">₿</AppText>
+          <AppIcon name="wallet" size={24} color={theme.colors.accent} />
         </View>
       </View>
 
@@ -54,7 +57,7 @@ export function BalanceCard({ balanceSats, label = 'Total balance', hidden = fal
           {hidden ? HIDDEN_PLACEHOLDER : balanceSats.toLocaleString()}
         </AppText>
         {!hidden ? (
-          <AppText variant="body" color="muted" style={styles.unit}>sats</AppText>
+          <AppText variant="body" color="muted" style={styles.unit}>{t('common.sats')}</AppText>
         ) : null}
       </View>
 
@@ -62,7 +65,7 @@ export function BalanceCard({ balanceSats, label = 'Total balance', hidden = fal
         <AppText variant="caption" color="muted" testID="balance-btc">
           {hidden ? HIDDEN_PLACEHOLDER : `≈ ${btc} BTC`}
         </AppText>
-        <AppText variant="caption" color="muted">secured</AppText>
+        <AppText variant="caption" color="muted">{t('wallet.secured')}</AppText>
       </View>
     </AppCard>
   );

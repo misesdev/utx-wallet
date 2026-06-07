@@ -116,7 +116,7 @@ describe('useSendBitcoin', () => {
 
       act(() => result.current.setToAddress('bad-address'));
 
-      expect(result.current.addressError).toBe('Endereço Bitcoin inválido');
+      expect(result.current.addressError).toBe('send.errorInvalidAddress');
     });
 
     it('clears error for empty address input', () => {
@@ -263,7 +263,7 @@ describe('useSendBitcoin', () => {
 
       await act(async () => { await result.current.reviewTransaction(); });
 
-      expect(result.current.previewError).toBe('Falha ao criar prévia');
+      expect(result.current.previewError).toBe('send.errorPreviewFailed');
     });
 
     it('clears previous preview when a new review starts', async () => {
@@ -410,7 +410,7 @@ describe('useSendBitcoin', () => {
 
       await act(async () => { await result.current.sendTransaction(); });
 
-      expect(result.current.sendError).toBe('Falha ao enviar transação');
+      expect(result.current.sendError).toBe('send.errorSendFailed');
     });
 
     it('sets isSending to false after send completes', async () => {

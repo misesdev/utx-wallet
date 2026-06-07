@@ -6,6 +6,7 @@ import type { WalletAddress } from '../../core/domain/entities/WalletAddress';
 import { useAddress } from '../../app/providers/AddressProvider';
 import { useAddressManager } from '../../app/providers/AddressManagerProvider';
 import { useWallet } from './useWallet';
+import { useAppTranslation } from './useAppTranslation';
 
 export type ReceiveBitcoinState = {
   address: Address | null;
@@ -31,6 +32,7 @@ function buildBitcoinUri(address: string, amountSats: string): string {
 
 export function useReceiveBitcoin(originId?: string): ReceiveBitcoinState {
   const { selectedWallet } = useWallet();
+  const { t } = useAppTranslation();
   const { getCurrentReceiveAddress, generateNewReceiveAddress } = useAddress();
   const addressManager = useAddressManager();
 
@@ -62,11 +64,11 @@ export function useReceiveBitcoin(originId?: string): ReceiveBitcoinState {
       const addr = await getCurrentReceiveAddress(selectedWallet.id);
       setAddress(addr);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load address');
+      setError(e instanceof Error ? e.message : t('receive.errorLoadAddress'));
     } finally {
       setIsLoading(false);
     }
-  }, [selectedWallet, originId, getCurrentReceiveAddress, addressManager]);
+  }, [selectedWallet, originId, getCurrentReceiveAddress, addressManager, t]);
 
   useEffect(() => {
     loadAddress();
@@ -106,11 +108,11 @@ export function useReceiveBitcoin(originId?: string): ReceiveBitcoinState {
       const addr = await generateNewReceiveAddress(selectedWallet.id);
       setAddress(addr);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to generate address');
+      setError(e instanceof Error ? e.message : t('receive.errorGenerateAddress'));
     } finally {
       setIsLoading(false);
     }
-  }, [selectedWallet, originId, generateNewReceiveAddress, addressManager]);
+  }, [selectedWallet, originId, generateNewReceiveAddress, addressManager, t]);
 
   const bitcoinUri = resolvedAddressValue ? buildBitcoinUri(resolvedAddressValue, amountSats) : '';
 

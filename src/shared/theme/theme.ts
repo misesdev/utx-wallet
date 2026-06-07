@@ -25,6 +25,7 @@ export type AppTheme = {
     success: string;
     successMuted: string;
     warning: string;
+    warningMuted: string;
     danger: string;
     dangerMuted: string;
   };

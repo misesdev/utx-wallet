@@ -77,7 +77,7 @@ describe('useImportWallet', () => {
       let returned: unknown;
       await act(async () => { returned = await result.current.submit(); });
       expect(returned).toBeNull();
-      expect(result.current.error).toBe('Wallet name is required');
+      expect(result.current.error).toBe('createWallet.errorNameRequired');
       expect(mockImportWallet).not.toHaveBeenCalled();
     });
 
@@ -87,14 +87,14 @@ describe('useImportWallet', () => {
       let returned: unknown;
       await act(async () => { returned = await result.current.submit(); });
       expect(returned).toBeNull();
-      expect(result.current.error).toBe('Wallet name is required');
+      expect(result.current.error).toBe('createWallet.errorNameRequired');
     });
 
     it('sets error when walletName exceeds 48 characters', async () => {
       const { result } = renderHook(() => useImportWallet());
       act(() => result.current.setWalletName('a'.repeat(49)));
       await act(async () => { await result.current.submit(); });
-      expect(result.current.error).toBe('Name must be 48 characters or fewer');
+      expect(result.current.error).toBe('createWallet.errorNameTooLong');
       expect(mockImportWallet).not.toHaveBeenCalled();
     });
 
@@ -104,7 +104,7 @@ describe('useImportWallet', () => {
       let returned: unknown;
       await act(async () => { returned = await result.current.submit(); });
       expect(returned).toBeNull();
-      expect(result.current.error).toBe('Seed phrase is required');
+      expect(result.current.error).toBe('importWallet.errorSeedRequired');
       expect(mockImportWallet).not.toHaveBeenCalled();
     });
 
@@ -117,7 +117,7 @@ describe('useImportWallet', () => {
         result.current.setConfirmPassphrase('xyz');
       });
       await act(async () => { await result.current.submit(); });
-      expect(result.current.error).toBe('Passphrases do not match');
+      expect(result.current.error).toBe('createWallet.errorPassphraseMismatch');
       expect(mockImportWallet).not.toHaveBeenCalled();
     });
   });
@@ -174,7 +174,7 @@ describe('useImportWallet', () => {
         result.current.setSeed('not a valid bip39 seed at all here');
       });
       await act(async () => { await result.current.submit(); });
-      expect(result.current.error).toBe('Invalid seed phrase. Please check your words and try again.');
+      expect(result.current.error).toBe('importWallet.errorInvalidSeed');
     });
 
     it('shows duplicate wallet error on WALLET_EXISTS code', async () => {
@@ -185,7 +185,7 @@ describe('useImportWallet', () => {
         result.current.setSeed(VALID_MNEMONIC);
       });
       await act(async () => { await result.current.submit(); });
-      expect(result.current.error).toBe('A wallet named "Savings" already exists.');
+      expect(result.current.error).toBe('importWallet.errorWalletExists');
     });
 
     it('shows generic error on unknown AppError code', async () => {
@@ -196,7 +196,7 @@ describe('useImportWallet', () => {
         result.current.setSeed(VALID_MNEMONIC);
       });
       await act(async () => { await result.current.submit(); });
-      expect(result.current.error).toBe('Failed to import wallet. Please try again.');
+      expect(result.current.error).toBe('importWallet.errorImportFailed');
     });
 
     it('shows generic error on non-AppError exceptions', async () => {
@@ -207,7 +207,7 @@ describe('useImportWallet', () => {
         result.current.setSeed(VALID_MNEMONIC);
       });
       await act(async () => { await result.current.submit(); });
-      expect(result.current.error).toBe('Failed to import wallet. Please try again.');
+      expect(result.current.error).toBe('importWallet.errorImportFailed');
     });
 
     it('resets isLoading to false after an error', async () => {

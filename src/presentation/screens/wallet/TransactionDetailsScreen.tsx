@@ -8,7 +8,9 @@ import { AppButton } from '../../components/base/AppButton';
 import { AppEmptyState } from '../../components/base/AppEmptyState';
 import { AppLoading } from '../../components/base/AppLoading';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
 import { useTransactionDetails } from '../../hooks/useTransactionDetails';
 import type { TransactionDetail } from '../../../core/domain/entities/TransactionDetail';
@@ -38,6 +40,7 @@ type TxCardProps = { tx: TransactionDetail };
 
 function TxCard({ tx }: TxCardProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
 
   const isIncoming = tx.direction === 'incoming';
   const accentColor = isIncoming ? theme.colors.success : theme.colors.text;
@@ -50,7 +53,7 @@ function TxCard({ tx }: TxCardProps) {
     failed: theme.colors.danger,
   };
   const statusColor = statusColors[tx.status] ?? theme.colors.textMuted;
-  const statusLabel = tx.isConfirmed ? 'Confirmado' : 'Pendente';
+  const statusLabel = tx.isConfirmed ? t('transactions.confirmed') : t('transactions.pending');
 
   function copyTxid() {
     if (tx.txid) Clipboard.setString(tx.txid);
@@ -75,9 +78,7 @@ function TxCard({ tx }: TxCardProps) {
       {/* Hero: direction icon + amount */}
       <View style={styles.hero}>
         <View style={[styles.heroIcon, { backgroundColor: iconBg, borderRadius: theme.radii.lg }]}>
-          <AppText style={[styles.heroArrow, { color: iconColor }]}>
-            {isIncoming ? '↙' : '↗'}
-          </AppText>
+          <AppIcon name={isIncoming ? "receive" : "send"} size={30} color={iconColor} />
         </View>
 
         <AppText
@@ -85,7 +86,7 @@ function TxCard({ tx }: TxCardProps) {
           style={[styles.heroDirection, { color: isIncoming ? theme.colors.success : theme.colors.textMuted }]}
           testID={`tx-direction-${tx.id}`}
         >
-          {isIncoming ? 'Recebido' : 'Enviado'}
+          {isIncoming ? t('transactions.received') : t('transactions.sent')}
         </AppText>
 
         <AppText
@@ -95,7 +96,7 @@ function TxCard({ tx }: TxCardProps) {
         >
           {isIncoming ? '+' : '−'}{formatSats(tx.amountSats)}
         </AppText>
-        <AppText variant="body" color="muted">sats</AppText>
+        <AppText variant="body" color="muted">{t('common.sats')}</AppText>
 
         {/* Status badge */}
         <View
@@ -118,7 +119,7 @@ function TxCard({ tx }: TxCardProps) {
       <View style={styles.meta}>
         {tx.feeSats !== undefined && tx.feeSats > 0 && (
           <View style={styles.metaRow}>
-            <AppText variant="caption" color="muted">Taxa de rede</AppText>
+            <AppText variant="caption" color="muted">{t('txDetails.networkFee')}</AppText>
             <AppText variant="caption" testID={`tx-fee-${tx.id}`}>
               {formatSats(tx.feeSats)} sats
             </AppText>
@@ -126,7 +127,7 @@ function TxCard({ tx }: TxCardProps) {
         )}
 
         <View style={styles.metaRow}>
-          <AppText variant="caption" color="muted">Data</AppText>
+          <AppText variant="caption" color="muted">{t('txDetails.date')}</AppText>
           <AppText variant="caption" testID={`tx-date-${tx.id}`}>
             {formatDate(tx.createdAt)}
           </AppText>
@@ -134,7 +135,7 @@ function TxCard({ tx }: TxCardProps) {
 
         {tx.blockHeight !== undefined && (
           <View style={styles.metaRow}>
-            <AppText variant="caption" color="muted">Bloco</AppText>
+            <AppText variant="caption" color="muted">{t('txDetails.block')}</AppText>
             <AppText variant="caption" testID={`tx-block-${tx.id}`}>
               {tx.blockHeight.toLocaleString('pt-BR')}
             </AppText>
@@ -143,7 +144,7 @@ function TxCard({ tx }: TxCardProps) {
 
         {tx.confirmations !== undefined && (
           <View style={styles.metaRow}>
-            <AppText variant="caption" color="muted">Confirmações</AppText>
+            <AppText variant="caption" color="muted">{t('txDetails.confirmations')}</AppText>
             <AppText variant="caption" testID={`tx-confirmations-${tx.id}`}>
               {tx.confirmations}
             </AppText>
@@ -152,12 +153,12 @@ function TxCard({ tx }: TxCardProps) {
 
         {tx.txid && (
           <View style={styles.metaRow}>
-            <AppText variant="caption" color="muted">TxID</AppText>
+            <AppText variant="caption" color="muted">{t('txDetails.txidLabel')}</AppText>
             <Pressable
               onPress={copyTxid}
               testID={`tx-copy-txid-${tx.id}`}
               accessibilityRole="button"
-              accessibilityLabel="Copy transaction ID"
+              accessibilityLabel={t('txSuccess.copyTxid')}
               style={({ pressed }) => [styles.txidBtn, { opacity: pressed ? 0.7 : 1 }]}
             >
               <AppText variant="caption" color="accent" style={styles.txidText}>
@@ -175,7 +176,7 @@ function TxCard({ tx }: TxCardProps) {
           onPress={openExplorer}
           testID={`tx-explorer-${tx.id}`}
           accessibilityRole="button"
-          accessibilityLabel="View on block explorer"
+          accessibilityLabel={t('txDetails.viewExplorer')}
           style={({ pressed }) => [
             styles.explorerBtn,
             {
@@ -187,7 +188,7 @@ function TxCard({ tx }: TxCardProps) {
           ]}
         >
           <AppText variant="body" color="accent" style={styles.explorerLabel}>
-            Ver no Explorer ↗
+            {t('txDetails.viewExplorer')}
           </AppText>
         </Pressable>
       ) : null}
@@ -197,6 +198,7 @@ function TxCard({ tx }: TxCardProps) {
 
 export function TransactionDetailsScreen() {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
   const route = useRoute<RouteProp<AppStackParamList, 'TransactionDetails'>>();
@@ -208,7 +210,7 @@ export function TransactionDetailsScreen() {
     : transactions;
   const sorted = [...visible].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  const title = selectedTxid ? 'Detalhes' : 'Histórico';
+  const title = selectedTxid ? t('txDetails.title') : t('txDetails.history');
 
   return (
     <View
@@ -219,11 +221,11 @@ export function TransactionDetailsScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.back')}
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <AppText variant="title" color="muted">←</AppText>
+          <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
         <AppText variant="subtitle" style={styles.headerTitle}>{title}</AppText>
         <View style={styles.backBtn} />
@@ -242,12 +244,12 @@ export function TransactionDetailsScreen() {
       {/* Empty */}
       {!isLoading && !error && sorted.length === 0 && (
         <AppEmptyState
-          icon="↔"
-          title={selectedTxid ? 'Transação não encontrada' : 'Sem transações'}
+          icon="transactions"
+          title={selectedTxid ? t('txDetails.notFound') : t('txDetails.noTransactions')}
           description={
             selectedTxid
-              ? 'Sincronize a carteira para atualizar os detalhes.'
-              : 'Suas transações aparecerão aqui após sincronizar.'
+              ? t('txDetails.syncDesc')
+              : t('txDetails.noTransactionsDesc')
           }
           testID="tx-empty"
         />
@@ -265,7 +267,7 @@ export function TransactionDetailsScreen() {
 
         {sorted.length > 0 && (
           <AppButton
-            title="Atualizar"
+            title={t('txDetails.refresh')}
             variant="ghost"
             size="md"
             onPress={refresh}

@@ -40,13 +40,14 @@ describe('MempoolApiClient — static helpers', () => {
     expect(client.getBaseUrl()).toBe('https://mempool.space/testnet/api');
   });
 
-  it('forNetwork returns testnet URL for testnet (alias)', () => {
+  it('forNetwork returns testnet4 URL for testnet (testnet = testnet4)', () => {
     const client = MempoolApiClient.forNetwork(new FetchHttpClient(), 'testnet');
-    expect(client.getBaseUrl()).toBe('https://mempool.space/testnet/api');
+    expect(client.getBaseUrl()).toBe('https://mempool.space/testnet4/api');
   });
 
   it('baseUrlForNetwork returns correct URL for each network', () => {
     expect(MempoolApiClient.baseUrlForNetwork('mainnet')).toBe('https://mempool.space/api');
+    expect(MempoolApiClient.baseUrlForNetwork('testnet')).toBe('https://mempool.space/testnet4/api');
     expect(MempoolApiClient.baseUrlForNetwork('testnet4')).toBe('https://mempool.space/testnet4/api');
     expect(MempoolApiClient.baseUrlForNetwork('testnet3')).toBe('https://mempool.space/testnet/api');
   });

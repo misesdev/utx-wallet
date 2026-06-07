@@ -5,10 +5,12 @@ import { buildSeedChallenge, validateSeedChallenge, type SeedChallenge } from '.
 import { NoopScreenCaptureAdapter } from '../../../core/infrastructure/adapters/ScreenCaptureAdapter';
 import { AppRoutes } from '../../../app/navigation/routes';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
 import { AppLoading } from '../../components/base/AppLoading';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useCreateWallet } from '../../hooks/useCreateWallet';
 import { useTheme } from '../../hooks/useTheme';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 
 const screenCaptureGuard = new NoopScreenCaptureAdapter();
 
@@ -17,6 +19,7 @@ export function ConfirmSeedScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
   const { words, save, step, isLoading, error, reset } = useCreateWallet();
+  const { t } = useAppTranslation();
 
   const challenge = useMemo<SeedChallenge>(
     () => buildSeedChallenge(words),
@@ -68,15 +71,15 @@ export function ConfirmSeedScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.back')}
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <AppText variant="title" color="muted">←</AppText>
+          <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
         <View style={styles.headerCenter}>
-          <AppText variant="subtitle" style={styles.headerTitle}>Confirm seed</AppText>
-          <AppText variant="caption" color="muted">Select the words in order</AppText>
+          <AppText variant="subtitle" style={styles.headerTitle}>{t('confirmSeed.title')}</AppText>
+          <AppText variant="caption" color="muted">{t('confirmSeed.instruction')}</AppText>
         </View>
         <View style={styles.backBtn} />
       </View>
@@ -102,10 +105,7 @@ export function ConfirmSeedScreen() {
         >
           <View style={styles.slotsHeader}>
             <AppText variant="label" color="muted">
-              Select words for positions:{' '}
-              <AppText variant="label" style={{ color: theme.colors.accent }}>
-                {challenge.positions.map(p => `#${p + 1}`).join(', ')}
-              </AppText>
+              {t('confirmSeed.selectPositions', { positions: challenge.positions.map(p => `#${p + 1}`).join(', ') })}
             </AppText>
           </View>
 
@@ -147,7 +147,7 @@ export function ConfirmSeedScreen() {
 
           {allFilled && !isValid && (
             <AppText variant="caption" color="danger" style={styles.validationError}>
-              Incorrect order — tap a filled slot to remove it and try again.
+              {t('confirmSeed.wrongOrder')}
             </AppText>
           )}
         </View>
@@ -192,11 +192,11 @@ export function ConfirmSeedScreen() {
 
         {/* CTA */}
         {isLoading ? (
-          <AppLoading label="Creating wallet…" />
+          <AppLoading label={t('confirmSeed.creating')} />
         ) : (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Confirm and create wallet"
+            accessibilityLabel={t('confirmSeed.confirmCreate')}
             onPress={save}
             disabled={!isValid || isLoading}
             style={({ pressed }) => [
@@ -212,7 +212,7 @@ export function ConfirmSeedScreen() {
               variant="subtitle"
               style={isValid ? styles.ctaTextActive : styles.ctaTextInactive}
             >
-              Confirm & create wallet
+              {t('confirmSeed.confirmCreate')}
             </AppText>
           </Pressable>
         )}

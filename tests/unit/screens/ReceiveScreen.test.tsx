@@ -20,6 +20,7 @@ const DEFAULT_STATE: ReceiveBitcoinState = {
     index: 0,
     isUsed: false,
   },
+  hdAddress: null,
   isLoading: false,
   error: null,
   amountSats: '',

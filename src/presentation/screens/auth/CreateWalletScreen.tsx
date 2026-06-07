@@ -4,10 +4,12 @@ import { useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppRoutes, AppStackParamList } from '../../../app/navigation/routes';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
 import { FormInput } from '../../components/forms/FormInput';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useCreateWallet } from '../../hooks/useCreateWallet';
 import { useTheme } from '../../hooks/useTheme';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 
 type CreateWalletRoute = RouteProp<AppStackParamList, typeof AppRoutes.CreateWallet>;
 
@@ -26,6 +28,7 @@ export function CreateWalletScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
   const { initiate, isLoading } = useCreateWallet();
+  const { t } = useAppTranslation();
   const route = useRoute<CreateWalletRoute>();
 
   const routeNetwork = route.params?.network ?? 'testnet';
@@ -42,22 +45,22 @@ export function CreateWalletScreen() {
   function handleCreate() {
     const trimmed = name.trim();
     if (!trimmed) {
-      setNameError('Wallet name is required');
+      setNameError(t('createWallet.errorNameRequired'));
       return;
     }
     if (trimmed.length > 48) {
-      setNameError('Name must be 48 characters or fewer');
+      setNameError(t('createWallet.errorNameTooLong'));
       return;
     }
     setNameError('');
 
     if (passphraseEnabled) {
       if (!passphrase) {
-        setPassphraseError('Passphrase cannot be empty when enabled');
+        setPassphraseError(t('createWallet.errorPassphraseEmpty'));
         return;
       }
       if (passphrase !== confirmPassphrase) {
-        setPassphraseError('Passphrases do not match');
+        setPassphraseError(t('createWallet.errorPassphraseMismatch'));
         return;
       }
     }
@@ -73,13 +76,13 @@ export function CreateWalletScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.back')}
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <AppText variant="title" color="muted">←</AppText>
+          <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
-        <AppText variant="subtitle" style={styles.headerTitle}>New wallet</AppText>
+        <AppText variant="subtitle" style={styles.headerTitle}>{t('createWallet.title')}</AppText>
         <View style={styles.backBtn} />
       </View>
 
@@ -93,7 +96,7 @@ export function CreateWalletScreen() {
         >
           <View style={[styles.networkDot, { backgroundColor: accent }]} />
           <AppText variant="label" style={[styles.networkBannerText, { color: accent }]}>
-            Creating on {NETWORK_LABEL[routeNetwork]}
+            {t('createWallet.networkBadge', { network: NETWORK_LABEL[routeNetwork] })}
           </AppText>
         </View>
       </View>
@@ -109,18 +112,18 @@ export function CreateWalletScreen() {
         {/* Name card */}
         <View style={[styles.card, { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border, borderRadius: theme.radii.xl }]}>
           <View style={styles.cardHeader}>
-            <AppText style={styles.cardIcon}>₿</AppText>
+            <AppIcon name="wallet" size={30} color={theme.colors.accent} />
             <View style={styles.cardHeaderText}>
-              <AppText variant="subtitle" style={styles.cardTitle}>Wallet details</AppText>
-              <AppText variant="caption" color="muted">Give your wallet a recognisable name</AppText>
+              <AppText variant="subtitle" style={styles.cardTitle}>{t('createWallet.detailsTitle')}</AppText>
+              <AppText variant="caption" color="muted">{t('createWallet.detailsDesc')}</AppText>
             </View>
           </View>
 
           <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
 
           <FormInput
-            label="Wallet name"
-            placeholder="e.g. Main wallet"
+            label={t('createWallet.nameLabel')}
+            placeholder={t('createWallet.namePlaceholder')}
             value={name}
             onChangeText={text => {
               setName(text);
@@ -138,7 +141,7 @@ export function CreateWalletScreen() {
         <Pressable
           accessibilityRole="switch"
           accessibilityState={{ checked: passphraseEnabled }}
-          accessibilityLabel="Use passphrase"
+          accessibilityLabel={t('createWallet.passphraseSection')}
           onPress={() => {
             setPassphraseEnabled(prev => !prev);
             setPassphrase('');
@@ -156,10 +159,10 @@ export function CreateWalletScreen() {
           ]}
         >
           <View style={styles.toggleLeft}>
-            <AppText style={styles.toggleIcon}>🔐</AppText>
+            <AppIcon name="key" size={22} color={theme.colors.textMuted} />
             <View style={styles.toggleText}>
-              <AppText variant="body" style={styles.toggleLabel}>Passphrase (25th word)</AppText>
-              <AppText variant="caption" color="muted">Optional — adds an extra layer of security</AppText>
+              <AppText variant="body" style={styles.toggleLabel}>{t('createWallet.passphraseSection')}</AppText>
+              <AppText variant="caption" color="muted">{t('createWallet.passphraseDesc')}</AppText>
             </View>
           </View>
           <View
@@ -187,15 +190,15 @@ export function CreateWalletScreen() {
               <View style={styles.cardHeader}>
                 <View style={[styles.warningDot, { backgroundColor: theme.colors.warning }]} />
                 <AppText variant="caption" color="warning" style={styles.warningText}>
-                  Your passphrase is NOT part of the seed words. You must back it up separately. Losing it means losing access to your funds.
+                  {t('createWallet.passphraseWarning')}
                 </AppText>
               </View>
 
               <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
 
               <FormInput
-                label="Passphrase"
-                placeholder="Enter your passphrase"
+                label={t('createWallet.passphraseLabel')}
+                placeholder={t('createWallet.passphrasePlaceholder')}
                 value={passphrase}
                 onChangeText={v => {
                   setPassphrase(v);
@@ -206,12 +209,12 @@ export function CreateWalletScreen() {
                 autoCorrect={false}
                 spellCheck={false}
                 returnKeyType="next"
-                accessibilityLabel="Passphrase"
+                accessibilityLabel={t('createWallet.passphraseLabel')}
               />
 
               <FormInput
-                label="Confirm passphrase"
-                placeholder="Repeat your passphrase"
+                label={t('createWallet.confirmPassphraseLabel')}
+                placeholder={t('createWallet.confirmPassphrasePlaceholder')}
                 value={confirmPassphrase}
                 onChangeText={v => {
                   setConfirmPassphrase(v);
@@ -223,17 +226,17 @@ export function CreateWalletScreen() {
                 spellCheck={false}
                 returnKeyType="done"
                 onSubmitEditing={handleCreate}
-                accessibilityLabel="Confirm passphrase"
+                accessibilityLabel={t('createWallet.confirmPassphraseLabel')}
               />
 
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={showPassphrase ? 'Hide passphrase' : 'Show passphrase'}
+                accessibilityLabel={showPassphrase ? t('createWallet.hidePassphrase') : t('createWallet.showPassphrase')}
                 onPress={() => setShowPassphrase(v => !v)}
                 style={styles.revealRow}
               >
                 <AppText variant="caption" style={{ color: theme.colors.accent }}>
-                  {showPassphrase ? '● Hide passphrase' : '○ Show passphrase'}
+                  {showPassphrase ? t('createWallet.hidePassphrase') : t('createWallet.showPassphrase')}
                 </AppText>
               </Pressable>
 
@@ -247,7 +250,7 @@ export function CreateWalletScreen() {
         {/* CTA */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Generate seed phrase"
+          accessibilityLabel={t('createWallet.generateSeed')}
           onPress={handleCreate}
           disabled={isLoading}
           style={({ pressed }) => [
@@ -260,7 +263,7 @@ export function CreateWalletScreen() {
           ]}
         >
           <AppText variant="subtitle" style={styles.ctaText}>
-            Generate seed phrase →
+            {t('createWallet.generateSeed')}
           </AppText>
         </Pressable>
       </ScrollView>
@@ -335,9 +338,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
-  cardIcon: {
-    fontSize: 28,
-  },
   cardHeaderText: {
     flex: 1,
     gap: 2,
@@ -363,9 +363,6 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     gap: 12,
-  },
-  toggleIcon: {
-    fontSize: 22,
   },
   toggleText: {
     flex: 1,

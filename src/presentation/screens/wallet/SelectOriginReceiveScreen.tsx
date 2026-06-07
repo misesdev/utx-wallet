@@ -3,8 +3,10 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppLoading } from '../../components/base/AppLoading';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
 import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
 import { useWallet } from '../../hooks/useWallet';
 import { AppRoutes } from '../../../app/navigation/routes';
@@ -17,6 +19,7 @@ type OriginItemProps = {
 
 function OriginItem({ origin, onPress }: OriginItemProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const isDefault = origin.type === 'default';
 
   return (
@@ -43,7 +46,7 @@ function OriginItem({ origin, onPress }: OriginItemProps) {
           },
         ]}
       >
-        <AppText style={styles.iconText}>{isDefault ? '◎' : '⊡'}</AppText>
+        <AppIcon name={isDefault ? "wallet" : "accounts"} size={22} color={isDefault ? theme.colors.accent : theme.colors.textMuted} />
       </View>
 
       <View style={styles.itemBody}>
@@ -56,20 +59,21 @@ function OriginItem({ origin, onPress }: OriginItemProps) {
                 { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radii.sm },
               ]}
             >
-              <AppText variant="label" color="accent">Default</AppText>
+              <AppText variant="label" color="accent">{t('common.default')}</AppText>
             </View>
           )}
         </View>
-        <AppText variant="caption" color="muted">Account {origin.accountIndex}</AppText>
+        <AppText variant="caption" color="muted">{t('common.account', { accountIndex: origin.accountIndex })}</AppText>
       </View>
 
-      <AppText variant="subtitle" color="muted" style={styles.chevron}>›</AppText>
+      <AppIcon name="chevronRight" size={22} color={theme.colors.textMuted} />
     </Pressable>
   );
 }
 
 export function SelectOriginReceiveScreen() {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
   const { getOrigins } = useAddressManager();
@@ -105,15 +109,15 @@ export function SelectOriginReceiveScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.back')}
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <AppText variant="title" color="muted">←</AppText>
+          <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
         <View style={styles.headerTitle}>
-          <AppText variant="subtitle" style={styles.titleText}>Receive</AppText>
-          <AppText variant="caption" color="muted">Select account</AppText>
+          <AppText variant="subtitle" style={styles.titleText}>{t('receive.title')}</AppText>
+          <AppText variant="caption" color="muted">{t('receive.selectAccount')}</AppText>
         </View>
         <View style={styles.backBtn} />
       </View>
@@ -121,7 +125,7 @@ export function SelectOriginReceiveScreen() {
       {/* Content */}
       {isLoading ? (
         <View style={styles.center}>
-          <AppLoading label="Loading accounts…" />
+          <AppLoading label={t('common.loadingAccounts')} />
         </View>
       ) : (
         <ScrollView
@@ -133,7 +137,7 @@ export function SelectOriginReceiveScreen() {
         >
           <View style={styles.intro}>
             <AppText variant="body" color="muted" style={styles.introText}>
-              Choose which account should receive the bitcoin.
+              {t('receive.selectAccountDesc')}
             </AppText>
           </View>
 

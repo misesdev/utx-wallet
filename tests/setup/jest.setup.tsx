@@ -87,3 +87,62 @@ jest.mock('@react-native-clipboard/clipboard', () => ({
     getString: jest.fn(() => Promise.resolve('')),
   },
 }));
+
+jest.mock('react-native-localize', () => ({
+  findBestLanguageTag: jest.fn(() => ({ languageTag: 'pt-BR', isRTL: false })),
+  getLocales: jest.fn(() => [{ languageTag: 'pt-BR', isRTL: false }]),
+}));
+
+jest.mock('react-i18next', () => {
+  const ReactMock = require('react');
+  const t = (key: string, opts?: Record<string, unknown>) => {
+    if (!opts) return key;
+    return Object.entries(opts).reduce(
+      (str, [k, v]) => str.replace(new RegExp(`{{${k}}}`, 'g'), String(v)),
+      key,
+    );
+  };
+  const i18n = {
+    language: 'pt-BR',
+    changeLanguage: jest.fn().mockResolvedValue(undefined),
+  };
+  return {
+    useTranslation: () => ({ t, i18n }),
+    initReactI18next: { type: '3rdParty', init: jest.fn() },
+    I18nextProvider: ({ children }: { children: React.ReactNode }) => children,
+    Trans: ({ i18nKey }: { i18nKey: string }) => ReactMock.createElement('Text', null, i18nKey),
+  };
+});
+
+jest.mock('../../src/shared/i18n', () => ({
+  initI18n: jest.fn().mockResolvedValue(undefined),
+  i18next: {
+    isInitialized: false,
+    use: jest.fn().mockReturnThis(),
+    init: jest.fn().mockResolvedValue(undefined),
+    changeLanguage: jest.fn().mockResolvedValue(undefined),
+  },
+  DEFAULT_LANGUAGE: 'pt-BR',
+  SUPPORTED_LANGUAGES: ['pt-BR', 'en-US'],
+}));
+
+jest.mock('react-native-vector-icons/Ionicons', () => {
+  const ReactMock = require('react');
+  const { View } = require('react-native');
+  const MockIonicons = ({
+    name,
+    testID,
+    accessibilityLabel,
+  }: {
+    name: string;
+    size?: number;
+    color?: string | number;
+    testID?: string;
+    accessibilityLabel?: string;
+  }) =>
+    ReactMock.createElement(View, {
+      testID: testID ?? `icon-${name}`,
+      accessibilityLabel,
+    });
+  return MockIonicons;
+});

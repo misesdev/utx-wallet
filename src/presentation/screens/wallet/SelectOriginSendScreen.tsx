@@ -3,8 +3,10 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppLoading } from '../../components/base/AppLoading';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
 import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
 import { useWallet } from '../../hooks/useWallet';
 import { AppRoutes } from '../../../app/navigation/routes';
@@ -21,6 +23,7 @@ type OriginItemProps = {
 
 function OriginItem({ item, noBalanceId, onPress }: OriginItemProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const isDefault = item.type === 'default';
   const showNoBalance = noBalanceId === item.id && !item.hasBalance;
 
@@ -52,7 +55,7 @@ function OriginItem({ item, noBalanceId, onPress }: OriginItemProps) {
           },
         ]}
       >
-        <AppText style={styles.iconText}>{isDefault ? '◎' : '⊡'}</AppText>
+        <AppIcon name={isDefault ? "wallet" : "accounts"} size={22} color={isDefault ? theme.colors.accent : theme.colors.textMuted} />
       </View>
 
       <View style={styles.itemBody}>
@@ -65,25 +68,26 @@ function OriginItem({ item, noBalanceId, onPress }: OriginItemProps) {
                 { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radii.sm },
               ]}
             >
-              <AppText variant="label" color="accent">Default</AppText>
+              <AppText variant="label" color="accent">{t('common.default')}</AppText>
             </View>
           )}
         </View>
-        <AppText variant="caption" color="muted">Account {item.accountIndex}</AppText>
+        <AppText variant="caption" color="muted">{t('common.account', { accountIndex: item.accountIndex })}</AppText>
         {showNoBalance && (
           <AppText variant="caption" color="danger" style={styles.noBalanceMsg}>
-            Conta sem saldo
+            {t('send.noBalance')}
           </AppText>
         )}
       </View>
 
-      <AppText variant="subtitle" color={item.hasBalance ? 'muted' : 'faint'} style={styles.chevron}>›</AppText>
+      <AppIcon name="chevronRight" size={22} color={item.hasBalance ? theme.colors.textMuted : theme.colors.textFaint} />
     </Pressable>
   );
 }
 
 export function SelectOriginSendScreen() {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
   const { getOrigins, listAddresses } = useAddressManager();
@@ -142,22 +146,22 @@ export function SelectOriginSendScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.back')}
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <AppText variant="title" color="muted">←</AppText>
+          <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
         <View style={styles.headerTitle}>
-          <AppText variant="subtitle" style={styles.titleText}>Send</AppText>
-          <AppText variant="caption" color="muted">Select account</AppText>
+          <AppText variant="subtitle" style={styles.titleText}>{t('send.title')}</AppText>
+          <AppText variant="caption" color="muted">{t('send.selectAccount')}</AppText>
         </View>
         <View style={styles.backBtn} />
       </View>
 
       {isLoading ? (
         <View style={styles.center}>
-          <AppLoading label="Loading accounts…" />
+          <AppLoading label={t('common.loadingAccounts')} />
         </View>
       ) : (
         <ScrollView
@@ -165,7 +169,7 @@ export function SelectOriginSendScreen() {
           contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 32 }]}
         >
           <AppText variant="body" color="muted" style={styles.intro}>
-            Choose which account you want to send from.
+            {t('send.selectAccountDesc')}
           </AppText>
 
           <View style={styles.list}>

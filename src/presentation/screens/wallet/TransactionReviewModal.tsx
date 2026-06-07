@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { AppButton } from '../../components/base/AppButton';
 import { AppCard } from '../../components/base/AppCard';
 import { AppText } from '../../components/base/AppText';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
 import type { TransactionPreview } from '../../../core/domain/entities/TransactionPreview';
 
@@ -33,6 +34,7 @@ export function TransactionReviewModal({
   onCancel,
 }: TransactionReviewModalProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
 
   return (
     <Modal
@@ -45,33 +47,33 @@ export function TransactionReviewModal({
       <Pressable style={styles.backdrop} onPress={onCancel} testID="modal-backdrop" />
       <View style={[styles.sheet, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
         <AppText variant="title" style={styles.heading} testID="modal-title">
-          Confirmar envio
+          {t('txReview.title')}
         </AppText>
 
         {preview && (
           <AppCard>
             <View style={styles.row}>
-              <AppText color="muted">Destino</AppText>
+              <AppText color="muted">{t('txReview.destination')}</AppText>
               <AppText style={styles.address} testID="modal-address">
                 {truncateAddress(preview.toAddress)}
               </AppText>
             </View>
             <View style={styles.row}>
-              <AppText color="muted">Valor enviado</AppText>
+              <AppText color="muted">{t('txReview.amountSent')}</AppText>
               <AppText testID="modal-amount">{`${formatSats(preview.amountSats)} sats`}</AppText>
             </View>
             <View style={styles.row}>
-              <AppText color="muted">Taxa estimada</AppText>
+              <AppText color="muted">{t('txReview.estimatedFee')}</AppText>
               <AppText testID="modal-fee">{`${formatSats(preview.feeSats)} sats`}</AppText>
             </View>
             <View style={[styles.row, styles.totalRow]}>
-              <AppText color="muted">Total debitado</AppText>
+              <AppText color="muted">{t('txReview.totalDebited')}</AppText>
               <AppText variant="subtitle" testID="modal-total">
                 {`${formatSats(preview.totalSats)} sats`}
               </AppText>
             </View>
             <View style={styles.row}>
-              <AppText color="muted">Taxa</AppText>
+              <AppText color="muted">{t('txReview.fee')}</AppText>
               <AppText testID="modal-fee-rate">{`${preview.feeRateSatsPerVByte} sat/vB`}</AppText>
             </View>
           </AppCard>
@@ -85,7 +87,7 @@ export function TransactionReviewModal({
 
         <View style={styles.actions}>
           <AppButton
-            title="Cancelar"
+            title={t('common.cancel')}
             variant="secondary"
             size="md"
             style={styles.actionBtn}
@@ -94,7 +96,7 @@ export function TransactionReviewModal({
             testID="btn-cancel"
           />
           <AppButton
-            title={isSending ? 'Enviando…' : 'Confirmar e enviar'}
+            title={isSending ? t('txReview.sending') : t('txReview.confirmSend')}
             size="md"
             style={styles.actionBtn}
             onPress={onConfirm}

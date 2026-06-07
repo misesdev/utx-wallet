@@ -2,19 +2,24 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppText } from './AppText';
 import { AppButton } from './AppButton';
+import { AppIcon } from './AppIcon';
+import type { IconName } from '../../../shared/icons/iconNames';
+import { useTheme } from '../../hooks/useTheme';
 
 type AppEmptyStateProps = {
-  icon?: string;
+  icon?: IconName;
   title: string;
   description?: string;
   action?: { label: string; onPress: () => void };
   testID?: string;
 };
 
-export function AppEmptyState({ icon = '○', title, description, action, testID }: AppEmptyStateProps) {
+export function AppEmptyState({ icon = 'empty', title, description, action, testID }: AppEmptyStateProps) {
+  const { theme } = useTheme();
+
   return (
     <View style={styles.root} testID={testID}>
-      <AppText style={styles.icon} color="faint">{icon}</AppText>
+      <AppIcon name={icon} size={56} color={theme.colors.textFaint} testID={`${testID ?? 'empty-state'}-icon`} />
       <AppText variant="subtitle" style={styles.title}>{title}</AppText>
       {description ? (
         <AppText variant="caption" color="muted" style={styles.description}>
@@ -41,10 +46,6 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 32,
     paddingHorizontal: 24,
-  },
-  icon: {
-    fontSize: 28,
-    marginBottom: 6,
   },
   title: {
     textAlign: 'center',

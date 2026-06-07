@@ -5,7 +5,9 @@ import type { OfflineTransaction } from '../../../core/domain/entities/OfflineTr
 import { AppButton } from '../../components/base/AppButton';
 import { AppInput } from '../../components/base/AppInput';
 import { AppText } from '../../components/base/AppText';
+import { AppIcon } from '../../components/base/AppIcon';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useOfflineMode } from '../../hooks/useOfflineMode';
 import { useTheme } from '../../hooks/useTheme';
 import { AppError } from '../../../core/application/errors/AppError';
@@ -23,6 +25,7 @@ type OfflineTxItemProps = {
 
 function OfflineTxItem({ tx, isOnline, onDelete, onBroadcast }: OfflineTxItemProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [broadcastError, setBroadcastError] = useState<string | null>(null);
 
@@ -40,18 +43,18 @@ function OfflineTxItem({ tx, isOnline, onDelete, onBroadcast }: OfflineTxItemPro
     try {
       await onBroadcast(tx);
     } catch (err) {
-      setBroadcastError(err instanceof AppError ? err.message : 'Falha ao transmitir');
+      setBroadcastError(err instanceof AppError ? err.message : t('offline.failedBroadcast'));
     } finally {
       setIsBroadcasting(false);
     }
-  }, [tx, onBroadcast]);
+  }, [tx, onBroadcast, t]);
 
   const handleDelete = useCallback(() => {
-    Alert.alert('Remover', 'Remover esta transação salva?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Remover', style: 'destructive', onPress: () => onDelete(tx.id) },
+    Alert.alert(t('offline.remove'), t('offline.removeConfirmTitle'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('offline.remove'), style: 'destructive', onPress: () => onDelete(tx.id) },
     ]);
-  }, [tx.id, onDelete]);
+  }, [tx.id, onDelete, t]);
 
   const shortDate = new Date(tx.createdAt).toLocaleString();
 
@@ -71,7 +74,7 @@ function OfflineTxItem({ tx, isOnline, onDelete, onBroadcast }: OfflineTxItemPro
           {tx.amountSats !== undefined && (
             <AppText variant="subtitle">
               {tx.amountSats.toLocaleString()}
-              <AppText variant="caption" color="muted"> sats</AppText>
+              <AppText variant="caption" color="muted"> {t('common.sats')}</AppText>
             </AppText>
           )}
           {tx.toAddress && (
@@ -81,7 +84,7 @@ function OfflineTxItem({ tx, isOnline, onDelete, onBroadcast }: OfflineTxItemPro
           )}
           {tx.feeSats !== undefined && (
             <AppText variant="caption" color="muted">
-              Fee: {tx.feeSats.toLocaleString()} sats
+              {t('offline.feeLabel', { fee: tx.feeSats?.toLocaleString() ?? '0' })}
             </AppText>
           )}
           <AppText variant="caption" color="muted">{shortDate}</AppText>
@@ -106,7 +109,7 @@ function OfflineTxItem({ tx, isOnline, onDelete, onBroadcast }: OfflineTxItemPro
             },
           ]}
         >
-          <AppText variant="caption" color="muted">↑ Exportar</AppText>
+          <AppText variant="caption" color="muted">{t('offline.export')}</AppText>
         </Pressable>
 
         {isOnline && (
@@ -125,7 +128,7 @@ function OfflineTxItem({ tx, isOnline, onDelete, onBroadcast }: OfflineTxItemPro
             ]}
           >
             <AppText variant="caption" color="accent">
-              {isBroadcasting ? '…' : '⇡ Transmitir'}
+              {isBroadcasting ? '…' : t('offline.broadcast')}
             </AppText>
           </Pressable>
         )}
@@ -143,7 +146,7 @@ function OfflineTxItem({ tx, isOnline, onDelete, onBroadcast }: OfflineTxItemPro
             },
           ]}
         >
-          <AppText variant="caption" color="danger">✕ Remover</AppText>
+          <AppText variant="caption" color="danger">{t('offline.removeAction')}</AppText>
         </Pressable>
       </View>
     </View>
@@ -161,6 +164,7 @@ type PrepareFormProps = {
 
 function PrepareForm({ onSubmit, onCancel }: PrepareFormProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const [toAddress, setToAddress] = useState('');
   const [amount, setAmount] = useState('');
   const [feeRate, setFeeRate] = useState('1');
@@ -170,19 +174,19 @@ function PrepareForm({ onSubmit, onCancel }: PrepareFormProps) {
   const handleSubmit = useCallback(async () => {
     const parsedAmount = parseInt(amount, 10);
     const parsedFee = parseFloat(feeRate);
-    if (!toAddress.trim()) { setError('Informe o endereço de destino'); return; }
-    if (isNaN(parsedAmount) || parsedAmount <= 0) { setError('Valor inválido'); return; }
-    if (isNaN(parsedFee) || parsedFee <= 0) { setError('Taxa inválida'); return; }
+    if (!toAddress.trim()) { setError(t('offline.destinationAddress')); return; }
+    if (isNaN(parsedAmount) || parsedAmount <= 0) { setError(t('offline.invalidAmount')); return; }
+    if (isNaN(parsedFee) || parsedFee <= 0) { setError(t('offline.invalidFee')); return; }
     setIsLoading(true);
     setError(null);
     try {
       await onSubmit(toAddress.trim(), parsedAmount, parsedFee);
     } catch (err) {
-      setError(err instanceof AppError ? err.message : 'Falha ao preparar transação');
+      setError(err instanceof AppError ? err.message : t('offline.failedPrepare'));
     } finally {
       setIsLoading(false);
     }
-  }, [toAddress, amount, feeRate, onSubmit]);
+  }, [toAddress, amount, feeRate, onSubmit, t]);
 
   return (
     <View
@@ -195,31 +199,31 @@ function PrepareForm({ onSubmit, onCancel }: PrepareFormProps) {
         },
       ]}
     >
-      <AppText variant="subtitle" style={styles.formTitle}>Preparar transação offline</AppText>
+      <AppText variant="subtitle" style={styles.formTitle}>{t('offline.prepareTxTitle')}</AppText>
       <AppInput
-        placeholder="Endereço de destino"
+        placeholder={t('offline.destinationAddress')}
         value={toAddress}
         onChangeText={setToAddress}
         autoCapitalize="none"
         autoCorrect={false}
       />
       <AppInput
-        placeholder="Valor (sats)"
+        placeholder={t('offline.amountLabel')}
         value={amount}
         onChangeText={setAmount}
         keyboardType="numeric"
       />
       <AppInput
-        placeholder="Taxa (sat/vB)"
+        placeholder={t('offline.feeRateLabel')}
         value={feeRate}
         onChangeText={setFeeRate}
         keyboardType="decimal-pad"
       />
       {error ? <AppText variant="caption" color="danger">{error}</AppText> : null}
       <View style={styles.formActions}>
-        <AppButton title="Cancelar" variant="ghost" size="sm" onPress={onCancel} style={styles.flex} />
+        <AppButton title={t('common.cancel')} variant="ghost" size="sm" onPress={onCancel} style={styles.flex} />
         <AppButton
-          title={isLoading ? 'Preparando…' : 'Preparar'}
+          title={isLoading ? t('offline.preparing') : t('offline.prepare')}
           size="sm"
           disabled={isLoading}
           onPress={handleSubmit}
@@ -241,22 +245,23 @@ type ImportFormProps = {
 
 function ImportForm({ onSubmit, onCancel }: ImportFormProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const [rawHex, setRawHex] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = useCallback(async () => {
-    if (!rawHex.trim()) { setError('Cole o hex da transação'); return; }
+    if (!rawHex.trim()) { setError(t('offline.pasteHex')); return; }
     setIsLoading(true);
     setError(null);
     try {
       await onSubmit(rawHex.trim());
     } catch (err) {
-      setError(err instanceof AppError ? err.message : 'Hex inválido');
+      setError(err instanceof AppError ? err.message : t('offline.invalidHex'));
     } finally {
       setIsLoading(false);
     }
-  }, [rawHex, onSubmit]);
+  }, [rawHex, onSubmit, t]);
 
   return (
     <View
@@ -269,9 +274,9 @@ function ImportForm({ onSubmit, onCancel }: ImportFormProps) {
         },
       ]}
     >
-      <AppText variant="subtitle" style={styles.formTitle}>Importar transação assinada</AppText>
+      <AppText variant="subtitle" style={styles.formTitle}>{t('offline.importSigned')}</AppText>
       <TextInput
-        placeholder="Cole o hex da transação aqui…"
+        placeholder={t('offline.hexPlaceholder')}
         placeholderTextColor={theme.colors.textMuted}
         value={rawHex}
         onChangeText={setRawHex}
@@ -291,9 +296,9 @@ function ImportForm({ onSubmit, onCancel }: ImportFormProps) {
       />
       {error ? <AppText variant="caption" color="danger">{error}</AppText> : null}
       <View style={styles.formActions}>
-        <AppButton title="Cancelar" variant="ghost" size="sm" onPress={onCancel} style={styles.flex} />
+        <AppButton title={t('common.cancel')} variant="ghost" size="sm" onPress={onCancel} style={styles.flex} />
         <AppButton
-          title={isLoading ? 'Salvando…' : 'Salvar'}
+          title={isLoading ? t('offline.saving') : t('offline.save')}
           size="sm"
           disabled={isLoading}
           onPress={handleSubmit}
@@ -312,6 +317,7 @@ type ActiveForm = 'prepare' | 'import' | null;
 
 export function OfflineModeScreen() {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
 
@@ -368,13 +374,13 @@ export function OfflineModeScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.back')}
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <AppText variant="title" color="muted">←</AppText>
+          <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
-        <AppText variant="subtitle" style={styles.headerTitle}>Modo offline</AppText>
+        <AppText variant="subtitle" style={styles.headerTitle}>{t('offline.title')}</AppText>
         <View style={styles.backBtn} />
       </View>
 
@@ -395,7 +401,7 @@ export function OfflineModeScreen() {
         >
           <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
           <AppText variant="caption" style={{ color: statusColor }}>
-            {isOnline ? 'Online — dados locais + blockchain' : 'Offline — apenas dados locais'}
+            {isOnline ? t('offline.onlineMode') : t('offline.offlineMode')}
           </AppText>
         </View>
 
@@ -411,7 +417,7 @@ export function OfflineModeScreen() {
           ]}
         >
           <View style={styles.balanceRow}>
-            <AppText variant="caption" color="muted">Saldo local confirmado</AppText>
+            <AppText variant="caption" color="muted">{t('offline.confirmedBalance')}</AppText>
             <AppText variant="subtitle" style={styles.balanceAmount}>
               {confirmedBalanceSats.toLocaleString()} sats
             </AppText>
@@ -420,7 +426,7 @@ export function OfflineModeScreen() {
             <>
               <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
               <View style={styles.balanceRow}>
-                <AppText variant="caption" color="muted">Pendente</AppText>
+                <AppText variant="caption" color="muted">{t('offline.pending')}</AppText>
                 <AppText variant="body" style={{ color: statusColor }}>
                   +{pendingBalanceSats.toLocaleString()} sats
                 </AppText>
@@ -431,7 +437,7 @@ export function OfflineModeScreen() {
 
         {/* Loading */}
         {isLoadingData ? (
-          <AppText variant="caption" color="muted" style={styles.center}>Carregando dados locais…</AppText>
+          <AppText variant="caption" color="muted" style={styles.center}>{t('offline.loadingLocal')}</AppText>
         ) : null}
 
         {/* Error */}
@@ -451,16 +457,16 @@ export function OfflineModeScreen() {
               },
             ]}
           >
-            <AppText variant="body" style={styles.summaryTitle}>Histórico local</AppText>
+            <AppText variant="body" style={styles.summaryTitle}>{t('offline.localHistory')}</AppText>
             <AppText variant="caption" color="muted">
-              {transactions.length} transação{transactions.length !== 1 ? 'ões' : ''} armazenada{transactions.length !== 1 ? 's' : ''}
+              {t('offline.storedTransactions', { count: transactions.length })}
             </AppText>
           </View>
         )}
 
         {/* Offline tx list */}
         <View style={styles.section}>
-          <AppText variant="label" color="muted" style={styles.sectionLabel}>Transações salvas</AppText>
+          <AppText variant="label" color="muted" style={styles.sectionLabel}>{t('offline.savedTransactions')}</AppText>
           {offlineTransactions.length === 0 ? (
             <View
               style={[
@@ -472,9 +478,9 @@ export function OfflineModeScreen() {
                 },
               ]}
             >
-              <AppText variant="body" color="muted" style={styles.center}>Nenhuma transação salva</AppText>
+              <AppText variant="body" color="muted" style={styles.center}>{t('offline.noSaved')}</AppText>
               <AppText variant="caption" color="muted" style={styles.center}>
-                Prepare ou importe uma transação para transmiti-la depois.
+                {t('offline.noSavedDesc')}
               </AppText>
             </View>
           ) : (
@@ -509,13 +515,13 @@ export function OfflineModeScreen() {
         {activeForm === null && (
           <View style={styles.actions}>
             <AppButton
-              title="◈ Preparar transação offline"
+              title={t('offline.prepareTxAction')}
               variant="secondary"
               disabled={!hasLocalUtxos}
               onPress={() => setActiveForm('prepare')}
             />
             <AppButton
-              title="↓ Importar hex assinado"
+              title={t('offline.importHexAction')}
               variant="secondary"
               onPress={() => setActiveForm('import')}
             />

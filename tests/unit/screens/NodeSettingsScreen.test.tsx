@@ -49,28 +49,28 @@ describe('NodeSettingsScreen', () => {
   describe('Input fields', () => {
     it('renders the URL input field', () => {
       const screen = renderWithTheme(<NodeSettingsScreen />);
-      expect(screen.getByLabelText('Node URL')).toBeTruthy();
+      expect(screen.getByLabelText('nodeSettings.nodeUrl')).toBeTruthy();
     });
 
     it('renders the port input field', () => {
       const screen = renderWithTheme(<NodeSettingsScreen />);
-      expect(screen.getByLabelText('Node port')).toBeTruthy();
+      expect(screen.getByLabelText('nodeSettings.port')).toBeTruthy();
     });
 
     it('renders the auth token input field', () => {
       const screen = renderWithTheme(<NodeSettingsScreen />);
-      expect(screen.getByLabelText('Node auth token')).toBeTruthy();
+      expect(screen.getByLabelText('nodeSettings.authToken')).toBeTruthy();
     });
 
     it('calls setUrl when URL input changes', () => {
       const screen = renderWithTheme(<NodeSettingsScreen />);
-      fireEvent.changeText(screen.getByLabelText('Node URL'), 'https://node.example.com');
+      fireEvent.changeText(screen.getByLabelText('nodeSettings.nodeUrl'), 'https://node.example.com');
       expect(mockSetUrl).toHaveBeenCalledWith('https://node.example.com');
     });
 
     it('calls setPort when port input changes', () => {
       const screen = renderWithTheme(<NodeSettingsScreen />);
-      fireEvent.changeText(screen.getByLabelText('Node port'), '8332');
+      fireEvent.changeText(screen.getByLabelText('nodeSettings.port'), '8332');
       expect(mockSetPort).toHaveBeenCalledWith('8332');
     });
   });
@@ -91,23 +91,23 @@ describe('NodeSettingsScreen', () => {
   describe('Action buttons', () => {
     it('renders the test connection button', () => {
       const screen = renderWithTheme(<NodeSettingsScreen />);
-      expect(screen.getByText('Testar conexão')).toBeTruthy();
+      expect(screen.getByText('nodeSettings.testConnection')).toBeTruthy();
     });
 
     it('renders the save and activate button', () => {
       const screen = renderWithTheme(<NodeSettingsScreen />);
-      expect(screen.getByText('Salvar e ativar modo seguro')).toBeTruthy();
+      expect(screen.getByText('nodeSettings.saveAndActivate')).toBeTruthy();
     });
 
     it('calls testConnection when test button is pressed', () => {
       const screen = renderWithTheme(<NodeSettingsScreen />);
-      fireEvent.press(screen.getByText('Testar conexão'));
+      fireEvent.press(screen.getByText('nodeSettings.testConnection'));
       expect(mockTestConnection).toHaveBeenCalledTimes(1);
     });
 
     it('calls activateSafeMode when save button is pressed', () => {
       const screen = renderWithTheme(<NodeSettingsScreen />);
-      fireEvent.press(screen.getByText('Salvar e ativar modo seguro'));
+      fireEvent.press(screen.getByText('nodeSettings.saveAndActivate'));
       expect(mockActivateSafeMode).toHaveBeenCalledTimes(1);
     });
   });

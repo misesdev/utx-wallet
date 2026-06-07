@@ -110,7 +110,7 @@ describe('useSecuritySettings', () => {
       act(() => { result.current.openPinSetup(); });
       await act(async () => { await result.current.submitPinStep('1234'); });
       await act(async () => { await result.current.submitPinStep('9999'); });
-      expect(result.current.pinError).toMatch(/coincidem/i);
+      expect(result.current.pinError).toBe('security.errorPinMismatch');
       expect(result.current.pinModalStep).toBe('set-new');
       expect(mockSecurity.setupPin).not.toHaveBeenCalled();
     });
@@ -150,7 +150,7 @@ describe('useSecuritySettings', () => {
       const { result } = renderHook(() => useSecuritySettings());
       act(() => { result.current.openPinRemove(); });
       await act(async () => { await result.current.submitPinStep('9999'); });
-      expect(result.current.pinError).toMatch(/incorreto/i);
+      expect(result.current.pinError).toBe('security.errorPinIncorrect');
       expect(result.current.pinModalVisible).toBe(true);
       expect(mockSecurity.removePin).not.toHaveBeenCalled();
     });
