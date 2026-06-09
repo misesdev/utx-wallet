@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import type { TransactionDetail } from '../../core/domain/entities/TransactionDetail';
 import { AppError } from '../../core/application/errors/AppError';
 import { useTransactionHistory } from '../../app/providers/TransactionHistoryProvider';
-import { useNetwork } from './useNetwork';
 import { useWallet } from './useWallet';
 import { useAppTranslation } from './useAppTranslation';
 
@@ -16,7 +15,6 @@ export type UseTransactionDetailsState = {
 export function useTransactionDetails(): UseTransactionDetailsState {
   const { selectedWallet, listTransactions } = useWallet();
   const { t } = useAppTranslation();
-  const { networkConfig } = useNetwork();
   const { getDetail } = useTransactionHistory();
 
   const [transactions, setTransactions] = useState<TransactionDetail[]>([]);
@@ -43,7 +41,7 @@ export function useTransactionDetails(): UseTransactionDetailsState {
       );
 
       const results = await Promise.allSettled(
-        rawTxs.map(tx => getDetail(tx, networkConfig.network)),
+        rawTxs.map(tx => getDetail(tx, selectedWallet.network)),
       );
 
       setTransactions(
@@ -58,7 +56,7 @@ export function useTransactionDetails(): UseTransactionDetailsState {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedWallet, listTransactions, networkConfig.network, getDetail, t]);
+  }, [selectedWallet, listTransactions, getDetail, t]);
 
   useEffect(() => {
     load();

@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Wallet } from '../../../core/domain/entities/Wallet';
 import { TESTNET_NETWORKS } from '../../../shared/constants/networks';
@@ -310,6 +311,9 @@ export function WalletListScreen() {
 
   const filtered = wallets.filter(w => matchesTab(w, activeTab));
 
+  const walletsRef = useRef(wallets);
+  walletsRef.current = wallets;
+
   const loadSummaries = useCallback(async (walletList: Wallet[]) => {
     if (walletList.length === 0) return;
     const entries = await Promise.all(
@@ -335,9 +339,17 @@ export function WalletListScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Reload when wallets context changes (e.g. after a wallet is added)
   useEffect(() => {
     loadSummaries(wallets).catch(() => undefined);
   }, [wallets, loadSummaries]);
+
+  // Reload every time this screen gains focus (e.g. returning after sync)
+  useFocusEffect(
+    useCallback(() => {
+      loadSummaries(walletsRef.current).catch(() => undefined);
+    }, [loadSummaries]),
+  );
 
   function handleOpenWallet(wallet: Wallet) {
     selectWallet(wallet.id);

@@ -73,10 +73,12 @@ describe('ScanAddressQrScreen', () => {
 
   it('emits bitcoinAddressScanned when camera QR event fires', async () => {
     const emitSpy = jest.spyOn(DeviceEventEmitter, 'emit');
+    const { useCodeScanner } = require('react-native-vision-camera');
     renderWithTheme(<ScanAddressQrScreen />);
 
     await act(async () => {
-      DeviceEventEmitter.emit('bitcoinAddressQrScanned', 'bc1qcamera123');
+      const { __onCodeScanned } = useCodeScanner.mock.results[0].value;
+      __onCodeScanned([{ value: 'bc1qcamera123', type: 'qr' }]);
     });
 
     expect(emitSpy).toHaveBeenCalledWith('bitcoinAddressScanned', 'bc1qcamera123');

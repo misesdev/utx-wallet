@@ -83,7 +83,11 @@ export function WalletProvider({ children, walletService }: WalletProviderProps)
       reloadWallets,
       listTransactions: (walletId: string) => walletService.listTransactions(walletId),
       listUtxos: (walletId: string) => walletService.listUtxos(walletId),
-      syncWallet: (walletId: string) => walletService.syncWallet(walletId),
+      syncWallet: async (walletId: string) => {
+        const result = await walletService.syncWallet(walletId);
+        await reloadWallets();
+        return result;
+      },
       freezeUtxo: (walletId, txid, vout) => walletService.freezeUtxo(walletId, txid, vout),
       unfreezeUtxo: (walletId, txid, vout) => walletService.unfreezeUtxo(walletId, txid, vout),
     }),

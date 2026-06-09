@@ -44,6 +44,7 @@ jest.mock('@react-navigation/native', () => ({
     goBack: jest.fn(),
   }),
   useRoute: () => ({ params: {} }),
+  useFocusEffect: (cb: () => void) => { cb(); },
 }));
 
 jest.mock('@react-navigation/native-stack', () => ({
@@ -166,4 +167,28 @@ jest.mock('react-native-vector-icons/Ionicons', () => {
       accessibilityLabel,
     });
   return MockIonicons;
+});
+
+jest.mock('react-native-vision-camera', () => {
+  const ReactMock = require('react');
+  const { View } = require('react-native');
+  return {
+    Camera: Object.assign(
+      ({ testID, style }: { testID?: string; style?: object }) =>
+        ReactMock.createElement(View, { testID: testID ?? 'camera-view', style }),
+      {
+        getCameraPermissionStatus: jest.fn(() => 'authorized'),
+        requestCameraPermission: jest.fn(() => Promise.resolve('authorized')),
+      },
+    ),
+    useCameraDevice: jest.fn(() => ({ id: 'back', position: 'back', name: 'Back Camera' })),
+    useCameraPermission: jest.fn(() => ({
+      hasPermission: true,
+      status: 'authorized',
+      requestPermission: jest.fn(() => Promise.resolve(true)),
+    })),
+    useCodeScanner: jest.fn(({ onCodeScanned }: { onCodeScanned: (codes: Array<{ value?: string }>) => void }) => ({
+      __onCodeScanned: onCodeScanned,
+    })),
+  };
 });

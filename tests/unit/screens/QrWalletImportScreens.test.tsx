@@ -1,6 +1,5 @@
 import React from 'react';
-import { DeviceEventEmitter } from 'react-native';
-import { fireEvent, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import { HDWallet } from 'bitcoin-tx-lib';
 import { QrWalletScannerScreen } from '../../../src/presentation/screens/qr/QrWalletScannerScreen';
 import { ConfirmQrWalletImportScreen } from '../../../src/presentation/screens/qr/ConfirmQrWalletImportScreen';
@@ -65,12 +64,16 @@ describe('QrWalletImportScreens', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it('navigates to confirmation when a valid xpub is scanned by native event', async () => {
+  it('navigates to confirmation when a valid xpub is scanned by camera', async () => {
     mockRoute = { params: { network: 'mainnet' } };
     const { wallet } = HDWallet.import(MNEMONIC, undefined, { network: 'mainnet', purpose: 44 });
+    const { useCodeScanner } = require('react-native-vision-camera');
     renderWithTheme(<QrWalletScannerScreen />);
 
-    DeviceEventEmitter.emit('walletQrScanned', { value: wallet.getXPub() });
+    await act(async () => {
+      const { __onCodeScanned } = useCodeScanner.mock.results[0].value;
+      __onCodeScanned([{ value: wallet.getXPub(), type: 'qr' }]);
+    });
 
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('ConfirmQrWalletImport', expect.objectContaining({
       format: 'xpub',

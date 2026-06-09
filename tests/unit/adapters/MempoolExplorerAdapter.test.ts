@@ -10,9 +10,9 @@ describe('MempoolExplorerAdapter', () => {
       expect(url).toBe(`https://mempool.space/tx/${TXID}`);
     });
 
-    it('returns testnet mempool URL for testnet', () => {
+    it('returns testnet4 mempool URL for testnet (testnet = testnet4)', () => {
       const url = adapter.getExplorerUrl(TXID, 'testnet');
-      expect(url).toBe(`https://mempool.space/testnet/tx/${TXID}`);
+      expect(url).toBe(`https://mempool.space/testnet4/tx/${TXID}`);
     });
 
     it('returns testnet mempool URL for testnet3', () => {

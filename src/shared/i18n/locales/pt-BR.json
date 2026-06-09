@@ -368,7 +368,12 @@
     "unavailableMessage": "A leitura pela câmera estará disponível em uma atualização futura.",
     "accessibilityLabel": "Escanear QR code",
     "addressPlaceholder": "bc1q… ou tb1q…",
-    "emptyError": "Insira um endereço Bitcoin"
+    "emptyError": "Insira um endereço Bitcoin",
+    "permissionDeniedTitle": "Acesso à Câmera Negado",
+    "permissionDeniedDesc": "O acesso à câmera é necessário para escanear QR codes. Ative nas Configurações do dispositivo.",
+    "openSettings": "Abrir Configurações",
+    "noCameraTitle": "Câmera Não Encontrada",
+    "noCameraDesc": "Nenhuma câmera traseira foi detectada neste dispositivo."
   },
   "security": {
     "title": "Segurança",

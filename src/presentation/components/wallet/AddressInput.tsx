@@ -50,14 +50,13 @@ export function AddressInput({ value, onChangeText, onQrScan, placeholder, testI
           style={({ pressed }) => [
             styles.qrBtn,
             {
-              backgroundColor: theme.colors.surfaceMuted,
-              borderColor: theme.colors.border,
+              backgroundColor: theme.colors.primary,
               borderRadius: theme.radii.md,
-              opacity: pressed ? 0.7 : 1,
+              opacity: pressed ? 0.75 : 1,
             },
           ]}
         >
-          <AppIcon name="qrCode" size={22} color={theme.colors.textMuted} />
+          <AppIcon name="qrCode" size={22} color={theme.colors.primaryText} />
         </Pressable>
       </View>
 
@@ -90,10 +89,10 @@ const styles = StyleSheet.create({
   },
   qrBtn: {
     alignItems: 'center',
-    borderWidth: 1,
     justifyContent: 'center',
     paddingHorizontal: 10,
     paddingVertical: 10,
     width: 46,
+    height: 46,
   },
 });

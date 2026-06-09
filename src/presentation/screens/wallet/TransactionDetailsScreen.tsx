@@ -218,7 +218,8 @@ function TxCard({ tx }: TxCardProps) {
             },
           ]}
         >
-          <AppText variant="body" color="accent" style={styles.explorerLabel}>
+          <AppIcon name="externalLink" size={15} color={theme.colors.accent} />
+          <AppText variant="body" color="accent" style={styles.explorerLabel} numberOfLines={1}>
             {t('txDetails.viewExplorer')}
           </AppText>
         </Pressable>
@@ -442,11 +443,16 @@ const styles = StyleSheet.create({
   explorerBtn: {
     alignItems: 'center',
     borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
     marginHorizontal: 20,
     marginTop: 12,
+    paddingHorizontal: 16,
     paddingVertical: 12,
   },
   explorerLabel: {
+    flexShrink: 1,
     fontWeight: '600',
   },
 });

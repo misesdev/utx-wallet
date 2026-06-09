@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  DeviceEventEmitter,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Camera, useCameraDevice, useCameraPermission, useCodeScanner } from 'react-native-vision-camera';
 import { WalletImportFormatDetector } from '../../../core/domain/services/WalletImportFormatDetector';
 import type { BitcoinNetwork } from '../../../core/domain/entities/Network';
 import { AppRoutes, type AppStackParamList } from '../../../app/navigation/routes';
@@ -23,15 +24,6 @@ import { useTheme } from '../../hooks/useTheme';
 type ScannerRoute = RouteProp<AppStackParamList, typeof AppRoutes.ScanWalletQr>;
 
 const detector = new WalletImportFormatDetector();
-
-function eventValue(payload: unknown): string {
-  if (typeof payload === 'string') return payload;
-  if (payload && typeof payload === 'object' && 'value' in payload) {
-    const value = (payload as { value?: unknown }).value;
-    return typeof value === 'string' ? value : '';
-  }
-  return '';
-}
 
 const CORNER_SIZE = 26;
 const CORNER_THICKNESS = 3;
@@ -66,12 +58,7 @@ function ManualInputSheet({ onSubmit, onClose, error }: ManualInputSheetProps) {
   const [value, setValue] = useState('');
 
   return (
-    <Modal
-      visible
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.modalOverlay}
@@ -128,11 +115,7 @@ function ManualInputSheet({ onSubmit, onClose, error }: ManualInputSheetProps) {
               variant="subtitle"
               style={[
                 styles.sheetBtnLabel,
-                {
-                  color: value.trim()
-                    ? theme.colors.primaryText
-                    : theme.colors.textMuted,
-                },
+                { color: value.trim() ? theme.colors.primaryText : theme.colors.textMuted },
               ]}
             >
               {t('qrImport.continue')}
@@ -144,22 +127,65 @@ function ManualInputSheet({ onSubmit, onClose, error }: ManualInputSheetProps) {
   );
 }
 
+type PermissionBlockedViewProps = { onBack: () => void };
+
+function PermissionBlockedView({ onBack }: PermissionBlockedViewProps) {
+  const { theme } = useTheme();
+  const { t } = useAppTranslation();
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={[styles.blockedRoot, { backgroundColor: theme.colors.background, paddingTop: insets.top, paddingBottom: insets.bottom + 24 }]}>
+      <Pressable onPress={onBack} style={({ pressed }) => [styles.blockedBack, { opacity: pressed ? 0.6 : 1 }]}>
+        <AppIcon name="back" size={24} color={theme.colors.textMuted} />
+      </Pressable>
+      <View style={styles.blockedCenter}>
+        <AppIcon name="scan" size={48} color={theme.colors.textMuted} />
+        <AppText variant="title" style={styles.blockedTitle}>{t('qrScan.permissionDeniedTitle')}</AppText>
+        <AppText variant="body" color="muted" style={styles.blockedDesc}>{t('qrScan.permissionDeniedDesc')}</AppText>
+        <Pressable
+          onPress={() => Linking.openSettings()}
+          style={({ pressed }) => [
+            styles.blockedBtn,
+            { backgroundColor: theme.colors.accent, borderRadius: theme.radii.lg, opacity: pressed ? 0.8 : 1 },
+          ]}
+        >
+          <AppText variant="subtitle" style={styles.blockedBtnText}>{t('qrScan.openSettings')}</AppText>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 export function QrWalletScannerScreen() {
   const { t } = useAppTranslation();
   const navigation = useAppNavigation();
   const insets = useSafeAreaInsets();
   const route = useRoute<ScannerRoute>();
   const selectedNetwork: BitcoinNetwork = route.params?.network ?? 'testnet';
+
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const device = useCameraDevice('back');
+
   const [error, setError] = useState('');
   const [showManual, setShowManual] = useState(false);
+  const isHandling = useRef(false);
+
+  useEffect(() => {
+    if (!hasPermission) {
+      requestPermission();
+    }
+  }, [hasPermission, requestPermission]);
 
   const handleQrValue = useCallback((rawValue: string) => {
+    if (isHandling.current) return;
     const value = rawValue.trim();
     if (!value) return;
+    isHandling.current = true;
     const detected = detector.detect(value, selectedNetwork);
     if (!detected) {
       setError(t('qrImport.invalidFormat'));
       setShowManual(true);
+      isHandling.current = false;
       return;
     }
     setError('');
@@ -173,32 +199,57 @@ export function QrWalletScannerScreen() {
     });
   }, [navigation, selectedNetwork, t]);
 
-  useEffect(() => {
-    const subscription = DeviceEventEmitter.addListener('walletQrScanned', payload => {
-      handleQrValue(eventValue(payload));
-    });
-    return () => subscription.remove();
-  }, [handleQrValue]);
+  const codeScanner = useCodeScanner({
+    codeTypes: ['qr'],
+    onCodeScanned: (codes) => {
+      const value = codes[0]?.value;
+      if (value) handleQrValue(value);
+    },
+  });
+
+  if (!hasPermission) {
+    return <PermissionBlockedView onBack={() => navigation.goBack()} />;
+  }
+
+  if (!device) {
+    return (
+      <View style={[styles.blockedRoot, { paddingTop: insets.top }]}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.blockedBack}>
+          <AppIcon name="back" size={24} color="rgba(255,255,255,0.8)" />
+        </Pressable>
+        <View style={styles.blockedCenter}>
+          <AppText style={styles.blockedTitle}>{t('qrScan.noCameraTitle')}</AppText>
+          <AppText style={styles.blockedDesc}>{t('qrScan.noCameraDesc')}</AppText>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
-      {/* Simulated camera background */}
-      <View style={styles.cameraBackground}>
-        {/* Darkened edges via semi-transparent overlays */}
+      {/* Live camera feed */}
+      <Camera
+        style={StyleSheet.absoluteFill}
+        device={device}
+        isActive={!showManual}
+        codeScanner={codeScanner}
+        testID="camera-view"
+      />
+
+      {/* Dimmed mask overlay */}
+      <View style={styles.cameraBackground} pointerEvents="none">
         <View style={styles.maskTop} />
         <View style={styles.maskMiddleRow}>
           <View style={styles.maskSide} />
-          {/* Viewfinder frame */}
           <View style={styles.viewfinder} testID="qr-scanner-frame">
             <ViewfinderCorners />
-            <AppIcon name="scan" size={28} color="rgba(255,255,255,0.4)" />
           </View>
           <View style={styles.maskSide} />
         </View>
         <View style={styles.maskBottom} />
       </View>
 
-      {/* Top overlay */}
+      {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <Pressable
           onPress={() => navigation.goBack()}
@@ -212,7 +263,7 @@ export function QrWalletScannerScreen() {
         <View style={styles.topBtn} />
       </View>
 
-      {/* Hint below viewfinder */}
+      {/* Hint */}
       <View style={styles.hintRow}>
         <AppText style={styles.hintText}>{t('qrImport.scannerHint')}</AppText>
       </View>
@@ -233,7 +284,7 @@ export function QrWalletScannerScreen() {
       {showManual && (
         <ManualInputSheet
           onSubmit={handleQrValue}
-          onClose={() => { setShowManual(false); setError(''); }}
+          onClose={() => { setShowManual(false); setError(''); isHandling.current = false; }}
           error={error}
         />
       )}
@@ -248,10 +299,42 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
-
-  // Camera background
+  blockedRoot: {
+    flex: 1,
+  },
+  blockedBack: {
+    margin: 16,
+    padding: 8,
+    alignSelf: 'flex-start',
+  },
+  blockedCenter: {
+    alignItems: 'center',
+    flex: 1,
+    gap: 16,
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  blockedTitle: {
+    fontWeight: '700',
+    fontSize: 20,
+    textAlign: 'center',
+  },
+  blockedDesc: {
+    lineHeight: 22,
+    textAlign: 'center',
+  },
+  blockedBtn: {
+    alignItems: 'center',
+    marginTop: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+  },
+  blockedBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+  },
   cameraBackground: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     flexDirection: 'column',
   },
   maskTop: {
@@ -276,34 +359,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: FRAME_SIZE,
   },
-
-  // Corner brackets
-  cornerTL: {
-    borderTopWidth: CORNER_THICKNESS,
-    borderLeftWidth: CORNER_THICKNESS,
-    top: 0,
-    left: 0,
-  },
-  cornerTR: {
-    borderTopWidth: CORNER_THICKNESS,
-    borderRightWidth: CORNER_THICKNESS,
-    top: 0,
-    right: 0,
-  },
-  cornerBL: {
-    borderBottomWidth: CORNER_THICKNESS,
-    borderLeftWidth: CORNER_THICKNESS,
-    bottom: 0,
-    left: 0,
-  },
-  cornerBR: {
-    borderBottomWidth: CORNER_THICKNESS,
-    borderRightWidth: CORNER_THICKNESS,
-    bottom: 0,
-    right: 0,
-  },
-
-  // Top bar
+  cornerTL: { borderTopWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS, top: 0, left: 0 },
+  cornerTR: { borderTopWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS, top: 0, right: 0 },
+  cornerBL: { borderBottomWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS, bottom: 0, left: 0 },
+  cornerBR: { borderBottomWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS, bottom: 0, right: 0 },
   topBar: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -328,8 +387,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     textAlign: 'center',
   },
-
-  // Hint
   hintRow: {
     alignItems: 'center',
     bottom: '35%',
@@ -342,8 +399,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
   },
-
-  // Bottom bar
   bottomBar: {
     alignItems: 'center',
     bottom: 0,
@@ -365,8 +420,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textDecorationLine: 'underline',
   },
-
-  // Manual input sheet (modal)
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',

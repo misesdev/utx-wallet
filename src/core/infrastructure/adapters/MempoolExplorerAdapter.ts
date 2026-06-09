@@ -3,7 +3,7 @@ import type { BlockchainExplorer } from '../../domain/repositories/BlockchainExp
 
 const EXPLORER_BASE_URLS: Record<BitcoinNetwork, string> = {
   mainnet: 'https://mempool.space',
-  testnet: 'https://mempool.space/testnet',
+  testnet: 'https://mempool.space/testnet4',  // testnet = testnet4, matching the API layer
   testnet3: 'https://mempool.space/testnet',
   testnet4: 'https://mempool.space/testnet4',
 };

@@ -368,7 +368,12 @@
     "unavailableMessage": "Camera scanning will be available in a future update.",
     "accessibilityLabel": "Scan QR code",
     "addressPlaceholder": "bc1q… or tb1q…",
-    "emptyError": "Enter a Bitcoin address"
+    "emptyError": "Enter a Bitcoin address",
+    "permissionDeniedTitle": "Camera Access Denied",
+    "permissionDeniedDesc": "Camera access is required to scan QR codes. Please enable it in your device Settings.",
+    "openSettings": "Open Settings",
+    "noCameraTitle": "No Camera Found",
+    "noCameraDesc": "No back camera was detected on this device."
   },
   "security": {
     "title": "Security",
