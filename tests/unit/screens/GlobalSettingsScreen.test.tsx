@@ -28,11 +28,9 @@ jest.mock('react-native-safe-area-context', () => ({
 describe('GlobalSettingsScreen', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('renders global settings title and current network', () => {
+  it('renders global settings title', () => {
     const screen = renderWithTheme(<GlobalSettingsScreen />);
     expect(screen.getByText('globalSettings.title')).toBeTruthy();
-    expect(screen.getByText('globalSettings.scope')).toBeTruthy();
-    expect(screen.getByText('testnet4')).toBeTruthy();
   });
 
   it('renders global setting section buttons', () => {
@@ -40,7 +38,6 @@ describe('GlobalSettingsScreen', () => {
     expect(screen.getByTestId('global-settings-donation')).toBeTruthy();
     expect(screen.getByTestId('global-settings-language')).toBeTruthy();
     expect(screen.getByTestId('global-settings-security')).toBeTruthy();
-    expect(screen.getByTestId('global-settings-network')).toBeTruthy();
     expect(screen.getByTestId('global-settings-node')).toBeTruthy();
     expect(screen.getByTestId('global-settings-offline')).toBeTruthy();
     expect(screen.getByTestId('global-settings-safe-mode')).toBeTruthy();
@@ -68,11 +65,5 @@ describe('GlobalSettingsScreen', () => {
     const screen = renderWithTheme(<GlobalSettingsScreen />);
     fireEvent.press(screen.getByTestId('global-settings-node'));
     expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.NodeSettings);
-  });
-
-  it('navigates to network settings', () => {
-    const screen = renderWithTheme(<GlobalSettingsScreen />);
-    fireEvent.press(screen.getByTestId('global-settings-network'));
-    expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.NetworkSettings);
   });
 });

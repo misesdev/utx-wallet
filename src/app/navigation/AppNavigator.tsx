@@ -9,7 +9,6 @@ import { OfflineModeScreen } from '../../presentation/screens/offline/OfflineMod
 import { SafeModeScreen } from '../../presentation/screens/safe-mode/SafeModeScreen';
 import { BackupSettingsScreen } from '../../presentation/screens/settings/BackupSettingsScreen';
 import { GlobalSettingsScreen } from '../../presentation/screens/settings/GlobalSettingsScreen';
-import { NetworkSettingsScreen } from '../../presentation/screens/settings/NetworkSettingsScreen';
 import { NodeSettingsScreen } from '../../presentation/screens/settings/NodeSettingsScreen';
 import { SecuritySettingsScreen } from '../../presentation/screens/settings/SecuritySettingsScreen';
 import { LanguageScreen } from '../../presentation/screens/settings/LanguageScreen';
@@ -65,7 +64,6 @@ export function AppNavigator() {
         <Stack.Screen name={AppRoutes.Settings} component={SettingsScreen} />
         <Stack.Screen name={AppRoutes.ViewSeed} component={ViewSeedScreen} />
         <Stack.Screen name={AppRoutes.SecuritySettings} component={SecuritySettingsScreen} />
-        <Stack.Screen name={AppRoutes.NetworkSettings} component={NetworkSettingsScreen} />
         <Stack.Screen name={AppRoutes.NodeSettings} component={NodeSettingsScreen} />
         <Stack.Screen name={AppRoutes.BackupSettings} component={BackupSettingsScreen} />
         <Stack.Screen name={AppRoutes.OfflineMode} component={OfflineModeScreen} />

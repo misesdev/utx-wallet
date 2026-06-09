@@ -62,7 +62,9 @@
     "deleteTitle": "Delete wallet",
     "deleteMessage": "Delete \"{{name}}\"? This cannot be undone. Make sure you have backed up your seed phrase.",
     "mainnet": "Mainnet",
-    "testnet": "Testnet"
+    "testnet": "Testnet",
+    "globalSettings": "Settings",
+    "scanImport": "Scan QR"
   },
   "createWallet": {
     "title": "New wallet",
@@ -308,7 +310,14 @@
     "offlineDesc": "Build transactions without internet",
     "safeMode": "Safe Mode",
     "safeModeDesc": "Restrict outgoing transactions",
-    "activeNetwork": "Active network"
+    "activeNetwork": "Active network",
+    "walletTitle": "Wallet Settings",
+    "viewSeed": "View Seed Phrase",
+    "viewSeedDesc": "View the words of your seed phrase",
+    "addresses": "Addresses",
+    "addressesDesc": "Manage your Bitcoin addresses",
+    "utxos": "UTXOs",
+    "utxosDesc": "View and manage your UTXOs"
   },
   "language": {
     "title": "Select language",
@@ -496,5 +505,34 @@
     "namePlaceholder": "e.g. Savings",
     "importAction": "Import →",
     "importFailed": "Failed to import wallet"
+  },
+  "globalSettings": {
+    "title": "Global Settings",
+    "groupApp": "APP",
+    "groupNetwork": "NETWORK",
+    "groupAdvanced": "ADVANCED"
+  },
+  "donation": {
+    "title": "Donation",
+    "settingsTitle": "Support the Project",
+    "settingsDesc": "Contribute a Bitcoin donation",
+    "heroTitle": "Support Development",
+    "description": "This is an open-source wallet. If you find it useful, consider making a Bitcoin donation to support ongoing development.",
+    "addressLabel": "BITCOIN ADDRESS",
+    "copyAddress": "Copy Address",
+    "copied": "Copied!",
+    "copyFeedback": "Address copied to clipboard",
+    "githubLabel": "View on GitHub"
+  },
+  "walletSettings": {
+    "walletName": "Wallet Name",
+    "editName": "Edit Name",
+    "errorNameRequired": "Wallet name is required",
+    "dangerZone": "DANGER ZONE",
+    "deleteWallet": "Delete Wallet",
+    "deleteWalletDesc": "Permanently removes this wallet from the device"
+  },
+  "viewSeed": {
+    "title": "Seed Phrase"
   }
 }

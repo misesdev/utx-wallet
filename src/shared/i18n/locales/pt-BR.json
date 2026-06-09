@@ -62,7 +62,9 @@
     "deleteTitle": "Excluir carteira",
     "deleteMessage": "Excluir \"{{name}}\"? Isso não pode ser desfeito. Certifique-se de ter feito o backup da sua seed phrase.",
     "mainnet": "Mainnet",
-    "testnet": "Testnet"
+    "testnet": "Testnet",
+    "globalSettings": "Configurações",
+    "scanImport": "Escanear QR"
   },
   "createWallet": {
     "title": "Nova carteira",
@@ -308,7 +310,14 @@
     "offlineDesc": "Construa transações sem internet",
     "safeMode": "Modo Seguro",
     "safeModeDesc": "Restrinja transações de saída",
-    "activeNetwork": "Rede ativa"
+    "activeNetwork": "Rede ativa",
+    "walletTitle": "Configurações da Carteira",
+    "viewSeed": "Ver Seed Phrase",
+    "viewSeedDesc": "Visualize as palavras da sua seed phrase",
+    "addresses": "Endereços",
+    "addressesDesc": "Gerencie seus endereços Bitcoin",
+    "utxos": "UTXOs",
+    "utxosDesc": "Visualize e gerencie seus UTXOs"
   },
   "language": {
     "title": "Selecionar idioma",
@@ -496,5 +505,34 @@
     "namePlaceholder": "ex: Poupança",
     "importAction": "Importar →",
     "importFailed": "Falha ao importar carteira"
+  },
+  "globalSettings": {
+    "title": "Configurações Globais",
+    "groupApp": "APLICATIVO",
+    "groupNetwork": "REDE",
+    "groupAdvanced": "AVANÇADO"
+  },
+  "donation": {
+    "title": "Doação",
+    "settingsTitle": "Apoiar o Projeto",
+    "settingsDesc": "Contribua com uma doação em Bitcoin",
+    "heroTitle": "Apoie o Desenvolvimento",
+    "description": "Esta é uma carteira de código aberto. Se você a acha útil, considere fazer uma doação em Bitcoin para apoiar o desenvolvimento contínuo.",
+    "addressLabel": "ENDEREÇO BITCOIN",
+    "copyAddress": "Copiar Endereço",
+    "copied": "Copiado!",
+    "copyFeedback": "Endereço copiado para a área de transferência",
+    "githubLabel": "Ver no GitHub"
+  },
+  "walletSettings": {
+    "walletName": "Nome da Carteira",
+    "editName": "Editar Nome",
+    "errorNameRequired": "O nome da carteira é obrigatório",
+    "dangerZone": "ZONA DE RISCO",
+    "deleteWallet": "Excluir Carteira",
+    "deleteWalletDesc": "Remove permanentemente esta carteira do dispositivo"
+  },
+  "viewSeed": {
+    "title": "Seed Phrase"
   }
 }

@@ -49,4 +49,69 @@ describe('i18n resources', () => {
     expect(allCopy).not.toMatch(new RegExp(`${forbiddenCount}(?:ª|a|th)?\\s*(?:palavra|word)?`, 'i'));
   });
 
+  describe('globalSettings keys', () => {
+    const KEYS: Array<keyof typeof ptBR.globalSettings> = ['title', 'groupApp', 'groupNetwork', 'groupAdvanced'];
+    it.each(KEYS)('pt-BR has non-empty globalSettings.%s', (key) => {
+      expect(ptBR.globalSettings[key]).toBeTruthy();
+    });
+    it.each(KEYS)('en-US has non-empty globalSettings.%s', (key) => {
+      expect(enUS.globalSettings[key]).toBeTruthy();
+    });
+  });
+
+  describe('donation keys', () => {
+    const KEYS: Array<keyof typeof ptBR.donation> = [
+      'title', 'settingsTitle', 'settingsDesc', 'heroTitle', 'description',
+      'addressLabel', 'copyAddress', 'copied', 'copyFeedback', 'githubLabel',
+    ];
+    it.each(KEYS)('pt-BR has non-empty donation.%s', (key) => {
+      expect(ptBR.donation[key]).toBeTruthy();
+    });
+    it.each(KEYS)('en-US has non-empty donation.%s', (key) => {
+      expect(enUS.donation[key]).toBeTruthy();
+    });
+  });
+
+  describe('walletSettings keys', () => {
+    const KEYS: Array<keyof typeof ptBR.walletSettings> = [
+      'walletName', 'editName', 'errorNameRequired', 'dangerZone', 'deleteWallet', 'deleteWalletDesc',
+    ];
+    it.each(KEYS)('pt-BR has non-empty walletSettings.%s', (key) => {
+      expect(ptBR.walletSettings[key]).toBeTruthy();
+    });
+    it.each(KEYS)('en-US has non-empty walletSettings.%s', (key) => {
+      expect(enUS.walletSettings[key]).toBeTruthy();
+    });
+  });
+
+  describe('settings wallet-screen keys', () => {
+    it('pt-BR has walletTitle, viewSeed, addresses, utxos keys', () => {
+      expect(ptBR.settings.walletTitle).toBeTruthy();
+      expect(ptBR.settings.viewSeed).toBeTruthy();
+      expect(ptBR.settings.viewSeedDesc).toBeTruthy();
+      expect(ptBR.settings.addresses).toBeTruthy();
+      expect(ptBR.settings.addressesDesc).toBeTruthy();
+      expect(ptBR.settings.utxos).toBeTruthy();
+      expect(ptBR.settings.utxosDesc).toBeTruthy();
+    });
+    it('en-US has walletTitle, viewSeed, addresses, utxos keys', () => {
+      expect(enUS.settings.walletTitle).toBeTruthy();
+      expect(enUS.settings.viewSeed).toBeTruthy();
+      expect(enUS.settings.viewSeedDesc).toBeTruthy();
+      expect(enUS.settings.addresses).toBeTruthy();
+      expect(enUS.settings.addressesDesc).toBeTruthy();
+      expect(enUS.settings.utxos).toBeTruthy();
+      expect(enUS.settings.utxosDesc).toBeTruthy();
+    });
+  });
+
+  describe('viewSeed keys', () => {
+    it('pt-BR has non-empty viewSeed.title', () => {
+      expect(ptBR.viewSeed.title).toBeTruthy();
+    });
+    it('en-US has non-empty viewSeed.title', () => {
+      expect(enUS.viewSeed.title).toBeTruthy();
+    });
+  });
+
 });

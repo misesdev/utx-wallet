@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppBottomDock } from '../../components/base/AppBottomDock';
 import { AppEmptyState } from '../../components/base/AppEmptyState';
 import { AppLoading } from '../../components/base/AppLoading';
 import { AppText } from '../../components/base/AppText';
@@ -222,62 +223,6 @@ function AccountSummaryCard({ summary, hidden, onPress }: AccountSummaryCardProp
   );
 }
 
-// ─── Bottom dock ──────────────────────────────────────────────────────────────
-
-type BottomDockProps = {
-  onReceive: () => void;
-  onSend: () => void;
-};
-
-function BottomDock({ onReceive, onSend }: BottomDockProps) {
-  const { theme } = useTheme();
-  const { t } = useAppTranslation();
-  const insets = useSafeAreaInsets();
-
-  return (
-    <View
-      pointerEvents="box-none"
-      style={[styles.dockWrap, { paddingBottom: Math.max(insets.bottom, 16) }]}
-    >
-      <View
-        style={[
-          styles.bottomDock,
-          {
-            backgroundColor: theme.colors.surface,
-            borderColor: theme.colors.borderHighlight,
-            borderRadius: theme.radii.xl,
-          },
-          theme.shadows.elevated,
-        ]}
-      >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('receive.title')}
-          onPress={onReceive}
-          style={({ pressed }) => [
-            styles.dockBtn,
-            { backgroundColor: theme.colors.surfaceRaised, borderRadius: theme.radii.lg, opacity: pressed ? 0.78 : 1 },
-          ]}
-        >
-          <AppIcon name="receive" size={26} color={theme.colors.success} />
-          <AppText variant="body" style={[styles.dockBtnLabel, { color: theme.colors.text }]}>{t('receive.title')}</AppText>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('send.title')}
-          onPress={onSend}
-          style={({ pressed }) => [
-            styles.dockBtn,
-            { backgroundColor: theme.colors.primary, borderRadius: theme.radii.lg, opacity: pressed ? 0.78 : 1 },
-          ]}
-        >
-          <AppIcon name="send" size={26} color={theme.colors.primaryText} />
-          <AppText variant="body" style={[styles.dockBtnLabel, { color: theme.colors.primaryText }]}>{t('send.title')}</AppText>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
 
 // ─── HomeScreen ───────────────────────────────────────────────────────────────
 
@@ -479,20 +424,32 @@ export function HomeScreen() {
         </View>
       </ScrollView>
 
-      <BottomDock
-        onReceive={() => {
-          if (summaries.length > 1) {
-            navigation.navigate(AppRoutes.SelectOriginReceive);
-          } else {
-            navigation.navigate(AppRoutes.Receive);
-          }
+      <AppBottomDock
+        leftButton={{
+          icon: 'receive',
+          label: t('receive.title'),
+          onPress: () => {
+            if (summaries.length > 1) {
+              navigation.navigate(AppRoutes.SelectOriginReceive);
+            } else {
+              navigation.navigate(AppRoutes.Receive);
+            }
+          },
+          iconColor: theme.colors.success,
         }}
-        onSend={() => {
-          if (summaries.length > 1) {
-            navigation.navigate(AppRoutes.SelectOriginSend);
-          } else {
-            navigation.navigate(AppRoutes.Send);
-          }
+        rightButton={{
+          icon: 'send',
+          label: t('send.title'),
+          onPress: () => {
+            if (summaries.length > 1) {
+              navigation.navigate(AppRoutes.SelectOriginSend);
+            } else {
+              navigation.navigate(AppRoutes.Send);
+            }
+          },
+          backgroundColor: theme.colors.primary,
+          iconColor: theme.colors.primaryText,
+          labelColor: theme.colors.primaryText,
         }}
       />
     </View>
@@ -688,29 +645,5 @@ const styles = StyleSheet.create({
   activityAmount: {
     fontWeight: '700',
   },
-  // Bottom dock
-  dockWrap: {
-    bottom: 0,
-    left: 0,
-    paddingHorizontal: 16,
-    position: 'absolute',
-    right: 0,
-  },
-  bottomDock: {
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 10,
-    padding: 10,
-  },
-  dockBtn: {
-    alignItems: 'center',
-    flex: 1,
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-    minHeight: 52,
-  },
-  dockBtnLabel: {
-    fontWeight: '700',
-  },
 });
+

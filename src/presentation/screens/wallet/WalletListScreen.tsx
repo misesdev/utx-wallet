@@ -8,6 +8,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Wallet } from '../../../core/domain/entities/Wallet';
 import { TESTNET_NETWORKS } from '../../../shared/constants/networks';
+import { AppBottomDock } from '../../components/base/AppBottomDock';
 import { AppConfirmModal } from '../../components/base/AppConfirmModal';
 import { AppLoading } from '../../components/base/AppLoading';
 import { AppLogo } from '../../components/base/AppLogo';
@@ -36,7 +37,7 @@ function matchesTab(wallet: Wallet, tab: NetworkTab): boolean {
 
 const NETWORK_ACCENT: Record<NetworkTab, string> = {
   mainnet: '#F7931A',
-  testnet: '#8E6FE8',
+  testnet: '#38965c',
 };
 
 function walletAccent(wallet: Wallet): string {
@@ -353,43 +354,23 @@ export function WalletListScreen() {
 
 
       {/* Floating bottom dock */}
-      <View
-        style={[styles.dockWrap, { paddingBottom: Math.max(insets.bottom, 16) }]}
-        pointerEvents="box-none"
-      >
-        <View
-          style={[
-            styles.dock,
-            {
-              backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.borderHighlight,
-            },
-            theme.shadows.elevated,
-          ]}
-        >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('walletList.globalSettings')}
-            testID="wallet-list-global-settings"
-            onPress={handleOpenGlobalSettings}
-            style={({ pressed }) => [styles.dockBtn, { opacity: pressed ? 0.65 : 1 }]}
-          >
-            <AppIcon name="settings" size={22} color={theme.colors.textMuted} />
-          </Pressable>
-
-          <View style={[styles.dockDivider, { backgroundColor: theme.colors.border }]} />
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('walletList.scanImport')}
-            testID="wallet-list-scan-import"
-            onPress={handleScanImportQr}
-            style={({ pressed }) => [styles.dockBtn, { opacity: pressed ? 0.65 : 1 }]}
-          >
-            <AppIcon name="scan" size={22} color={theme.colors.textMuted} />
-          </Pressable>
-        </View>
-      </View>
+      <AppBottomDock
+        leftButton={{
+          icon: 'settings',
+          label: t('walletList.globalSettings'),
+          onPress: handleOpenGlobalSettings,
+          testID: 'wallet-list-global-settings',
+        }}
+        rightButton={{
+          icon: 'scan',
+          label: t('walletList.scanImport'),
+          onPress: handleScanImportQr,
+          backgroundColor: theme.colors.primary,
+          iconColor: theme.colors.primaryText,
+          labelColor: theme.colors.primaryText,
+          testID: 'wallet-list-scan-import',
+        }}
+      />
 
       {/* Delete confirmation */}
       <AppConfirmModal
@@ -578,33 +559,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
   },
-  dockWrap: {
-    bottom: 10,
-    left: 0,
-    paddingHorizontal: 28,
-    position: 'absolute',
-    right: 0,
-    alignItems: "center"
-  },
-  dock: {
-    alignItems: 'center',
-    borderRadius: 999,
-    borderWidth: 1,
-    flexDirection: 'row',
-    paddingHorizontal: 4,
-    paddingVertical: 4,
-    maxWidth: 200,
-  },
-  dockBtn: {
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  dockDivider: {
-    alignSelf: 'stretch',
-    marginVertical: 8,
-    width: StyleSheet.hairlineWidth,
-  },
 });
+

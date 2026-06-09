@@ -1,80 +1,56 @@
 
-# No fluxo de criacao de uma carteira, tenho o problema:
+# Importacao e Criacao de Carteiras
 
-* A label da Passphrase aparece como "Passphrase(25 palavra)", oque esta errado, a caretira e gerada 
-usando uma seed 12 palavras. O problema tambem existe na importacao da carteira.
+Na importacao de carteira, o fluxo precisa de algumas melhorias de design primeiro o botao "Importar Carteira"
+Tem uma seta -> que fica muito feia no botao, preciso que ajuste para utilizar um icone ou mesmo sem icone. O
+botao tem as cores "amarela" com texto branco, sendo que no app todo os botoes sao brancos, isso foge o design do app.
 
----
+Quando clica em importar, e exibido apenas um loader por um tempo durante a importacao, alem de nao fazer o
+sync. Preciso que ajuste o fluxo para quando clicar em importar, exibir um modal, similar aos fluxos de loader
+do app do Nubank, entao deve exibir um modal/tela com os feedbacks do processo de importacao, ou seja, exibe 
+o fluxo:
+    
+    1 - Importando chaves
+    2 - Sincronizando enderecos
+    3 - Sincronizando contas
 
-# As configuracoes devem ser segregadas:
+Em um desig muito elegante a tela ou modal de "loader" primeiro deve exibir "Importando chaves", enquanto
+gera as chaves da carteira usando o mnemonico e tudo mais com o address manager. Nesse processo deve gerar
+os primeiros 5 enderecos de recebimento e 5 de troco.
 
-* Na tela inicial, onde sao listadas as carteiras deve ser adicionado um menu na parte inferior da tela,
-Esse menu deve conter dois botoes um para abrir as configuracoes globais e um para escanear e importar
-carteiras atraves da leitura de qr-code. Clicando no botao de configuracoes abrira uma tela similar a 
-tela de configuracoes da carteira, porem com as configuracoes globais como [Configuracao do Node, Idioma,
-Seguranca, etc] que devem ser movidas da tela de configuracoes da carteira para a tela de configuracoes globais. 
-Clicando deve abrir uma tela com a camera para escanear qr-code, ou seja, ler um 
-qr-code e verificar se o valor do qr-code e um Wif, xpub(watch-only) ou xpub, caso seja um Wif ou uma chave 
-privada nos formatos aceitos, entao faz a importacao direta da carteira abrindo uma tela apenas para 
-o usuario definir um nome. Nesse tipo de importacao deve permitir importar carteiras watch-only com xpub, xpriv, wif etc.
-Nessa implementacao verifique e ajuste se necessarios todos os pontos de sync, address manager e etc para
-suportar watch-only.
+Na proxima etapa, deve fazer o sync desses enderecos, exibindo uma mensagem para o usuario, caso hajam transacoes
+gastas nesses enderecos, deve exibir uma mensagem de feedback para o usuario e entao gerar os proximos 5 enderecos
+e fazer o mesmo, com os enderecos sendo gerados de forma sequencial, deve fazer isso ate chegar nos ultimos 3
+endrecos sem transacoes de recebimento, atendendo as politicas de gerenciamento de enderecos do address manager.
+Caso existam enderecos com saldos mesmo que saldos gastos e etc na conta default(conta 0 BIP 84), isso 
+significa que podem haver outras contas com saldo. Entao de forma sequencial deve seguir o fluxo de gerar os 
+10 enderecos(5 de recebimento, 5 de troco) para a proxima conta fazendo a mesma sincronizacao da primeira
+conta ate atender as regras da pilitica de gerenciamento de enderecos para essa conta. Isso deve ser feito
+ate que gere uma conta onde os enderecos nao tenham nenhuma transacao. Entao as contas com saldos devem ser 
+salvas com nomes padrao na segregacao de contas da carteira.
 
-* O item "seguranca" nas configuracoes globais deve abrir a tela de configuracoes normalmente, apenas 
-migrando a tela para a home do app. As configuracoes de seguranca devem ser aplicadas, pois atualmente 
-mesmo ativando "ocultar saldos" nao reflete na exibicao dos saldos nos lugares onde o saldo aparece. Ainda 
-nas configuracoes, deve ajustar o modal de PIN para ficar com um design mais agradavel e modeno, o design 
-atual esta terrivel, se ativo o pin/biometria deve ser solicitado sempre que abrir o app e sempre que for 
-enviar uma transacao.
+Esse fluxo deve ocorrer tanto na criacao quanto na importacao de enderecos, e deve ser implementado de 
+tal modo que seja possivel importar uma mesma carteira no app sem afetar os dados da outra carteira, mesmo 
+que as carteiras tenham a mesma chave privada. Esse comportamento e excencial para que essas funcionalidades
+possam ser testadas de forma simples durante o desenvolvimento, contudo, implemente uma funcao de validacao
+para verificar de a carteira sendo importada ja existe, se ja existir, deve apenas exibir uma mensagem para
+o usuario com o feedback de que a carteira ja foi importada/criada no app, essa funcao sera habilitada, no 
+fim do desenvolvimento do app.
 
-* Nas configuracoes da carteira deve ser removido o item de configuracao da rede, pois uma vez criada como 
-testnet4 deve permanecer como testenet4, o mesmo vale para mainnet.
-
-* Nas configuracoes da carteira, na tela de "backup" deve ser possivel visualizar a seed solicitando, se
-configurado, o PIN/biometria. A tela de exibicao da seed deve ter um design moderno e agradavel, consistente
-com o design do restante do app.
-
-* Na tela de configuracoes da carteira deve ter um botao no fim para excluir a carteira, onde clicando em 
-excluir, exibe um modal de confirmacao(para isso deve reutilizar um componente de modal de confirmacao ou 
-criar um se nao existir), se confirmado, todos os dados da carteira devem ser excluidos redirecionando para 
-a home da carteira.
-
-* Na tela de configuracoes da carteira deve exibir o nome da carteira no topo com a opcao para que o usuario
-possa editar o nome da carteira.
-
-* Nas configuracoes globais, no topo deve exibir um item "Doar", que quando clicado, deve abrir uma tela
-com o endereco bitcoin de recebimento de doacoes(com opcao para copiar facilmente) e logo abaixo uma explicacao 
-de como a doacao de satoshis pode ajudar na mantenabilidade do app, alem do link do projeto no github.
-
----
-
-# Na segregacao de enderecos, os items de "conta":
-
-* Os items de conta devem exibir o saldo atual, em todos os lugares em que exibir a lista de "contas"
-deve exibir o saldo nos items, como por exemplo na tela de home da carteira, na tela de envio/recebimento
-quando o usuario vai selecionar a conta da qual esta enviando ou para a qual esta recebendo. O mesmo se 
-aplica ao saldo disponivel exibido na tela de envio, deve exibir o saldo disponivel da "conta" selecionada,
-caso nenhuma conta tenha sido selecionada/cadastrada, entao as regras se aplicam a conta default.
-
-* Deve implementar a possibilidade de renomear uma "conta".
-
-* Na Home da carteira, quando clicar no item da "conta" deve abrir uma tela com o nome da conta no topo
-o saldo logo abaixo em uma fonte grande e logo abaixo a lista de transacoes.
-
-* Na lista de transacoes da tela home da carteira deve exibir de qual "conta" a transacao e.
+Atualmente quando tento importar uma carteira que ja existe no app, o app importa porem quando clico em
+sincronizar na home da carteira tenho um erro, ajuste isso implementando o fluxo acima.
 
 
-# Nas tela de envio/recebimento:
+* Todos os ajustes apontados aqui devem ser implementados seguindo as melhores praticas como Clean code,
+SOLID e design pattern. Alem de cobrir todos os ajustes com testes automatizados para garantir que nao
+haja regressoes, siga sempre a estrututura e padroes do projeto e sempre que houver implementacao "nova",
+reutilize componentes do projeto sempre que possivel.
 
-* Na tela de envio, deve ter uma opcao "pagar a taxa", naturalmente nao ativado, por padrao a taxa 
-de rede deve ser paga sempre pelo endereco para o qual o saldo esta sendo enviado. Se marcado 
-"pagar taxa" ai sim descontar a taxa de rede do endereco de troco da transacao. Esse item "pagar taxa"
-deve estar na tela de definicao da taxa e confirmacao do envio.
+* O design das telas devem ser baseados no design e padroes do app da Nubank, porem em consistencia com 
+o design atual do app.
 
-# Aceleracao de transacao:
-
-* Quando o usuario abrir uma transacao para ver os detalhes, se a transacao ainda nao estiver confirmada
-Deve exibir um botao para permitir que utilize o RBF para remontar a transacao com uma taxa de rede maior
-e reenviar a rede sobrescrevendo a transacao anterior.
-
+* No fim da implementacao execute todos os testes para garantir que nao houveram regressoes e que tudo 
+esta funcionando como o esperado, execute tambem o lint para garantir que nao foram deixados problemas
+para tras. E por fim gere um documento com as politicas de criacao/importacao de carteiras no app e salve
+na raiz do projeto em /policys onde ja tem hoje um documento com a politica de gerenciamento de enderecos.
 

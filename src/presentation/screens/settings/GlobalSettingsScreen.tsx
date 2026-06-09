@@ -6,7 +6,6 @@ import { AppIcon } from '../../components/base/AppIcon';
 import type { IconName } from '../../../shared/icons/iconNames';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
-import { useNetwork } from '../../hooks/useNetwork';
 import { useTheme } from '../../hooks/useTheme';
 import { AppRoutes, type AppStackParamList } from '../../../app/navigation/routes';
 
@@ -15,7 +14,6 @@ type GlobalSettingsRoute = keyof Pick<
   | 'Donation'
   | 'LanguageSettings'
   | 'SecuritySettings'
-  | 'NetworkSettings'
   | 'NodeSettings'
   | 'OfflineMode'
   | 'SafeMode'
@@ -54,7 +52,6 @@ const GROUPS: NavGroup[] = [
   {
     labelKey: 'globalSettings.groupNetwork',
     items: [
-      { icon: 'network', titleKey: 'settings.network', descKey: 'settings.networkDesc', route: 'NetworkSettings', testID: 'global-settings-network' },
       { icon: 'node', titleKey: 'settings.node', descKey: 'settings.nodeDesc', route: 'NodeSettings', testID: 'global-settings-node' },
     ],
   },
@@ -100,7 +97,6 @@ export function GlobalSettingsScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
-  const { networkConfig } = useNetwork();
   const { t } = useAppTranslation();
 
   return (
@@ -140,25 +136,6 @@ export function GlobalSettingsScreen() {
             onPress={() => navigation.navigate(AppRoutes.Donation)}
             isLast
           />
-        </View>
-
-        <View
-          style={[
-            styles.networkStrip,
-            {
-              backgroundColor: theme.colors.surfaceRaised,
-              borderColor: theme.colors.border,
-              borderRadius: theme.radii.lg,
-            },
-          ]}
-        >
-          <View style={styles.networkStripText}>
-            <AppText variant="caption" color="muted">{t('globalSettings.activeNetwork')}</AppText>
-            <AppText variant="label">{t('globalSettings.scope')}</AppText>
-          </View>
-          <View style={[styles.networkBadge, { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radii.sm }]}>
-            <AppText variant="label" color="accent">{networkConfig.network}</AppText>
-          </View>
         </View>
 
         {GROUPS.map(group => (

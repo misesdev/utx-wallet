@@ -33,7 +33,6 @@ export const AppRoutes = {
   Settings: 'Settings',
   ViewSeed: 'ViewSeed',
   SecuritySettings: 'SecuritySettings',
-  NetworkSettings: 'NetworkSettings',
   NodeSettings: 'NodeSettings',
   BackupSettings: 'BackupSettings',
   OfflineMode: 'OfflineMode',
