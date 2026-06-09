@@ -1,5 +1,4 @@
-import { HDWallet, HDTransaction } from 'bitcoin-tx-lib';
-import type { ECPairKey } from 'bitcoin-tx-lib';
+import { ECPairKey, HDWallet, HDTransaction } from 'bitcoin-tx-lib';
 import type { BitcoinNetwork } from '../../domain/entities/Network';
 import type { BuiltTransaction } from '../../domain/entities/BuiltTransaction';
 import type { SignedTransaction } from '../../domain/entities/SignedTransaction';
@@ -29,15 +28,22 @@ export class WalletTransactionSigner implements TransactionSigner {
     }
 
     const bNetwork = NetworkType.of(network).toBNetwork();
-    const { wallet } = HDWallet.import(key.mnemonic, key.passphrase, {
-      network: bNetwork,
-      purpose: 84,
-    });
+    const walletData = key.kind === 'hd'
+      ? HDWallet.import(key.secret, key.passphrase, {
+        network: bNetwork,
+        purpose: 84,
+      })
+      : null;
 
+    if (walletData?.wallet.isWatchOnly) {
+      throw new AppError('Watch-only wallets cannot sign transactions', 'WATCH_ONLY_WALLET');
+    }
+
+    const singleKey = key.kind === 'single-private-key' ? ECPairKey.fromWif(key.secret) : null;
     const tx = new HDTransaction();
 
     for (const input of built.inputs) {
-      const pairKey = await this.findKeyForAddress(wallet, walletId, input.address);
+      const pairKey = singleKey ?? await this.findKeyForAddress(walletData!.wallet, walletId, input.address);
       if (!pairKey) {
         throw new AppError(
           `Chave não encontrada para o endereço: ${input.address}`,

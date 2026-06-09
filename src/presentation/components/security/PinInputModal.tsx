@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, StyleSheet, TextInput, View } from 'react-native';
-import { AppButton } from '../base/AppButton';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { AppIcon } from '../base/AppIcon';
 import { AppText } from '../base/AppText';
 import { useTheme } from '../../hooks/useTheme';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
@@ -12,87 +12,179 @@ type PinInputModalProps = {
   error: string | null;
   isSaving?: boolean;
   onSubmit: (pin: string) => Promise<void>;
-  onCancel: () => void;
+  onCancel?: () => void;
 };
 
+const PIN_LENGTH = 4;
+
+const KEYPAD_ROWS = [
+  ['1', '2', '3'],
+  ['4', '5', '6'],
+  ['7', '8', '9'],
+  ['cancel', '0', 'backspace'],
+] as const;
+
 const STEP_TITLE_KEYS: Record<PinModalStep, string> = {
-  'none': '',
+  none: '',
   'set-new': 'pinModal.setNewTitle',
   'confirm-new': 'pinModal.confirmNewTitle',
   'verify-to-remove': 'pinModal.verifyToRemoveTitle',
+  verify: 'pinModal.verifyTitle',
 };
 
 const STEP_SUBTITLE_KEYS: Record<PinModalStep, string> = {
-  'none': '',
+  none: '',
   'set-new': 'pinModal.setNewSubtitle',
   'confirm-new': 'pinModal.confirmNewSubtitle',
   'verify-to-remove': 'pinModal.verifyToRemoveSubtitle',
+  verify: 'pinModal.verifySubtitle',
 };
 
 export function PinInputModal({ visible, step, error, isSaving, onSubmit, onCancel }: PinInputModalProps) {
   const { theme } = useTheme();
   const { t } = useAppTranslation();
   const [pin, setPin] = useState('');
-  const inputRef = useRef<TextInput>(null);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     if (visible) {
       setPin('');
-      setTimeout(() => inputRef.current?.focus(), 100);
+      submittingRef.current = false;
     }
   }, [visible, step]);
 
-  const handleConfirm = async () => {
-    if (pin.length < 4 || isSaving) return;
-    await onSubmit(pin);
-    setPin('');
-  };
+  // Auto-submit when PIN_LENGTH digits are entered
+  useEffect(() => {
+    if (pin.length !== PIN_LENGTH || isSaving || submittingRef.current) return;
+    submittingRef.current = true;
+    onSubmit(pin)
+      .catch(() => {})
+      .finally(() => {
+        setPin('');
+        submittingRef.current = false;
+      });
+  }, [pin]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleKey(key: string) {
+    if (isSaving || submittingRef.current) return;
+    if (key === 'backspace') {
+      setPin(prev => prev.slice(0, -1));
+    } else if (pin.length < PIN_LENGTH) {
+      setPin(prev => prev + key);
+    }
+  }
+
+  const dotFilledStyle = { backgroundColor: theme.colors.accent, borderColor: theme.colors.accent };
+  const dotEmptyStyle = { backgroundColor: 'transparent' as const, borderColor: theme.colors.border };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <View style={styles.overlay}>
-        <View style={[styles.container, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <AppText variant="title">{STEP_TITLE_KEYS[step] ? t(STEP_TITLE_KEYS[step] as any) : ''}</AppText>
-          <AppText variant="body" color="muted">{STEP_SUBTITLE_KEYS[step] ? t(STEP_SUBTITLE_KEYS[step] as any) : ''}</AppText>
+        <View style={[styles.sheet, { backgroundColor: theme.colors.surface }]}>
+          {/* Icon */}
+          <View style={[styles.iconWrap, { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radii.xl }]}>
+            <AppIcon name="security" size={32} color={theme.colors.accent} />
+          </View>
 
-          <View style={styles.dots}>
-            {Array.from({ length: Math.max(pin.length, 4) }).map((_, i) => (
+          {/* Title + subtitle */}
+          <AppText variant="subtitle" style={styles.title}>
+            {STEP_TITLE_KEYS[step] ? t(STEP_TITLE_KEYS[step] as any) : ''}
+          </AppText>
+          <AppText variant="body" color="muted" style={styles.subtitle}>
+            {STEP_SUBTITLE_KEYS[step] ? t(STEP_SUBTITLE_KEYS[step] as any) : ''}
+          </AppText>
+
+          {/* Dots */}
+          <View style={styles.dots} testID="pin-dots">
+            {Array.from({ length: PIN_LENGTH }).map((_, i) => (
               <View
                 key={i}
-                style={[
-                  styles.dot,
-                  {
-                    backgroundColor: i < pin.length ? theme.colors.primary : theme.colors.surfaceMuted,
-                    borderColor: theme.colors.border,
-                  },
-                ]}
+                style={[styles.dot, i < pin.length ? dotFilledStyle : dotEmptyStyle]}
               />
             ))}
           </View>
 
-          <TextInput
-            ref={inputRef}
-            value={pin}
-            onChangeText={v => setPin(v.replace(/\D/g, '').slice(0, 8))}
-            keyboardType="number-pad"
-            secureTextEntry
-            maxLength={8}
-            style={[styles.hiddenInput, { color: theme.colors.text }]}
-            testID="pin-input"
-          />
-
+          {/* Error */}
           {error ? (
-            <AppText variant="caption" color="danger">{error}</AppText>
-          ) : null}
+            <AppText variant="caption" color="danger" style={styles.errorText} testID="pin-error">
+              {error}
+            </AppText>
+          ) : (
+            <View style={styles.errorPlaceholder} />
+          )}
 
-          <View style={styles.actions}>
-            <AppButton title={t('common.cancel')} variant="ghost" onPress={onCancel} />
-            <AppButton
-              title={isSaving ? t('common.loading') : t('common.confirm')}
-              variant="primary"
-              onPress={handleConfirm}
-              disabled={pin.length < 4 || isSaving}
-            />
+          {/* Keypad */}
+          <View style={styles.keypad} testID="pin-keypad">
+            {KEYPAD_ROWS.map((row, rowIdx) => (
+              <View key={rowIdx} style={styles.keyRow}>
+                {row.map(key => {
+                  if (key === 'cancel') {
+                    if (!onCancel) {
+                      return <View key={key} style={styles.key} />;
+                    }
+                    return (
+                      <Pressable
+                        key={key}
+                        onPress={onCancel}
+                        style={({ pressed }) => [styles.key, { opacity: pressed ? 0.6 : 1 }]}
+                        testID="pin-cancel"
+                        accessibilityRole="button"
+                        accessibilityLabel={t('common.cancel')}
+                      >
+                        <AppText variant="caption" color="muted">{t('common.cancel')}</AppText>
+                      </Pressable>
+                    );
+                  }
+
+                  if (key === 'backspace') {
+                    return (
+                      <Pressable
+                        key={key}
+                        onPress={() => handleKey('backspace')}
+                        style={({ pressed }) => [
+                          styles.key,
+                          styles.keyDigit,
+                          {
+                            backgroundColor: theme.colors.surfaceRaised,
+                            borderRadius: theme.radii.xl,
+                            opacity: pressed ? 0.7 : 1,
+                          },
+                        ]}
+                        testID="pin-backspace"
+                        accessibilityRole="button"
+                        accessibilityLabel="apagar"
+                      >
+                        <AppIcon name="back" size={20} color={theme.colors.text} />
+                      </Pressable>
+                    );
+                  }
+
+                  return (
+                    <Pressable
+                      key={key}
+                      onPress={() => handleKey(key)}
+                      disabled={pin.length >= PIN_LENGTH || isSaving}
+                      style={({ pressed }) => [
+                        styles.key,
+                        styles.keyDigit,
+                        {
+                          backgroundColor: theme.colors.surfaceRaised,
+                          borderRadius: theme.radii.xl,
+                          opacity: pressed || pin.length >= PIN_LENGTH ? 0.6 : 1,
+                        },
+                      ]}
+                      testID={`pin-key-${key}`}
+                      accessibilityRole="button"
+                      accessibilityLabel={key}
+                    >
+                      <AppText variant="subtitle" style={styles.keyText}>
+                        {key}
+                      </AppText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ))}
           </View>
         </View>
       </View>
@@ -100,41 +192,75 @@ export function PinInputModal({ visible, step, error, isSaving, onSubmit, onCanc
   );
 }
 
+const KEY_SIZE = 70;
+
 const styles = StyleSheet.create({
   overlay: {
+    backgroundColor: 'rgba(0,0,0,0.8)',
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
+    justifyContent: 'flex-end',
   },
-  container: {
-    width: '100%',
-    maxWidth: 360,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 24,
-    gap: 20,
+  sheet: {
+    alignItems: 'center',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    gap: 12,
+    paddingBottom: 40,
+    paddingHorizontal: 24,
+    paddingTop: 28,
+  },
+  iconWrap: {
+    alignItems: 'center',
+    height: 60,
+    justifyContent: 'center',
+    marginBottom: 4,
+    width: 60,
+  },
+  title: {
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  subtitle: {
+    textAlign: 'center',
   },
   dots: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 12,
+    gap: 16,
+    marginVertical: 8,
   },
   dot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 1,
+    borderRadius: 12,
+    borderWidth: 2,
+    height: 20,
+    width: 20,
   },
-  hiddenInput: {
-    height: 0,
-    width: 0,
-    opacity: 0,
-    position: 'absolute',
+  errorText: {
+    minHeight: 18,
+    textAlign: 'center',
   },
-  actions: {
+  errorPlaceholder: {
+    height: 18,
+  },
+  keypad: {
+    gap: 14,
+    marginTop: 4,
+    width: '100%',
+  },
+  keyRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 18,
+    justifyContent: 'center',
+  },
+  key: {
+    alignItems: 'center',
+    height: KEY_SIZE,
+    justifyContent: 'center',
+    width: KEY_SIZE,
+  },
+  keyDigit: {
+    elevation: 2,
+  },
+  keyText: {
+    fontWeight: '600',
   },
 });

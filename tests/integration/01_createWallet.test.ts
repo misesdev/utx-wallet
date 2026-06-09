@@ -16,6 +16,8 @@ import { ImportWalletUseCase } from '../../src/core/domain/usecases/wallet/Impor
 import { LoadWalletsUseCase } from '../../src/core/domain/usecases/wallet/LoadWalletsUseCase';
 import { SelectWalletUseCase } from '../../src/core/domain/usecases/wallet/SelectWalletUseCase';
 import { DeleteWalletUseCase } from '../../src/core/domain/usecases/wallet/DeleteWalletUseCase';
+import { RenameWalletUseCase } from '../../src/core/domain/usecases/wallet/RenameWalletUseCase';
+import { GetWalletSeedUseCase } from '../../src/core/domain/usecases/wallet/GetWalletSeedUseCase';
 import { LoadTransactionsUseCase } from '../../src/core/domain/usecases/wallet/LoadTransactionsUseCase';
 import { LoadUtxosUseCase } from '../../src/core/domain/usecases/wallet/LoadUtxosUseCase';
 import { SyncWalletUseCase } from '../../src/core/domain/usecases/wallet/SyncWalletUseCase';
@@ -33,10 +35,17 @@ function makeWalletService() {
   const importWallet = new ImportWalletUseCase(walletRepository);
   const loadWallets = new LoadWalletsUseCase(walletRepository);
   const selectWallet = new SelectWalletUseCase(walletRepository);
-  const deleteWallet = new DeleteWalletUseCase(walletRepository);
 
-  const stubUtxoRepo = { listByWallet: jest.fn().mockResolvedValue([]), replaceAll: jest.fn(), freeze: jest.fn(), unfreeze: jest.fn() };
-  const stubTxRepo = { list: jest.fn().mockResolvedValue([]), upsertAll: jest.fn(), build: jest.fn(), sign: jest.fn(), broadcast: jest.fn() };
+  const stubSyncState = { getLastSyncAt: jest.fn(), saveLastSyncAt: jest.fn(), removeLastSyncAt: jest.fn().mockResolvedValue(undefined) };
+  const stubUtxoRepo = { listByWallet: jest.fn().mockResolvedValue([]), replaceAll: jest.fn(), freeze: jest.fn(), unfreeze: jest.fn(), deleteByWallet: jest.fn().mockResolvedValue(undefined) };
+  const stubTxRepo = { list: jest.fn().mockResolvedValue([]), upsertAll: jest.fn(), build: jest.fn(), sign: jest.fn(), broadcast: jest.fn(), deleteByWallet: jest.fn().mockResolvedValue(undefined) };
+  const stubWalletAddressRepo = { findByWallet: jest.fn().mockResolvedValue([]), findByOrigin: jest.fn(), findByChain: jest.fn(), findFreshByChain: jest.fn(), findByAddress: jest.fn(), save: jest.fn(), saveMany: jest.fn(), updateStatus: jest.fn(), updateOriginName: jest.fn(), updateSyncData: jest.fn(), countFreshByChain: jest.fn(), getMaxIndexByChain: jest.fn(), deleteByWallet: jest.fn().mockResolvedValue(undefined) };
+  const stubAddressOriginRepo = { findByWallet: jest.fn().mockResolvedValue([]), findById: jest.fn(), findDefault: jest.fn(), getMaxAccountIndex: jest.fn(), save: jest.fn(), archive: jest.fn(), deleteByWallet: jest.fn().mockResolvedValue(undefined) };
+  const stubAddressRepo = { findByWallet: jest.fn().mockResolvedValue([]), findReceiveAddresses: jest.fn().mockResolvedValue([]), findChangeAddresses: jest.fn().mockResolvedValue([]), save: jest.fn(), saveMany: jest.fn(), markUsed: jest.fn(), deleteByWallet: jest.fn().mockResolvedValue(undefined) };
+
+  const deleteWallet = new DeleteWalletUseCase(
+    walletRepository, stubUtxoRepo, stubTxRepo, stubWalletAddressRepo, stubAddressOriginRepo, stubAddressRepo, stubSyncState,
+  );
   const stubSyncUseCase = { execute: jest.fn() } as unknown as SyncWalletUseCase;
 
   return {
@@ -46,6 +55,8 @@ function makeWalletService() {
       loadWallets,
       selectWallet,
       deleteWallet,
+      new RenameWalletUseCase(walletRepository),
+      new GetWalletSeedUseCase(walletRepository),
       new LoadTransactionsUseCase(stubTxRepo),
       new LoadUtxosUseCase(stubUtxoRepo),
       stubSyncUseCase,

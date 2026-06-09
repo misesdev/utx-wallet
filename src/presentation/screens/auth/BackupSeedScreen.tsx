@@ -5,10 +5,12 @@ import { NoopScreenCaptureAdapter } from '../../../core/infrastructure/adapters/
 import { AppRoutes } from '../../../app/navigation/routes';
 import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
+import { PinInputModal } from '../../components/security/PinInputModal';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
-import { useCreateWallet } from '../../hooks/useCreateWallet';
-import { useTheme } from '../../hooks/useTheme';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
+import { useCreateWallet } from '../../hooks/useCreateWallet';
+import { useReauthenticate } from '../../hooks/useReauthenticate';
+import { useTheme } from '../../hooks/useTheme';
 
 const screenCaptureGuard = new NoopScreenCaptureAdapter();
 
@@ -18,6 +20,7 @@ export function BackupSeedScreen() {
   const navigation = useAppNavigation();
   const { words, walletName, passphrase, proceedToConfirm } = useCreateWallet();
   const { t } = useAppTranslation();
+  const { requireAuth, pinModalVisible, pinError, submitPin, cancelAuth } = useReauthenticate();
 
   const [revealed, setRevealed] = useState(false);
 
@@ -26,6 +29,12 @@ export function BackupSeedScreen() {
     return () => screenCaptureGuard.disable();
   }, []);
 
+  useEffect(() => {
+    requireAuth().then(ok => {
+      if (!ok) navigation.goBack();
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   function handleContinue() {
     proceedToConfirm();
     navigation.navigate(AppRoutes.ConfirmSeed);
@@ -33,6 +42,13 @@ export function BackupSeedScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+      <PinInputModal
+        visible={pinModalVisible}
+        step="verify"
+        error={pinError}
+        onSubmit={submitPin}
+        onCancel={cancelAuth}
+      />
       {/* Header */}
       <View style={styles.header}>
         <Pressable

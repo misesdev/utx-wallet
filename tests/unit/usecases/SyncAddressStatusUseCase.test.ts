@@ -63,6 +63,7 @@ function makeWalletAddressRepo(addresses: WalletAddress[]): jest.Mocked<WalletAd
     findByAddress: jest.fn().mockResolvedValue(null),
     save: jest.fn().mockResolvedValue(undefined),
     saveMany: jest.fn().mockResolvedValue(undefined),
+    updateOriginName: jest.fn().mockResolvedValue(undefined),
     updateSyncData: jest.fn().mockResolvedValue(undefined),
     countFreshByChain: jest.fn().mockResolvedValue(0),
     nextIndex: jest.fn().mockResolvedValue(0),
@@ -84,6 +85,7 @@ function makeUtxoRepo(utxos: Utxo[] = []): jest.Mocked<UtxoRepository> {
     replaceAll: jest.fn().mockResolvedValue(undefined),
     freeze: jest.fn().mockResolvedValue(undefined),
     unfreeze: jest.fn().mockResolvedValue(undefined),
+    deleteByWallet: jest.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -96,6 +98,7 @@ function makeProvider(): jest.Mocked<BlockchainProvider> {
     getCurrentBlockHeight: jest.fn(),
     getFeeRates: jest.fn(),
     broadcastTransaction: jest.fn(),
+    getRawTransaction: jest.fn(),
   };
 }
 

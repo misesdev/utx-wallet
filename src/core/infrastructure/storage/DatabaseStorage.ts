@@ -47,9 +47,23 @@ export class OpSQLiteDatabase implements Database {
         fee_sats INTEGER,
         direction TEXT NOT NULL,
         status TEXT NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        address TEXT,
+        origin_id TEXT,
+        origin_name TEXT
       )
     `);
+    for (const column of [
+      'address TEXT',
+      'origin_id TEXT',
+      'origin_name TEXT',
+    ]) {
+      try {
+        await db.execute(`ALTER TABLE transactions ADD COLUMN ${column}`);
+      } catch {
+        // Column already exists on existing databases — safe to ignore
+      }
+    }
     await db.execute(`
       CREATE TABLE IF NOT EXISTS addresses (
         id TEXT PRIMARY KEY NOT NULL,

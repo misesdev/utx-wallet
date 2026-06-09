@@ -9,6 +9,9 @@ type TransactionRow = {
   direction: string;
   status: string;
   created_at: string;
+  address: string | null;
+  origin_id: string | null;
+  origin_name: string | null;
 };
 
 export class TransactionStorage {
@@ -16,7 +19,7 @@ export class TransactionStorage {
 
   async listByWallet(walletId: string): Promise<Transaction[]> {
     const rows = await this.db.execute<TransactionRow>(
-      'SELECT id, txid, amount_sats, fee_sats, direction, status, created_at FROM transactions WHERE wallet_id = ? ORDER BY created_at DESC',
+      'SELECT id, txid, amount_sats, fee_sats, direction, status, created_at, address, origin_id, origin_name FROM transactions WHERE wallet_id = ? ORDER BY created_at DESC',
       [walletId],
     );
     return rows.map(row => ({
@@ -27,13 +30,16 @@ export class TransactionStorage {
       direction: row.direction as Transaction['direction'],
       status: row.status as Transaction['status'],
       createdAt: row.created_at,
+      address: row.address ?? undefined,
+      originId: row.origin_id ?? undefined,
+      originName: row.origin_name ?? undefined,
     }));
   }
 
   async save(walletId: string, transaction: Transaction): Promise<void> {
     await this.db.execute(
-      `INSERT OR REPLACE INTO transactions (id, wallet_id, txid, amount_sats, fee_sats, direction, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO transactions (id, wallet_id, txid, amount_sats, fee_sats, direction, status, created_at, address, origin_id, origin_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         transaction.id,
         walletId,
@@ -43,7 +49,14 @@ export class TransactionStorage {
         transaction.direction,
         transaction.status,
         transaction.createdAt,
+        transaction.address ?? null,
+        transaction.originId ?? null,
+        transaction.originName ?? null,
       ],
     );
+  }
+
+  async deleteByWallet(walletId: string): Promise<void> {
+    await this.db.execute('DELETE FROM transactions WHERE wallet_id = ?', [walletId]);
   }
 }

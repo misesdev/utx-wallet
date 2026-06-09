@@ -1,6 +1,7 @@
 import { AppError } from '../../application/errors/AppError';
 import type { HttpClient } from './HttpClient';
 import type { BitcoinNetwork } from '../../domain/entities/Network';
+import type { RawTransaction, RawTxInput, RawTxOutput } from '../../domain/repositories/BlockchainProvider';
 
 // ── Mempool API response shapes ──────────────────────────────────────────────
 
@@ -32,12 +33,14 @@ export type MempoolUtxoEntry = {
 
 export type MempoolPrevout = {
   scriptpubkey_address?: string;
+  scriptpubkey?: string;  // hex script for signing
   value: number;
 };
 
 export type MempoolVin = {
   txid: string;
   vout: number;
+  sequence: number;  // BIP-125 RBF signal: < 0xFFFFFFFE = RBF eligible
   prevout: MempoolPrevout | null;
 };
 
@@ -204,5 +207,28 @@ export class MempoolApiClient {
         headers: this.headers,
       }),
     );
+  }
+
+  async getRawTransaction(txid: string): Promise<RawTransaction> {
+    const tx = await this.getTransaction(txid);
+    const isRbfEligible = tx.vin.some(i => i.sequence < 0xFFFFFFFE);
+    const inputs: RawTxInput[] = tx.vin.map(vin => ({
+      txid: vin.txid,
+      vout: vin.vout,
+      sequence: vin.sequence,
+      prevoutAddress: vin.prevout?.scriptpubkey_address ?? '',
+      prevoutValue: vin.prevout?.value ?? 0,
+      scriptPubKey: vin.prevout?.scriptpubkey ?? '',
+    }));
+    const outputs: RawTxOutput[] = tx.vout
+      .filter(o => o.scriptpubkey_address)
+      .map(o => ({ address: o.scriptpubkey_address!, valueSats: o.value }));
+    return {
+      txid,
+      inputs,
+      outputs,
+      feeSats: tx.fee,
+      isRbfEligible,
+    };
   }
 }

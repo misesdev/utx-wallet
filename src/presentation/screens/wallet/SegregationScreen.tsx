@@ -15,8 +15,10 @@ import { AppIcon } from '../../components/base/AppIcon';
 import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
+import { useAccountSummaries } from '../../hooks/useAccountSummaries';
 import { useWallet } from '../../hooks/useWallet';
 import type { AddressOrigin } from '../../../core/domain/entities/AddressOrigin';
+import type { AccountSummary } from '../../../core/domain/services/AccountSummaryService';
 
 const COIN_TYPE: Record<string, string> = {
   mainnet: "0'",
@@ -29,7 +31,7 @@ function derivationPath(coinType: string, accountIndex: number): string {
 }
 
 type OriginCardProps = {
-  origin: AddressOrigin;
+  origin: AddressOrigin | AccountSummary;
   coinType: string;
 };
 
@@ -80,6 +82,11 @@ function OriginCard({ origin, coinType }: OriginCardProps) {
         <AppText variant="caption" color="muted">
           {derivationPath(coinType, origin.accountIndex)}
         </AppText>
+        {'confirmedBalanceSats' in origin && (
+          <AppText variant="subtitle" style={styles.originBalance}>
+            {origin.confirmedBalanceSats.toLocaleString()} {t('common.sats')}
+          </AppText>
+        )}
       </View>
     </View>
   );
@@ -173,6 +180,7 @@ export function SegregationScreen() {
   const { t } = useAppTranslation();
 
   const [origins, setOrigins] = useState<AddressOrigin[]>([]);
+  const { summaries: accountSummaries, reload: reloadAccountSummaries } = useAccountSummaries();
   const [isLoadingOrigins, setIsLoadingOrigins] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -206,13 +214,14 @@ export function SegregationScreen() {
       await createAddressOrigin(selectedWallet.id, name, selectedWallet.network);
       setShowCreateModal(false);
       await loadOrigins();
+      await reloadAccountSummaries();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t('segregation.errorCreate');
       setCreateError(msg);
     } finally {
       setIsCreating(false);
     }
-  }, [selectedWallet, createAddressOrigin, loadOrigins, t]);
+  }, [selectedWallet, createAddressOrigin, loadOrigins, reloadAccountSummaries, t]);
 
   return (
     <AppScreen title={t('segregation.title')} subtitle={t('segregation.subtitle')}>
@@ -243,7 +252,7 @@ export function SegregationScreen() {
         />
       ) : (
         <View style={styles.originList}>
-          {origins.map(o => (
+          {(accountSummaries.length > 0 ? accountSummaries : origins).map(o => (
             <OriginCard key={o.id} origin={o} coinType={coinType} />
           ))}
         </View>
@@ -307,6 +316,9 @@ const styles = StyleSheet.create({
   },
   originName: {
     fontWeight: '600',
+  },
+  originBalance: {
+    fontWeight: '700',
   },
   defaultBadge: {
     paddingHorizontal: 7,

@@ -71,6 +71,10 @@ export class AddressOriginStorage {
     );
   }
 
+  async deleteByWallet(walletId: string): Promise<void> {
+    await this.db.execute('DELETE FROM address_origins WHERE wallet_id = ?', [walletId]);
+  }
+
   private mapRow(row: OriginRow): AddressOrigin {
     return {
       id: row.id,

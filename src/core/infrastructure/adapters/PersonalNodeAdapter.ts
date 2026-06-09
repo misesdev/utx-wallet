@@ -1,6 +1,6 @@
 import { AppError } from '../../application/errors/AppError';
 import type { BitcoinNetwork, NetworkConfig, NodeConnectionTestResult } from '../../domain/entities/Network';
-import type { BlockchainProvider, AddressBalance, FeeRates, RemoteTransactionStatus } from '../../domain/repositories/BlockchainProvider';
+import type { BlockchainProvider, AddressBalance, FeeRates, RemoteTransactionStatus, RawTransaction } from '../../domain/repositories/BlockchainProvider';
 import type { NodeConnectionTester, NodeRepository } from '../../domain/repositories/NodeRepository';
 import type { Transaction } from '../../domain/entities/Transaction';
 import type { Utxo } from '../../domain/entities/Utxo';
@@ -134,6 +134,10 @@ export class PersonalNodeAdapter implements NodeRepository, NodeConnectionTester
 
   async broadcastTransaction(rawHex: string): Promise<string> {
     return this.clientFor(this.cachedConfig.network).broadcastTransaction(rawHex);
+  }
+
+  async getRawTransaction(txid: string): Promise<RawTransaction> {
+    return this.clientFor(this.cachedConfig.network).getRawTransaction(txid);
   }
 
   private clientFor(network: BitcoinNetwork): MempoolApiClient {

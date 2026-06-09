@@ -7,10 +7,12 @@ import type { HomeWalletState } from '../../../src/presentation/hooks/useHomeWal
 import type { WalletSyncState } from '../../../src/presentation/hooks/useWalletSync';
 import type { Transaction } from '../../../src/core/domain/entities/Transaction';
 import type { NetworkConfig } from '../../../src/core/domain/entities/Network';
+import type { AccountSummary } from '../../../src/core/domain/services/AccountSummaryService';
 
 const mockNavigate = jest.fn();
 const mockRefresh = jest.fn().mockResolvedValue(undefined);
 const mockSync = jest.fn().mockResolvedValue(undefined);
+const mockReloadAccounts = jest.fn().mockResolvedValue(undefined);
 
 const DEFAULT_NETWORK: NetworkConfig = {
   network: 'testnet4',
@@ -39,8 +41,25 @@ const SYNC_STATE: WalletSyncState = {
   sync: mockSync,
 };
 
+const ACCOUNT_SUMMARIES: AccountSummary[] = [
+  {
+    id: 'origin-1',
+    walletId: 'w1',
+    name: 'Savings',
+    type: 'default',
+    accountIndex: 0,
+    archivedAt: null,
+    createdAt: '2026-06-05T00:00:00.000Z',
+    confirmedBalanceSats: 150_000,
+    pendingBalanceSats: 20_000,
+    totalBalanceSats: 170_000,
+    addressCount: 2,
+  },
+];
+
 let mockHomeState: HomeWalletState = WALLET_STATE;
 let mockSyncState: WalletSyncState = SYNC_STATE;
+let mockAccountSummaries: AccountSummary[] = ACCOUNT_SUMMARIES;
 
 jest.mock('../../../src/presentation/hooks/useAppNavigation', () => ({
   useAppNavigation: () => ({ navigate: mockNavigate, goBack: jest.fn() }),
@@ -52,6 +71,14 @@ jest.mock('../../../src/presentation/hooks/useHomeWallet', () => ({
 
 jest.mock('../../../src/presentation/hooks/useWalletSync', () => ({
   useWalletSync: () => mockSyncState,
+}));
+
+jest.mock('../../../src/presentation/hooks/useAccountSummaries', () => ({
+  useAccountSummaries: () => ({
+    summaries: mockAccountSummaries,
+    isLoading: false,
+    reload: mockReloadAccounts,
+  }),
 }));
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -78,6 +105,8 @@ describe('HomeScreen', () => {
     mockSyncState = { ...SYNC_STATE };
     mockRefresh.mockResolvedValue(undefined);
     mockSync.mockResolvedValue(undefined);
+    mockReloadAccounts.mockResolvedValue(undefined);
+    mockAccountSummaries = ACCOUNT_SUMMARIES;
   });
 
   describe('Wallet name and balance rendering', () => {
@@ -177,6 +206,7 @@ describe('HomeScreen', () => {
       await waitFor(() => {
         expect(mockSync).toHaveBeenCalledTimes(1);
         expect(mockRefresh).toHaveBeenCalledTimes(1);
+        expect(mockReloadAccounts).toHaveBeenCalledTimes(1);
       });
     });
 
@@ -217,6 +247,20 @@ describe('HomeScreen', () => {
       const screen = renderWithTheme(<HomeScreen />);
       expect(screen.queryByText('receive.title')).toBeNull();
       expect(screen.queryByText('send.title')).toBeNull();
+    });
+  });
+
+
+  describe('Account summaries', () => {
+    it('renders account balance and opens account details', () => {
+      const screen = renderWithTheme(<HomeScreen />);
+
+      expect(screen.getByText('Savings')).toBeTruthy();
+      expect(screen.getByText('150,000 common.sats')).toBeTruthy();
+
+      fireEvent.press(screen.getByLabelText('Savings'));
+
+      expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.AccountDetails, { originId: 'origin-1' });
     });
   });
 

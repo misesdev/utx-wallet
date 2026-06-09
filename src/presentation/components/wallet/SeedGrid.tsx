@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
+import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { AppText } from '../base/AppText';
 
 type SeedGridProps = {
@@ -9,6 +10,7 @@ type SeedGridProps = {
 
 export function SeedGrid({ words }: SeedGridProps) {
   const { theme } = useTheme();
+  const { t } = useAppTranslation();
   const [revealed, setRevealed] = useState(false);
 
   return (
@@ -44,10 +46,10 @@ export function SeedGrid({ words }: SeedGridProps) {
         onPress={() => setRevealed(v => !v)}
         style={({ pressed }) => [styles.revealBtn, { opacity: pressed ? 0.6 : 1 }]}
         accessibilityRole="button"
-        accessibilityLabel={revealed ? 'Hide seed words' : 'Reveal seed words'}
+        accessibilityLabel={revealed ? t('seedGrid.hideLabel') : t('seedGrid.revealLabel')}
       >
         <AppText variant="caption" color="accent">
-          {revealed ? 'Hide words' : 'Tap to reveal seed phrase'}
+          {revealed ? t('seedGrid.hideWords') : t('seedGrid.revealWords')}
         </AppText>
       </Pressable>
     </View>

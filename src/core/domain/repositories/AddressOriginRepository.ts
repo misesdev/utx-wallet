@@ -7,4 +7,5 @@ export interface AddressOriginRepository {
   getMaxAccountIndex(walletId: string): Promise<number>;
   save(origin: AddressOrigin): Promise<void>;
   archive(id: string): Promise<void>;
+  deleteByWallet(walletId: string): Promise<void>;
 }

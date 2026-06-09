@@ -9,11 +9,13 @@ const VALID_ADDRESS = 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq';
 const PREVIEW: TransactionPreview = {
   toAddress: VALID_ADDRESS,
   amountSats: 100_000,
+  recipientAmountSats: 100_000,
   feeSats: 900,
   totalSats: 100_900,
   changeSats: 899_100,
   feeRateSatsPerVByte: 5,
   estimatedVBytes: 180,
+  subtractFeeFromAmount: false,
 };
 
 const mockOnConfirm = jest.fn();

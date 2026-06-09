@@ -1,19 +1,18 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppLoading } from '../../components/base/AppLoading';
 import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
-import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
-import { useWallet } from '../../hooks/useWallet';
+import { useAccountSummaries } from '../../hooks/useAccountSummaries';
 import { AppRoutes } from '../../../app/navigation/routes';
-import type { AddressOrigin } from '../../../core/domain/entities/AddressOrigin';
+import type { AccountSummary } from '../../../core/domain/services/AccountSummaryService';
 
 type OriginItemProps = {
-  origin: AddressOrigin;
+  origin: AccountSummary;
   onPress: () => void;
 };
 
@@ -64,6 +63,9 @@ function OriginItem({ origin, onPress }: OriginItemProps) {
           )}
         </View>
         <AppText variant="caption" color="muted">{t('common.account', { accountIndex: origin.accountIndex })}</AppText>
+        <AppText variant="subtitle" style={styles.balanceText}>
+          {origin.confirmedBalanceSats.toLocaleString()} {t('common.sats')}
+        </AppText>
       </View>
 
       <AppIcon name="chevronRight" size={22} color={theme.colors.textMuted} />
@@ -76,28 +78,7 @@ export function SelectOriginReceiveScreen() {
   const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
-  const { getOrigins } = useAddressManager();
-  const { selectedWallet } = useWallet();
-
-  const [origins, setOrigins] = useState<AddressOrigin[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const load = useCallback(async () => {
-    if (!selectedWallet) return;
-    setIsLoading(true);
-    try {
-      const list = await getOrigins(selectedWallet.id);
-      setOrigins(list);
-    } catch {
-      // silent
-    } finally {
-      setIsLoading(false);
-    }
-  }, [selectedWallet, getOrigins]);
-
-  useEffect(() => {
-    load().catch(() => undefined);
-  }, [load]);
+  const { summaries: origins, isLoading } = useAccountSummaries();
 
   const handleSelect = useCallback((originId: string) => {
     navigation.navigate(AppRoutes.Receive, { originId });
@@ -227,6 +208,9 @@ const styles = StyleSheet.create({
   },
   originName: {
     fontWeight: '600',
+  },
+  balanceText: {
+    fontWeight: '700',
   },
   defaultBadge: {
     paddingHorizontal: 7,

@@ -7,4 +7,5 @@ export interface AddressRepository {
   save(address: Address): Promise<void>;
   saveMany(addresses: Address[]): Promise<void>;
   markUsed(addressValue: string): Promise<void>;
+  deleteByWallet(walletId: string): Promise<void>;
 }

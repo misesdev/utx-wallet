@@ -1,24 +1,33 @@
 import React from 'react';
-import { fireEvent } from '@testing-library/react-native';
+import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import { SettingsScreen } from '../../../src/presentation/screens/settings/SettingsScreen';
 import { renderWithTheme } from '../../mocks/renderWithProviders';
 import { AppRoutes } from '../../../src/app/navigation/routes';
-import type { NetworkConfig } from '../../../src/core/domain/entities/Network';
+import type { Wallet } from '../../../src/core/domain/entities/Wallet';
 
 const mockNavigate = jest.fn();
+const mockGoBack = jest.fn();
+const mockRenameWallet = jest.fn().mockResolvedValue({ id: 'w1', name: 'Updated', network: 'testnet', status: 'locked', createdAt: '' });
+const mockDeleteWallet = jest.fn().mockResolvedValue(undefined);
 
-const DEFAULT_NETWORK: NetworkConfig = {
-  network: 'testnet4',
-  connectivityMode: 'online',
-  nodeMode: 'public-api',
+const WALLET: Wallet = {
+  id: 'w1',
+  name: 'My Wallet',
+  network: 'testnet',
+  status: 'locked',
+  createdAt: '2026-06-08T00:00:00.000Z',
 };
 
-jest.mock('../../../src/presentation/hooks/useAppNavigation', () => ({
-  useAppNavigation: () => ({ navigate: mockNavigate, goBack: jest.fn() }),
+jest.mock('../../../src/presentation/hooks/useWallet', () => ({
+  useWallet: () => ({
+    selectedWallet: WALLET,
+    renameWallet: mockRenameWallet,
+    deleteWallet: mockDeleteWallet,
+  }),
 }));
 
-jest.mock('../../../src/presentation/hooks/useNetwork', () => ({
-  useNetwork: () => ({ networkConfig: DEFAULT_NETWORK }),
+jest.mock('../../../src/presentation/hooks/useAppNavigation', () => ({
+  useAppNavigation: () => ({ navigate: mockNavigate, goBack: mockGoBack }),
 }));
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -28,66 +37,164 @@ jest.mock('react-native-safe-area-context', () => ({
 describe('SettingsScreen', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('renders the Settings screen title', () => {
-    const screen = renderWithTheme(<SettingsScreen />);
-    expect(screen.getByText('settings.title')).toBeTruthy();
+  describe('wallet name display', () => {
+    it('shows wallet name', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      expect(screen.getByTestId('wallet-name-display')).toBeTruthy();
+      expect(screen.getByText('My Wallet')).toBeTruthy();
+    });
+
+    it('shows network badge with wallet network', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      expect(screen.getByText('testnet')).toBeTruthy();
+    });
+
+    it('shows edit button in view mode', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      expect(screen.getByTestId('rename-edit-btn')).toBeTruthy();
+    });
   });
 
-  it('displays the current network', () => {
-    const screen = renderWithTheme(<SettingsScreen />);
-    expect(screen.getByText('testnet4')).toBeTruthy();
+  describe('rename wallet', () => {
+    it('switches to edit mode when edit button is pressed', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      fireEvent.press(screen.getByTestId('rename-edit-btn'));
+      expect(screen.getByTestId('wallet-name-input')).toBeTruthy();
+    });
+
+    it('prefills input with current wallet name', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      fireEvent.press(screen.getByTestId('rename-edit-btn'));
+      expect(screen.getByTestId('wallet-name-input').props.value).toBe('My Wallet');
+    });
+
+    it('returns to view mode when cancel is pressed', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      fireEvent.press(screen.getByTestId('rename-edit-btn'));
+      fireEvent.press(screen.getByTestId('rename-cancel'));
+      expect(screen.getByTestId('wallet-name-display')).toBeTruthy();
+      expect(screen.queryByTestId('wallet-name-input')).toBeNull();
+    });
+
+    it('calls renameWallet with trimmed name on save', async () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      fireEvent.press(screen.getByTestId('rename-edit-btn'));
+      fireEvent.changeText(screen.getByTestId('wallet-name-input'), '  New Name  ');
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('rename-save'));
+      });
+      expect(mockRenameWallet).toHaveBeenCalledWith('w1', 'New Name');
+    });
+
+    it('shows error when name is empty on save', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      fireEvent.press(screen.getByTestId('rename-edit-btn'));
+      fireEvent.changeText(screen.getByTestId('wallet-name-input'), '   ');
+      fireEvent.press(screen.getByTestId('rename-save'));
+      expect(screen.getByTestId('rename-error')).toBeTruthy();
+      expect(screen.getByText('walletSettings.errorNameRequired')).toBeTruthy();
+    });
+
+    it('does not call renameWallet when name is empty', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      fireEvent.press(screen.getByTestId('rename-edit-btn'));
+      fireEvent.changeText(screen.getByTestId('wallet-name-input'), '');
+      fireEvent.press(screen.getByTestId('rename-save'));
+      expect(mockRenameWallet).not.toHaveBeenCalled();
+    });
+
+    it('returns to view mode after successful save', async () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      fireEvent.press(screen.getByTestId('rename-edit-btn'));
+      fireEvent.changeText(screen.getByTestId('wallet-name-input'), 'New Name');
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('rename-save'));
+      });
+      await waitFor(() => expect(screen.queryByTestId('wallet-name-input')).toBeNull());
+    });
+
+    it('shows error message when rename fails', async () => {
+      mockRenameWallet.mockRejectedValueOnce(new Error('Wallet "New Name" already exists'));
+      const screen = renderWithTheme(<SettingsScreen />);
+      fireEvent.press(screen.getByTestId('rename-edit-btn'));
+      fireEvent.changeText(screen.getByTestId('wallet-name-input'), 'New Name');
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('rename-save'));
+      });
+      await waitFor(() => expect(screen.getByTestId('rename-error')).toBeTruthy());
+    });
   });
 
-  it('renders all setting section buttons', () => {
-    const screen = renderWithTheme(<SettingsScreen />);
-    expect(screen.getByTestId('settings-language')).toBeTruthy();
-    expect(screen.getByTestId('settings-security')).toBeTruthy();
-    expect(screen.getByTestId('settings-network')).toBeTruthy();
-    expect(screen.getByTestId('settings-node')).toBeTruthy();
-    expect(screen.getByTestId('settings-backup')).toBeTruthy();
-    expect(screen.getByTestId('settings-offline')).toBeTruthy();
-    expect(screen.getByTestId('settings-safe-mode')).toBeTruthy();
+  describe('navigation items', () => {
+    it('renders view seed item', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      expect(screen.getByTestId('settings-view-seed')).toBeTruthy();
+    });
+
+    it('renders addresses item', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      expect(screen.getByTestId('settings-addresses')).toBeTruthy();
+    });
+
+    it('renders UTXOs item', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      expect(screen.getByTestId('settings-utxos')).toBeTruthy();
+    });
+
+    it('navigates to ViewSeed when view seed is pressed', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      fireEvent.press(screen.getByTestId('settings-view-seed'));
+      expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.ViewSeed);
+    });
+
+    it('navigates to Addresses when addresses is pressed', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      fireEvent.press(screen.getByTestId('settings-addresses'));
+      expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.Addresses);
+    });
+
+    it('navigates to Utxos when UTXOs is pressed', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      fireEvent.press(screen.getByTestId('settings-utxos'));
+      expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.Utxos);
+    });
   });
 
-  it('navigates to LanguageSettings when Language is pressed', () => {
-    const screen = renderWithTheme(<SettingsScreen />);
-    fireEvent.press(screen.getByTestId('settings-language'));
-    expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.LanguageSettings);
-  });
+  describe('delete wallet', () => {
+    it('renders the delete wallet button', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      expect(screen.getByTestId('delete-wallet-btn')).toBeTruthy();
+    });
 
-  it('navigates to SecuritySettings when Security is pressed', () => {
-    const screen = renderWithTheme(<SettingsScreen />);
-    fireEvent.press(screen.getByTestId('settings-security'));
-    expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.SecuritySettings);
-  });
+    it('shows confirmation modal when delete button is pressed', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      fireEvent.press(screen.getByTestId('delete-wallet-btn'));
+      expect(screen.getByTestId('confirm-modal-confirm')).toBeTruthy();
+    });
 
-  it('navigates to NetworkSettings when Network is pressed', () => {
-    const screen = renderWithTheme(<SettingsScreen />);
-    fireEvent.press(screen.getByTestId('settings-network'));
-    expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.NetworkSettings);
-  });
+    it('dismisses modal when cancel is pressed', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      fireEvent.press(screen.getByTestId('delete-wallet-btn'));
+      fireEvent.press(screen.getByTestId('confirm-modal-cancel'));
+      expect(screen.queryByTestId('confirm-modal-confirm')).toBeNull();
+    });
 
-  it('navigates to NodeSettings when Node is pressed', () => {
-    const screen = renderWithTheme(<SettingsScreen />);
-    fireEvent.press(screen.getByTestId('settings-node'));
-    expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.NodeSettings);
-  });
+    it('calls deleteWallet when confirmed', async () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      fireEvent.press(screen.getByTestId('delete-wallet-btn'));
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('confirm-modal-confirm'));
+      });
+      expect(mockDeleteWallet).toHaveBeenCalledWith('w1');
+    });
 
-  it('navigates to BackupSettings when Backup is pressed', () => {
-    const screen = renderWithTheme(<SettingsScreen />);
-    fireEvent.press(screen.getByTestId('settings-backup'));
-    expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.BackupSettings);
-  });
-
-  it('navigates to OfflineMode when Offline Mode is pressed', () => {
-    const screen = renderWithTheme(<SettingsScreen />);
-    fireEvent.press(screen.getByTestId('settings-offline'));
-    expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.OfflineMode);
-  });
-
-  it('navigates to SafeMode when Safe Mode is pressed', () => {
-    const screen = renderWithTheme(<SettingsScreen />);
-    fireEvent.press(screen.getByTestId('settings-safe-mode'));
-    expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.SafeMode);
+    it('navigates to WalletList after successful deletion', async () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      fireEvent.press(screen.getByTestId('delete-wallet-btn'));
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('confirm-modal-confirm'));
+      });
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.WalletList));
+    });
   });
 });

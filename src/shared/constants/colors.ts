@@ -22,17 +22,17 @@ export const colors = {
   gray100: '#F0F0F0',
 
   // Bitcoin amber/gold — warm but not cliché orange
-  amber: '#F5C418',
+  amber: '#a38108',
   amberDim: '#C49A10',
   amberMuted: 'rgba(245,196,24,0.10)',
   amberGlow: 'rgba(245,196,24,0.06)',
 
   // Semantic
-  success: '#34D399',
+  success: '#029c63',
   successMuted: 'rgba(52,211,153,0.10)',
   warning: '#FBBF24',
   warningMuted: 'rgba(251,191,36,0.10)',
-  danger: '#F87171',
+  danger: '#ab3e3e',
   dangerMuted: 'rgba(248,113,113,0.10)',
 
   // Network

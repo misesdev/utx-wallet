@@ -7,6 +7,7 @@ import { AddressManagerService } from '../../core/application/services/AddressMa
 type AddressManagerContextValue = {
   getOrigins: (walletId: string) => Promise<AddressOrigin[]>;
   createAddressOrigin: (walletId: string, name: string, network: BitcoinNetwork) => Promise<AddressOrigin>;
+  renameAddressOrigin: (originId: string, name: string) => Promise<AddressOrigin>;
   getReceiveAddress: (walletId: string, network: BitcoinNetwork, originId?: string, reserve?: boolean) => Promise<WalletAddress>;
   getChangeAddress: (walletId: string, network: BitcoinNetwork, originId?: string, reserve?: boolean) => Promise<WalletAddress>;
   ensureAddressPool: (walletId: string, network: BitcoinNetwork) => Promise<void>;
@@ -21,6 +22,7 @@ export function AddressManagerProvider({ children, service }: Props) {
   const value: AddressManagerContextValue = {
     getOrigins: (walletId) => service.getOrigins(walletId),
     createAddressOrigin: (walletId, name, network) => service.createAddressOrigin(walletId, name, network),
+    renameAddressOrigin: (originId, name) => service.renameAddressOrigin(originId, name),
     getReceiveAddress: (walletId, network, originId, reserve) =>
       service.getReceiveAddress(walletId, network, originId, reserve),
     getChangeAddress: (walletId, network, originId, reserve) =>

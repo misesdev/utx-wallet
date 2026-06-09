@@ -53,6 +53,7 @@ export const ICON_NAMES = {
   share: 'share-social-outline',
   qrCode: 'qr-code-outline',
   externalLink: 'open-outline',
+  donate: 'heart-outline',
 
   // Status / feedback
   success: 'checkmark-circle-outline',

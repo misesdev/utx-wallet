@@ -8,11 +8,14 @@ import { HomeScreen } from '../../presentation/screens/home/HomeScreen';
 import { OfflineModeScreen } from '../../presentation/screens/offline/OfflineModeScreen';
 import { SafeModeScreen } from '../../presentation/screens/safe-mode/SafeModeScreen';
 import { BackupSettingsScreen } from '../../presentation/screens/settings/BackupSettingsScreen';
+import { GlobalSettingsScreen } from '../../presentation/screens/settings/GlobalSettingsScreen';
 import { NetworkSettingsScreen } from '../../presentation/screens/settings/NetworkSettingsScreen';
 import { NodeSettingsScreen } from '../../presentation/screens/settings/NodeSettingsScreen';
 import { SecuritySettingsScreen } from '../../presentation/screens/settings/SecuritySettingsScreen';
 import { LanguageScreen } from '../../presentation/screens/settings/LanguageScreen';
 import { SettingsScreen } from '../../presentation/screens/settings/SettingsScreen';
+import { DonationScreen } from '../../presentation/screens/donation/DonationScreen';
+import { AccountDetailsScreen } from '../../presentation/screens/wallet/AccountDetailsScreen';
 import { AddressesScreen } from '../../presentation/screens/wallet/AddressesScreen';
 import { ReceiveScreen } from '../../presentation/screens/wallet/ReceiveScreen';
 import { SegregationScreen } from '../../presentation/screens/wallet/SegregationScreen';
@@ -20,12 +23,16 @@ import { SelectOriginReceiveScreen } from '../../presentation/screens/wallet/Sel
 import { SelectOriginSendScreen } from '../../presentation/screens/wallet/SelectOriginSendScreen';
 import { SendScreen } from '../../presentation/screens/wallet/SendScreen';
 import { SendFeesScreen } from '../../presentation/screens/wallet/SendFeesScreen';
+import { AccelerateTransactionScreen } from '../../presentation/screens/wallet/AccelerateTransactionScreen';
 import { TransactionDetailsScreen } from '../../presentation/screens/wallet/TransactionDetailsScreen';
 import { TransactionListScreen } from '../../presentation/screens/wallet/TransactionListScreen';
 import { TransactionSuccessScreen } from '../../presentation/screens/wallet/TransactionSuccessScreen';
 import { UtxosScreen } from '../../presentation/screens/wallet/UtxosScreen';
+import { ViewSeedScreen } from '../../presentation/screens/wallet/ViewSeedScreen';
 import { WalletDetailsScreen } from '../../presentation/screens/wallet/WalletDetailsScreen';
 import { WalletListScreen } from '../../presentation/screens/wallet/WalletListScreen';
+import { ConfirmQrWalletImportScreen } from '../../presentation/screens/qr/ConfirmQrWalletImportScreen';
+import { QrWalletScannerScreen } from '../../presentation/screens/qr/QrWalletScannerScreen';
 import type { AppStackParamList } from './routes';
 import { AppRoutes } from './routes';
 
@@ -50,10 +57,13 @@ export function AppNavigator() {
         <Stack.Screen name={AppRoutes.SendFees} component={SendFeesScreen} />
         <Stack.Screen name={AppRoutes.TransactionDetails} component={TransactionDetailsScreen} />
         <Stack.Screen name={AppRoutes.TransactionSuccess} component={TransactionSuccessScreen} />
+        <Stack.Screen name={AppRoutes.AccelerateTransaction} component={AccelerateTransactionScreen} />
         <Stack.Screen name={AppRoutes.Utxos} component={UtxosScreen} />
         <Stack.Screen name={AppRoutes.Addresses} component={AddressesScreen} />
+        <Stack.Screen name={AppRoutes.AccountDetails} component={AccountDetailsScreen} />
         <Stack.Screen name={AppRoutes.Segregation} component={SegregationScreen} />
         <Stack.Screen name={AppRoutes.Settings} component={SettingsScreen} />
+        <Stack.Screen name={AppRoutes.ViewSeed} component={ViewSeedScreen} />
         <Stack.Screen name={AppRoutes.SecuritySettings} component={SecuritySettingsScreen} />
         <Stack.Screen name={AppRoutes.NetworkSettings} component={NetworkSettingsScreen} />
         <Stack.Screen name={AppRoutes.NodeSettings} component={NodeSettingsScreen} />
@@ -61,6 +71,10 @@ export function AppNavigator() {
         <Stack.Screen name={AppRoutes.OfflineMode} component={OfflineModeScreen} />
         <Stack.Screen name={AppRoutes.SafeMode} component={SafeModeScreen} />
         <Stack.Screen name={AppRoutes.LanguageSettings} component={LanguageScreen} />
+        <Stack.Screen name={AppRoutes.GlobalSettings} component={GlobalSettingsScreen} />
+        <Stack.Screen name={AppRoutes.Donation} component={DonationScreen} />
+        <Stack.Screen name={AppRoutes.ScanWalletQr} component={QrWalletScannerScreen} />
+        <Stack.Screen name={AppRoutes.ConfirmQrWalletImport} component={ConfirmQrWalletImportScreen} />
       </Stack.Navigator>
     </CreateWalletProvider>
   );

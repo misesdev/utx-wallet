@@ -1,3 +1,6 @@
+import type { BitcoinNetwork } from '../../core/domain/entities/Network';
+import type { WalletImportFormat } from '../../core/domain/services/WalletImportFormatDetector';
+
 export const AuthRoutes = {
   Welcome: 'Welcome',
   CreateWallet: 'CreateWallet',
@@ -22,10 +25,13 @@ export const AppRoutes = {
   SendFees: 'SendFees',
   TransactionDetails: 'TransactionDetails',
   TransactionSuccess: 'TransactionSuccess',
+  AccelerateTransaction: 'AccelerateTransaction',
   Utxos: 'Utxos',
   Addresses: 'Addresses',
+  AccountDetails: 'AccountDetails',
   Segregation: 'Segregation',
   Settings: 'Settings',
+  ViewSeed: 'ViewSeed',
   SecuritySettings: 'SecuritySettings',
   NetworkSettings: 'NetworkSettings',
   NodeSettings: 'NodeSettings',
@@ -33,6 +39,10 @@ export const AppRoutes = {
   OfflineMode: 'OfflineMode',
   SafeMode: 'SafeMode',
   LanguageSettings: 'LanguageSettings',
+  GlobalSettings: 'GlobalSettings',
+  Donation: 'Donation',
+  ScanWalletQr: 'ScanWalletQr',
+  ConfirmQrWalletImport: 'ConfirmQrWalletImport',
 } as const;
 
 export type AuthStackParamList = {
@@ -54,15 +64,24 @@ export type AppStackParamList = {
   Transactions: undefined;
   Receive: { originId?: string } | undefined;
   SelectOriginReceive: undefined;
-  Send: { originId?: string } | undefined;
+  Send: { originId?: string; originName?: string } | undefined;
   SelectOriginSend: undefined;
-  SendFees: { originId?: string; toAddress: string; amountSats: string };
+  SendFees: { originId?: string; originName?: string; toAddress: string; amountSats: string };
   TransactionDetails: { txid?: string } | undefined;
   TransactionSuccess: { txid: string; amountSats: number; feeSats: number };
+  AccelerateTransaction: {
+    txid: string;
+    toAddress: string;
+    amountSats: number;
+    feeSats: number;
+    isConfirmed: boolean;
+  };
   Utxos: undefined;
   Addresses: undefined;
+  AccountDetails: { originId: string };
   Segregation: undefined;
   Settings: undefined;
+  ViewSeed: undefined;
   SecuritySettings: undefined;
   NetworkSettings: undefined;
   NodeSettings: undefined;
@@ -70,4 +89,14 @@ export type AppStackParamList = {
   OfflineMode: undefined;
   SafeMode: undefined;
   LanguageSettings: undefined;
+  GlobalSettings: undefined;
+  Donation: undefined;
+  ScanWalletQr: { network: BitcoinNetwork };
+  ConfirmQrWalletImport: {
+    secret: string;
+    format: WalletImportFormat;
+    network: BitcoinNetwork;
+    canSign: boolean;
+    isWatchOnly: boolean;
+  };
 };

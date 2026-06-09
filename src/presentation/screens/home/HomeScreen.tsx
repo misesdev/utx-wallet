@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppEmptyState } from '../../components/base/AppEmptyState';
@@ -7,14 +7,15 @@ import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
 import type { IconName } from '../../../shared/icons/iconNames';
 import { NetworkBadge } from '../../components/wallet/NetworkBadge';
-import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
+import { useSecurity } from '../../../app/providers/SecurityProvider';
+import { useAccountSummaries } from '../../hooks/useAccountSummaries';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useHomeWallet } from '../../hooks/useHomeWallet';
 import { useWalletSync } from '../../hooks/useWalletSync';
 import { useTheme } from '../../hooks/useTheme';
 import { AppRoutes } from '../../../app/navigation/routes';
-import type { AddressOrigin } from '../../../core/domain/entities/AddressOrigin';
+import type { AccountSummary } from '../../../core/domain/services/AccountSummaryService';
 
 const SATS_PER_BTC = 100_000_000;
 const HIDDEN_PLACEHOLDER = '••••••';
@@ -171,26 +172,31 @@ function QuickAction({ icon, label, a11yLabel, onPress, accentColor }: QuickActi
   );
 }
 
-// ─── Origins list (accounts) ──────────────────────────────────────────────────
+// ─── Account summary card ─────────────────────────────────────────────────────
 
-type OriginCardProps = {
-  origin: AddressOrigin;
-  isOnly: boolean;
+type AccountSummaryCardProps = {
+  summary: AccountSummary;
+  hidden: boolean;
+  onPress: () => void;
 };
 
-function OriginCard({ origin, isOnly }: OriginCardProps) {
+function AccountSummaryCard({ summary, hidden, onPress }: AccountSummaryCardProps) {
   const { theme } = useTheme();
   const { t } = useAppTranslation();
-  const isDefault = origin.type === 'default';
+  const isDefault = summary.type === 'default';
 
   return (
-    <View
-      style={[
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={summary.name}
+      onPress={onPress}
+      style={({ pressed }) => [
         styles.originCard,
         {
           backgroundColor: theme.colors.surfaceRaised,
           borderColor: isDefault ? theme.colors.borderHighlight : theme.colors.border,
           borderRadius: theme.radii.lg,
+          opacity: pressed ? 0.76 : 1,
         },
       ]}
     >
@@ -206,22 +212,13 @@ function OriginCard({ origin, isOnly }: OriginCardProps) {
         <AppIcon name={isDefault ? "wallet" : "accounts"} size={24} color={isDefault ? theme.colors.accent : theme.colors.textMuted} />
       </View>
       <View style={styles.originBody}>
-        <View style={styles.originNameRow}>
-          <AppText variant="body" style={styles.originName}>{origin.name}</AppText>
-          {isDefault && (
-            <View style={[styles.defaultBadge, { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radii.sm }]}>
-              <AppText variant="label" color="accent">{t('common.default')}</AppText>
-            </View>
-          )}
-        </View>
+        <AppText variant="body" style={styles.originName}>{summary.name}</AppText>
         <AppText variant="caption" color="muted">
-          {t('common.account', { accountIndex: origin.accountIndex })}
+          {hidden ? HIDDEN_PLACEHOLDER : `${summary.confirmedBalanceSats.toLocaleString()} ${t('common.sats')}`}
         </AppText>
       </View>
-      {!isOnly && (
-        <AppIcon name="chevronRight" size={20} color={theme.colors.textFaint} />
-      )}
-    </View>
+      <AppIcon name="chevronRight" size={20} color={theme.colors.textFaint} />
+    </Pressable>
   );
 }
 
@@ -289,7 +286,9 @@ export function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { t } = useAppTranslation();
-  const { getOrigins } = useAddressManager();
+  const { settings } = useSecurity();
+  const hidden = settings.hideBalance;
+  const { summaries, reload: reloadAccounts } = useAccountSummaries();
 
   const {
     wallet,
@@ -304,26 +303,12 @@ export function HomeScreen() {
   } = useHomeWallet();
 
   const { isSyncing, lastSyncAt, syncError, sync } = useWalletSync();
-  const [origins, setOrigins] = useState<AddressOrigin[]>([]);
 
   const handleSync = useCallback(async () => {
     await sync();
     await refresh();
-  }, [sync, refresh]);
-
-  const loadOrigins = useCallback(async () => {
-    if (!wallet) return;
-    try {
-      const list = await getOrigins(wallet.id);
-      setOrigins(list);
-    } catch {
-      // silent — origins show empty
-    }
-  }, [wallet, getOrigins]);
-
-  useEffect(() => {
-    loadOrigins().catch(() => undefined);
-  }, [loadOrigins]);
+    await reloadAccounts();
+  }, [sync, refresh, reloadAccounts]);
 
   if (!wallet) {
     return (
@@ -357,7 +342,7 @@ export function HomeScreen() {
         <BalanceHero
           confirmedSats={confirmedBalanceSats}
           pendingSats={pendingBalanceSats}
-          hidden={false}
+          hidden={hidden}
           onPress={() => navigation.navigate(AppRoutes.Transactions)}
         />
 
@@ -398,8 +383,8 @@ export function HomeScreen() {
           />
         </View>
 
-        {/* Accounts / origins list */}
-        {origins.length > 0 && (
+        {/* Accounts / summaries list */}
+        {summaries.length > 0 && (
           <View style={styles.originsSection}>
             <View style={styles.sectionHeader}>
               <AppText variant="subtitle">{t('home.accounts')}</AppText>
@@ -408,8 +393,13 @@ export function HomeScreen() {
               </Pressable>
             </View>
             <View style={styles.originList}>
-              {origins.map(o => (
-                <OriginCard key={o.id} origin={o} isOnly={origins.length === 1} />
+              {summaries.map(s => (
+                <AccountSummaryCard
+                  key={s.id}
+                  summary={s}
+                  hidden={hidden}
+                  onPress={() => navigation.navigate(AppRoutes.AccountDetails, { originId: s.id })}
+                />
               ))}
             </View>
           </View>
@@ -479,7 +469,7 @@ export function HomeScreen() {
                       variant="subtitle"
                       style={[styles.activityAmount, { color: isIn ? theme.colors.success : theme.colors.text }]}
                     >
-                      {isIn ? '+' : '−'}{tx.amountSats.toLocaleString()}
+                      {hidden ? HIDDEN_PLACEHOLDER : `${isIn ? '+' : '−'}${tx.amountSats.toLocaleString()}`}
                     </AppText>
                   </Pressable>
                 );
@@ -491,14 +481,14 @@ export function HomeScreen() {
 
       <BottomDock
         onReceive={() => {
-          if (origins.length > 1) {
+          if (summaries.length > 1) {
             navigation.navigate(AppRoutes.SelectOriginReceive);
           } else {
             navigation.navigate(AppRoutes.Receive);
           }
         }}
         onSend={() => {
-          if (origins.length > 1) {
+          if (summaries.length > 1) {
             navigation.navigate(AppRoutes.SelectOriginSend);
           } else {
             navigation.navigate(AppRoutes.Send);

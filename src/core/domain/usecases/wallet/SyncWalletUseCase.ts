@@ -52,15 +52,19 @@ export class SyncWalletUseCase {
 
     // HD addresses cover ALL receive + change chains across all origins.
     // Without this, change UTXOs land at untracked addresses and appear to vanish.
-    const hdAddresses = this.walletAddressRepository
-      ? (await this.walletAddressRepository.findByWallet(walletId)).map(a => a.address)
+    const hdWalletAddresses = this.walletAddressRepository
+      ? await this.walletAddressRepository.findByWallet(walletId)
       : [];
+    const hdAddresses = hdWalletAddresses.map(a => a.address);
+    const addressMetadata = new Map(
+      hdWalletAddresses.map(a => [a.address, { originId: a.originId, originName: a.originName }]),
+    );
 
     const legacyAddresses = storedAddresses.map(a => a.value);
     const allAddresses = [...new Set([...legacyAddresses, ...hdAddresses])];
 
     const utxoResult = await this.syncUtxos.execute(walletId, allAddresses, wallet.network);
-    const txResult = await this.syncTransactions.execute(walletId, allAddresses, wallet.network);
+    const txResult = await this.syncTransactions.execute(walletId, allAddresses, wallet.network, addressMetadata);
 
     await this.syncBalance.execute(walletId);
 

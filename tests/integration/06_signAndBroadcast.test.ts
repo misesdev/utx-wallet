@@ -50,6 +50,7 @@ function makeBlockchainProvider(broadcastResult = 'mock-txid'): jest.Mocked<Bloc
     getCurrentBlockHeight: jest.fn(),
     getFeeRates: jest.fn(),
     broadcastTransaction: jest.fn().mockResolvedValue(broadcastResult),
+    getRawTransaction: jest.fn(),
   };
 }
 

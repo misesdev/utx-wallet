@@ -5,4 +5,5 @@ export interface UtxoRepository {
   replaceAll(walletId: string, utxos: Utxo[]): Promise<void>;
   freeze(walletId: string, txid: string, vout: number): Promise<void>;
   unfreeze(walletId: string, txid: string, vout: number): Promise<void>;
+  deleteByWallet(walletId: string): Promise<void>;
 }

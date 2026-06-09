@@ -126,6 +126,27 @@ jest.mock('../../src/shared/i18n', () => ({
   SUPPORTED_LANGUAGES: ['pt-BR', 'en-US'],
 }));
 
+jest.mock('../../src/app/providers/SecurityProvider', () => ({
+  ...jest.requireActual('../../src/app/providers/SecurityProvider'),
+  useSecurity: jest.fn(() => ({
+    settings: {
+      pinEnabled: false,
+      biometricEnabled: false,
+      autoLockSeconds: 300,
+      hideBalance: false,
+      blockScreenshots: true,
+    },
+    biometricAvailable: false,
+    biometricType: 'none',
+    isLoading: false,
+    updateSettings: jest.fn().mockResolvedValue(undefined),
+    setupPin: jest.fn().mockResolvedValue(undefined),
+    validatePin: jest.fn().mockResolvedValue(true),
+    removePin: jest.fn().mockResolvedValue(undefined),
+    reauthenticate: jest.fn().mockResolvedValue(true),
+  })),
+}));
+
 jest.mock('react-native-vector-icons/Ionicons', () => {
   const ReactMock = require('react');
   const { View } = require('react-native');

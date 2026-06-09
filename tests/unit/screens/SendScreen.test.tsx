@@ -25,12 +25,15 @@ const mockCloseReview = jest.fn();
 const mockReviewTransaction = jest.fn().mockResolvedValue(undefined);
 const mockSendTransaction = jest.fn().mockResolvedValue(undefined);
 const mockResetSend = jest.fn();
+const mockSetPayFee = jest.fn();
 const mockNavigate = jest.fn();
 const mockReplace = jest.fn();
 
+let mockRouteParams: Record<string, unknown> = {};
+
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate, replace: mockReplace, goBack: jest.fn() }),
-  useRoute: () => ({ params: {} }),
+  useRoute: () => ({ params: mockRouteParams }),
 }));
 
 const BASE_STATE: SendBitcoinState = {
@@ -51,6 +54,9 @@ const BASE_STATE: SendBitcoinState = {
   isSending: false,
   sendError: null,
   sentResult: null,
+  isWatchOnly: false,
+  payFee: false,
+  setPayFee: mockSetPayFee,
   setToAddress: mockSetToAddress,
   setAmountSats: mockSetAmountSats,
   setFeeTier: mockSetFeeTier,
@@ -77,6 +83,7 @@ describe('SendScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockState = { ...BASE_STATE };
+    mockRouteParams = {};
   });
 
   describe('balance display', () => {
@@ -84,6 +91,25 @@ describe('SendScreen', () => {
       const screen = renderWithTheme(<SendScreen />);
       expect(screen.getByTestId('available-balance')).toBeTruthy();
       expect(screen.getByText('1,000,000 common.sats')).toBeTruthy();
+    });
+  });
+
+  describe('origin name badge', () => {
+    it('shows generic "send.accountSelected" badge when originId but no originName', () => {
+      mockRouteParams = { originId: 'origin-1' };
+      const screen = renderWithTheme(<SendScreen />);
+      expect(screen.getByText('send.accountSelected')).toBeTruthy();
+    });
+
+    it('shows the actual origin name when originName is provided via route params', () => {
+      mockRouteParams = { originId: 'origin-1', originName: 'Poupança' };
+      const screen = renderWithTheme(<SendScreen />);
+      expect(screen.getByText('Poupança')).toBeTruthy();
+    });
+
+    it('does not show origin badge when no originId', () => {
+      const screen = renderWithTheme(<SendScreen />);
+      expect(screen.queryByText('send.accountSelected')).toBeNull();
     });
   });
 
@@ -168,6 +194,7 @@ describe('SendScreen', () => {
       fireEvent.press(screen.getByTestId('btn-next'));
       expect(mockNavigate).toHaveBeenCalledWith('SendFees', {
         originId: undefined,
+        originName: undefined,
         toAddress: VALID_ADDRESS,
         amountSats: '100000',
       });

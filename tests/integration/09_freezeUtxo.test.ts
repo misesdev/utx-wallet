@@ -54,6 +54,8 @@ function makeSetup(initialUtxos: Utxo[] = []) {
     { execute: jest.fn() } as never,
     { execute: jest.fn() } as never,
     { execute: jest.fn() } as never,
+    { execute: jest.fn() } as never,
+    { execute: jest.fn() } as never,
     { execute: jest.fn().mockResolvedValue([]) } as never,
     loadUtxos,
     stubSyncUseCase,

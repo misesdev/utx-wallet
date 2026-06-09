@@ -9,6 +9,7 @@ import { ListAddressOriginsUseCase } from '../../domain/usecases/address/ListAdd
 import { GetNextReceiveAddressUseCase } from '../../domain/usecases/address/GetNextReceiveAddressUseCase';
 import { GetNextChangeAddressUseCase } from '../../domain/usecases/address/GetNextChangeAddressUseCase';
 import { EnsureAddressPoolUseCase } from '../../domain/usecases/address/EnsureAddressPoolUseCase';
+import { RenameAddressOriginUseCase } from '../../domain/usecases/address/RenameAddressOriginUseCase';
 
 export class AddressManagerService {
   constructor(
@@ -19,6 +20,7 @@ export class AddressManagerService {
     private readonly ensurePool: EnsureAddressPoolUseCase,
     private readonly originRepository: AddressOriginRepository,
     private readonly walletAddressRepository: WalletAddressRepository | null = null,
+    private readonly renameOrigin: RenameAddressOriginUseCase | null = null,
   ) {}
 
   getOrigins(walletId: string): Promise<AddressOrigin[]> {
@@ -27,6 +29,19 @@ export class AddressManagerService {
 
   createAddressOrigin(walletId: string, name: string, network: BitcoinNetwork): Promise<AddressOrigin> {
     return this.createOrigin.execute(walletId, name, network);
+  }
+
+  renameAddressOrigin(originId: string, name: string): Promise<AddressOrigin> {
+    if (this.renameOrigin) return this.renameOrigin.execute(originId, name);
+    return this.renameFallback(originId, name);
+  }
+
+  private async renameFallback(originId: string, name: string): Promise<AddressOrigin> {
+    const renamed = new RenameAddressOriginUseCase(
+      this.originRepository,
+      this.walletAddressRepository,
+    );
+    return renamed.execute(originId, name);
   }
 
   getReceiveAddress(

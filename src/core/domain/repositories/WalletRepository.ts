@@ -6,5 +6,7 @@ export interface WalletRepository {
   import(name: string, secret: string, network?: BitcoinNetwork, passphrase?: string): Promise<Wallet>;
   list(): Promise<Wallet[]>;
   findById(id: string): Promise<Wallet | null>;
+  rename(id: string, name: string): Promise<Wallet>;
+  retrieveSeed(id: string): Promise<{ mnemonic: string; passphrase?: string } | null>;
   delete(id: string): Promise<void>;
 }

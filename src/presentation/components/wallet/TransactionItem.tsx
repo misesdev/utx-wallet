@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import type { Transaction } from '../../../core/domain/entities/Transaction';
+import { useHideBalance } from '../../hooks/useHideBalance';
 import { useTheme } from '../../hooks/useTheme';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { AppText } from '../base/AppText';
@@ -28,6 +29,7 @@ const STATUS_KEY: Record<Transaction['status'], string> = {
 export function TransactionItem({ transaction, onPress }: TransactionItemProps) {
   const { theme } = useTheme();
   const { t } = useAppTranslation();
+  const hideBalance = useHideBalance();
   const isIncoming = transaction.direction === 'incoming';
 
   const accentColor = isIncoming ? theme.colors.success : theme.colors.text;
@@ -74,6 +76,12 @@ export function TransactionItem({ transaction, onPress }: TransactionItemProps) 
           <AppText variant="label" color="muted">{formatDate(transaction.createdAt)}</AppText>
         </View>
 
+        {transaction.originName && (
+          <AppText variant="label" color="muted" style={styles.accountLabel}>
+            {transaction.originName}
+          </AppText>
+        )}
+
         {!isIncoming && transaction.feeSats !== undefined && transaction.feeSats > 0 && (
           <AppText variant="label" color="faint" style={styles.feeLabel}>
             + {formatSats(transaction.feeSats)} sats fee
@@ -84,7 +92,7 @@ export function TransactionItem({ transaction, onPress }: TransactionItemProps) 
       {/* Amount */}
       <View style={styles.amountGroup}>
         <AppText variant="subtitle" style={[styles.amount, { color: accentColor }]}>
-          {isIncoming ? '+' : '−'}{formatSats(transaction.amountSats)}
+          {hideBalance ? '••••••' : `${isIncoming ? '+' : '−'}${formatSats(transaction.amountSats)}`}
         </AppText>
         <AppText variant="label" color="muted">{t('common.sats')}</AppText>
       </View>
@@ -149,6 +157,9 @@ const styles = StyleSheet.create({
     width: 5,
   },
   feeLabel: {
+    marginTop: -2,
+  },
+  accountLabel: {
     marginTop: -2,
   },
   amountGroup: {

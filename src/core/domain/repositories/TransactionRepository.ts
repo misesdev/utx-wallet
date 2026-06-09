@@ -6,4 +6,5 @@ export interface TransactionRepository {
   broadcast(transaction: Transaction): Promise<Transaction>;
   list(walletId: string): Promise<Transaction[]>;
   upsertAll(walletId: string, transactions: Transaction[]): Promise<void>;
+  deleteByWallet(walletId: string): Promise<void>;
 }

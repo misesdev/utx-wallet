@@ -11,4 +11,8 @@ export class SyncStateStorage implements SyncStateRepository {
   async saveLastSyncAt(walletId: string, syncedAt: string): Promise<void> {
     await this.secureStorage.setItem(`wallet_sync_at:${walletId}`, syncedAt);
   }
+
+  async removeLastSyncAt(walletId: string): Promise<void> {
+    await this.secureStorage.removeItem(`wallet_sync_at:${walletId}`);
+  }
 }

@@ -60,7 +60,7 @@ export function TransactionReviewModal({
             </View>
             <View style={styles.row}>
               <AppText color="muted">{t('txReview.amountSent')}</AppText>
-              <AppText testID="modal-amount">{`${formatSats(preview.amountSats)} sats`}</AppText>
+              <AppText testID="modal-amount">{`${formatSats(preview.recipientAmountSats)} sats`}</AppText>
             </View>
             <View style={styles.row}>
               <AppText color="muted">{t('txReview.estimatedFee')}</AppText>

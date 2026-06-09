@@ -24,6 +24,8 @@ function makeWalletRepo(wallet: Wallet | null = WALLET): jest.Mocked<WalletRepos
     import: jest.fn(),
     list: jest.fn(),
     findById: jest.fn().mockResolvedValue(wallet),
+    rename: jest.fn(),
+    retrieveSeed: jest.fn(),
     delete: jest.fn(),
   };
 }
@@ -43,6 +45,7 @@ function makeAddressRepo(existing: Address[] = []): jest.Mocked<AddressRepositor
     save: jest.fn().mockResolvedValue(undefined),
     saveMany: jest.fn().mockResolvedValue(undefined),
     markUsed: jest.fn().mockResolvedValue(undefined),
+    deleteByWallet: jest.fn().mockResolvedValue(undefined),
   };
 }
 

@@ -14,6 +14,8 @@ type WalletContextValue = {
   importWallet: (name: string, secret: string, network?: BitcoinNetwork, passphrase?: string) => Promise<Wallet>;
   selectWallet: (id: string) => void;
   deleteWallet: (id: string) => Promise<void>;
+  renameWallet: (id: string, name: string) => Promise<Wallet>;
+  getWalletSeed: (walletId: string) => Promise<{ mnemonic: string; passphrase?: string } | null>;
   reloadWallets: () => Promise<void>;
   listTransactions: (walletId: string) => Promise<Transaction[]>;
   listUtxos: (walletId: string) => Promise<Utxo[]>;
@@ -72,6 +74,12 @@ export function WalletProvider({ children, walletService }: WalletProviderProps)
         if (selectedWalletId === id) setSelectedWalletId(null);
         await reloadWallets();
       },
+      renameWallet: async (id: string, name: string) => {
+        const wallet = await walletService.renameWallet(id, name);
+        await reloadWallets();
+        return wallet;
+      },
+      getWalletSeed: (walletId: string) => walletService.getWalletSeed(walletId),
       reloadWallets,
       listTransactions: (walletId: string) => walletService.listTransactions(walletId),
       listUtxos: (walletId: string) => walletService.listUtxos(walletId),

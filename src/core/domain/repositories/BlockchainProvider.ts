@@ -22,6 +22,29 @@ export type RemoteTransactionStatus = {
   blockTime?: number;
 };
 
+export type RawTxInput = {
+  txid: string;
+  vout: number;
+  sequence: number;
+  prevoutAddress: string;
+  prevoutValue: number;
+  scriptPubKey: string;
+};
+
+export type RawTxOutput = {
+  address: string;
+  valueSats: number;
+};
+
+export type RawTransaction = {
+  txid: string;
+  inputs: RawTxInput[];
+  outputs: RawTxOutput[];
+  feeSats: number;
+  /** true if any input has sequence < 0xFFFFFFFE */
+  isRbfEligible: boolean;
+};
+
 /**
  * Provider-agnostic interface for querying Bitcoin blockchain data.
  * Implementations can be swapped (Mempool, Esplora, personal node, etc.)
@@ -35,4 +58,5 @@ export interface BlockchainProvider {
   getCurrentBlockHeight(): Promise<number>;
   getFeeRates(): Promise<FeeRates>;
   broadcastTransaction(rawHex: string): Promise<string>;
+  getRawTransaction(txid: string): Promise<RawTransaction>;
 }

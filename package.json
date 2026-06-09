@@ -22,7 +22,6 @@
     "build:android:debug:x86_64": "cd android && ./gradlew assembleDebug -PreactNativeArchitectures=x86_64"
   },
   "dependencies": {
-    "@mempool/mempool.js": "^3.0.0",
     "@op-engineering/op-sqlite": "^16.2.0",
     "@react-native-clipboard/clipboard": "^1.16.3",
     "@react-native/new-app-screen": "0.85.3",

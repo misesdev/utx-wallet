@@ -2,6 +2,7 @@ import type { TransactionRepository } from '../../repositories/TransactionReposi
 import type { BlockchainProvider } from '../../repositories/BlockchainProvider';
 import type { BitcoinNetwork } from '../../entities/Network';
 import type { Transaction } from '../../entities/Transaction';
+import type { WalletAddress } from '../../entities/WalletAddress';
 import { delay } from '../../../../shared/utils/asyncUtils';
 
 export type SyncTransactionsResult = {
@@ -16,13 +17,25 @@ export class SyncTransactionsUseCase {
     private readonly requestDelayMs = 0,
   ) {}
 
-  async execute(walletId: string, addresses: string[], network: BitcoinNetwork): Promise<SyncTransactionsResult> {
+  async execute(
+    walletId: string,
+    addresses: string[],
+    network: BitcoinNetwork,
+    addressMetadata: Map<string, Pick<WalletAddress, 'originId' | 'originName'>> = new Map(),
+  ): Promise<SyncTransactionsResult> {
     const localTxs = await this.transactionRepository.list(walletId);
 
     const fetchedTransactions = new Map<string, Transaction[]>();
     for (let i = 0; i < addresses.length; i++) {
-      const txs = await this.blockchainProvider.getTransactions(addresses[i], network);
-      fetchedTransactions.set(addresses[i], txs);
+      const address = addresses[i];
+      const metadata = addressMetadata.get(address);
+      const txs = (await this.blockchainProvider.getTransactions(address, network)).map(tx => ({
+        ...tx,
+        address,
+        ...(metadata?.originId ?? tx.originId ? { originId: metadata?.originId ?? tx.originId } : {}),
+        ...(metadata?.originName ?? tx.originName ? { originName: metadata?.originName ?? tx.originName } : {}),
+      }));
+      fetchedTransactions.set(address, txs);
       if (i < addresses.length - 1) {
         await delay(this.requestDelayMs);
       }

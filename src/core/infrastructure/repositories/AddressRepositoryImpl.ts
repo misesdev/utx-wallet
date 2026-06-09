@@ -30,4 +30,8 @@ export class AddressRepositoryImpl implements AddressRepository {
   markUsed(addressValue: string): Promise<void> {
     return this.addressStorage.markUsed(addressValue);
   }
+
+  deleteByWallet(walletId: string): Promise<void> {
+    return this.addressStorage.deleteByWallet(walletId);
+  }
 }

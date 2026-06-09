@@ -66,6 +66,7 @@ function makeBlockchainProvider(broadcastResult = TXID): jest.Mocked<BlockchainP
     getCurrentBlockHeight: jest.fn(),
     getFeeRates: jest.fn(),
     broadcastTransaction: jest.fn().mockResolvedValue(broadcastResult),
+    getRawTransaction: jest.fn(),
   };
 }
 
@@ -76,6 +77,7 @@ function makeTxRepo(): jest.Mocked<TransactionRepository> {
     broadcast: jest.fn(),
     list: jest.fn().mockResolvedValue([]),
     upsertAll: jest.fn().mockResolvedValue(undefined),
+    deleteByWallet: jest.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -85,6 +87,7 @@ function makeUtxoRepo(utxos: Utxo[] = []): jest.Mocked<UtxoRepository> {
     replaceAll: jest.fn().mockResolvedValue(undefined),
     freeze: jest.fn().mockResolvedValue(undefined),
     unfreeze: jest.fn().mockResolvedValue(undefined),
+    deleteByWallet: jest.fn().mockResolvedValue(undefined),
   };
 }
 

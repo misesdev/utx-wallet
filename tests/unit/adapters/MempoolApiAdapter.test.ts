@@ -207,7 +207,7 @@ describe('MempoolApiAdapter — BlockchainProvider', () => {
   describe('getTransactions() — parsing', () => {
     const buildTx = (overrides: Partial<MempoolTxResponse> = {}): MempoolTxResponse => ({
       txid: 'txid1',
-      vin: [{ txid: 'prev1', vout: 0, prevout: { scriptpubkey_address: 'other-addr', value: 200_000 } }],
+      vin: [{ txid: 'prev1', vout: 0, sequence: 0xFFFFFFFE, prevout: { scriptpubkey_address: 'other-addr', value: 200_000 } }],
       vout: [
         { scriptpubkey_address: ADDRESS, value: 100_000 },
         { scriptpubkey_address: 'other-addr', value: 99_000 },
@@ -233,7 +233,7 @@ describe('MempoolApiAdapter — BlockchainProvider', () => {
     it('maps outgoing transaction correctly', async () => {
       const { adapter, httpClient } = createAdapter();
       const outgoingTx = buildTx({
-        vin: [{ txid: 'prev1', vout: 0, prevout: { scriptpubkey_address: ADDRESS, value: 200_000 } }],
+        vin: [{ txid: 'prev1', vout: 0, sequence: 0xFFFFFFFE, prevout: { scriptpubkey_address: ADDRESS, value: 200_000 } }],
         vout: [
           { scriptpubkey_address: 'recipient', value: 150_000 },
           { scriptpubkey_address: ADDRESS, value: 49_000 }, // change

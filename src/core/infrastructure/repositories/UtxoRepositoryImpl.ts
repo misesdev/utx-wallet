@@ -20,4 +20,8 @@ export class UtxoRepositoryImpl implements UtxoRepository {
   unfreeze(walletId: string, txid: string, vout: number): Promise<void> {
     return this.utxoStorage.unfreeze(walletId, txid, vout);
   }
+
+  deleteByWallet(walletId: string): Promise<void> {
+    return this.utxoStorage.deleteByWallet(walletId);
+  }
 }

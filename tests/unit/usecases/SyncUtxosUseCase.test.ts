@@ -18,6 +18,7 @@ function makeRepo(localUtxos: Utxo[] = []): jest.Mocked<UtxoRepository> {
     replaceAll: jest.fn().mockResolvedValue(undefined),
     freeze: jest.fn().mockResolvedValue(undefined),
     unfreeze: jest.fn().mockResolvedValue(undefined),
+    deleteByWallet: jest.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -30,6 +31,7 @@ function makeProvider(freshUtxos: Utxo[] = []): jest.Mocked<BlockchainProvider> 
     getCurrentBlockHeight: jest.fn(),
     getFeeRates: jest.fn(),
     broadcastTransaction: jest.fn(),
+    getRawTransaction: jest.fn(),
   };
 }
 

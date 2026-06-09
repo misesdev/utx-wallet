@@ -9,6 +9,9 @@ export type Transaction = {
   direction: TransactionDirection;
   status: TransactionStatus;
   createdAt: string;
+  address?: string;
+  originId?: string;
+  originName?: string;
 };
 
 export type TransactionDraft = {

@@ -19,6 +19,10 @@ function makeTx(txid: string, id = txid): Transaction {
   };
 }
 
+function withAddress(tx: Transaction, address: string): Transaction {
+  return { ...tx, address };
+}
+
 function makeRepo(localTxs: Transaction[] = []): jest.Mocked<TransactionRepository> {
   return {
     build: jest.fn(),
@@ -26,6 +30,7 @@ function makeRepo(localTxs: Transaction[] = []): jest.Mocked<TransactionReposito
     broadcast: jest.fn(),
     list: jest.fn().mockResolvedValue(localTxs),
     upsertAll: jest.fn().mockResolvedValue(undefined),
+    deleteByWallet: jest.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -38,6 +43,7 @@ function makeProvider(freshTxs: Transaction[] = []): jest.Mocked<BlockchainProvi
     getCurrentBlockHeight: jest.fn(),
     getFeeRates: jest.fn(),
     broadcastTransaction: jest.fn(),
+    getRawTransaction: jest.fn(),
   };
 }
 
@@ -63,7 +69,7 @@ describe('SyncTransactionsUseCase', () => {
       const repo = makeRepo([]);
       const useCase = new SyncTransactionsUseCase(repo, makeProvider(fresh));
       await useCase.execute(WALLET_ID, [ADDRESS], NETWORK);
-      expect(repo.upsertAll).toHaveBeenCalledWith(WALLET_ID, fresh);
+      expect(repo.upsertAll).toHaveBeenCalledWith(WALLET_ID, fresh.map(tx => withAddress(tx, ADDRESS))); 
     });
   });
 
@@ -135,8 +141,8 @@ describe('SyncTransactionsUseCase', () => {
       const useCase = new SyncTransactionsUseCase(makeRepo([]), provider);
       const result = await useCase.execute(WALLET_ID, [ADDRESS, ADDR_B], NETWORK);
       expect(result.fetchedTransactions).toBeInstanceOf(Map);
-      expect(result.fetchedTransactions.get(ADDRESS)).toEqual([tx1]);
-      expect(result.fetchedTransactions.get(ADDR_B)).toEqual([tx2]);
+      expect(result.fetchedTransactions.get(ADDRESS)).toEqual([withAddress(tx1, ADDRESS)]);
+      expect(result.fetchedTransactions.get(ADDR_B)).toEqual([withAddress(tx2, ADDR_B)]);
     });
 
     it('includes an empty array entry for addresses with no transactions', async () => {
@@ -158,7 +164,7 @@ describe('SyncTransactionsUseCase', () => {
       const useCase = new SyncTransactionsUseCase(repo, provider);
       const result = await useCase.execute(WALLET_ID, [ADDRESS, ADDR_B], NETWORK);
       expect(result.newCount).toBe(1); // counted once
-      expect(repo.upsertAll).toHaveBeenCalledWith(WALLET_ID, [sharedTx]);
+      expect(repo.upsertAll).toHaveBeenCalledWith(WALLET_ID, [withAddress(sharedTx, ADDRESS)]);
     });
 
     it('aggregates distinct transactions from multiple addresses', async () => {
@@ -173,7 +179,7 @@ describe('SyncTransactionsUseCase', () => {
       const useCase = new SyncTransactionsUseCase(repo, provider);
       const result = await useCase.execute(WALLET_ID, [ADDRESS, ADDR_B], NETWORK);
       expect(result.newCount).toBe(2);
-      expect(repo.upsertAll).toHaveBeenCalledWith(WALLET_ID, [tx1, tx2]);
+      expect(repo.upsertAll).toHaveBeenCalledWith(WALLET_ID, [withAddress(tx1, ADDRESS), withAddress(tx2, ADDR_B)]);
     });
 
     it('computes net sent amount when spending address and change address both return the same tx', async () => {

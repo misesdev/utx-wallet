@@ -1,4 +1,4 @@
-import type { BlockchainProvider, AddressBalance, FeeRates, RemoteTransactionStatus } from '../../domain/repositories/BlockchainProvider';
+import type { BlockchainProvider, AddressBalance, FeeRates, RemoteTransactionStatus, RawTransaction } from '../../domain/repositories/BlockchainProvider';
 import type { NodeRepository } from '../../domain/repositories/NodeRepository';
 import type { NetworkConfig, BitcoinNetwork } from '../../domain/entities/Network';
 import type { Transaction, TransactionDirection, TransactionStatus } from '../../domain/entities/Transaction';
@@ -89,6 +89,10 @@ export class MempoolApiAdapter implements NodeRepository, BlockchainProvider {
 
   async broadcastTransaction(rawHex: string): Promise<string> {
     return this.clientFor(this.cachedConfig.network).broadcastTransaction(rawHex);
+  }
+
+  async getRawTransaction(txid: string): Promise<RawTransaction> {
+    return this.clientFor(this.cachedConfig.network).getRawTransaction(txid);
   }
 
   // ── Private helpers ─────────────────────────────────────────────────────────

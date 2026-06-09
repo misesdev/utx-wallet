@@ -15,6 +15,8 @@ function makeRepo(overrides: Partial<WalletRepository> = {}): WalletRepository {
     import: jest.fn(),
     list: jest.fn(),
     findById: jest.fn(async () => null),
+    rename: jest.fn(),
+    retrieveSeed: jest.fn(),
     delete: jest.fn(),
     ...overrides,
   };

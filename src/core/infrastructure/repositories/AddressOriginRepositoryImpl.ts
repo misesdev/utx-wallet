@@ -28,4 +28,8 @@ export class AddressOriginRepositoryImpl implements AddressOriginRepository {
   archive(id: string): Promise<void> {
     return this.storage.archive(id);
   }
+
+  deleteByWallet(walletId: string): Promise<void> {
+    return this.storage.deleteByWallet(walletId);
+  }
 }

@@ -9,6 +9,7 @@ import type { GetNextChangeAddressUseCase } from '../address/GetNextChangeAddres
 import { BitcoinAddress } from '../../value-objects/BitcoinAddress';
 import { AppError } from '../../../application/errors/AppError';
 import { generateId } from '../../../../shared/utils/generateId';
+import { calcSubtractFeeAmounts } from '../../services/FeeSubtractionService';
 
 export const DUST_THRESHOLD_SATS = 546;
 
@@ -21,6 +22,9 @@ export type BuildTransactionParams = {
   changeAddressIndex?: number;
   /** HD origin to source the change address from (uses default when absent) */
   changeOriginId?: string;
+  /** Restrict coin selection to UTXOs at these addresses (account isolation) */
+  allowedAddresses?: string[];
+  subtractFeeFromAmount?: boolean;
 };
 
 export class BuildTransactionUseCase {
@@ -48,9 +52,12 @@ export class BuildTransactionUseCase {
 
     // ── Coin selection ────────────────────────────────────────────────────────
     const utxos = await this.utxoRepository.listByWallet(params.walletId);
+    const eligibleUtxos = params.allowedAddresses?.length
+      ? utxos.filter(u => params.allowedAddresses!.includes(u.address))
+      : utxos;
     const feeRate = Math.max(params.feeRateSatsPerVByte, 1);
     const { selectedUtxos, totalInputSats } = this.coinSelection.select(
-      utxos,
+      eligibleUtxos,
       params.amountSats,
       feeRate,
     );
@@ -73,17 +80,6 @@ export class BuildTransactionUseCase {
       );
     }
 
-    // ── Fee & change calculation ──────────────────────────────────────────────
-    // Coin selection assumed 2 outputs; start with that fee estimate.
-    let feeSats = this.feeEstimation.estimateFeeSats(selectedUtxos.length, 2, feeRate);
-    let changeSats = totalInputSats - params.amountSats - feeSats;
-
-    // Absorb dust change into the fee rather than creating an unspendable output.
-    if (changeSats > 0 && changeSats < DUST_THRESHOLD_SATS) {
-      feeSats += changeSats;
-      changeSats = 0;
-    }
-
     // ── Build inputs — scriptPubKey derived via bitcoin-tx-lib ────────────────
     const inputs: BuiltTransactionInput[] = selectedUtxos.map(u => ({
       txid: u.txid,
@@ -93,32 +89,96 @@ export class BuildTransactionUseCase {
       scriptPubKey: Address.getScriptPubkey(u.address),
     }));
 
-    // ── Build outputs ─────────────────────────────────────────────────────────
-    const outputs: BuiltTransactionOutput[] = [
-      { address: params.toAddress, amountSats: params.amountSats, isChange: false },
-    ];
-    if (changeSats > 0) {
-      outputs.push({ address: changeAddress, amountSats: changeSats, isChange: true });
+    const subtractFeeFromAmount = params.subtractFeeFromAmount ?? false;
+
+    if (subtractFeeFromAmount) {
+      // SFA mode: fee is deducted from the amount going to the recipient
+      let feeSats = this.feeEstimation.estimateFeeSats(selectedUtxos.length, 2, feeRate);
+      const { recipientAmountSats: initialRecipient } =
+        calcSubtractFeeAmounts(params.amountSats, feeSats);
+
+      let changeSats = totalInputSats - params.amountSats;
+      let recipientAmountSats = initialRecipient;
+
+      // Absorb dust change into fee (and reduce recipient amount)
+      if (changeSats > 0 && changeSats < DUST_THRESHOLD_SATS) {
+        feeSats += changeSats;
+        recipientAmountSats -= changeSats;
+        changeSats = 0;
+      }
+
+      if (recipientAmountSats < DUST_THRESHOLD_SATS) {
+        throw new AppError(
+          `Valor mínimo é ${DUST_THRESHOLD_SATS} sats (limite de dust)`,
+          'BELOW_DUST',
+        );
+      }
+
+      // ── Build outputs ─────────────────────────────────────────────────────────
+      const outputs: BuiltTransactionOutput[] = [
+        { address: params.toAddress, amountSats: recipientAmountSats, isChange: false },
+      ];
+      if (changeSats > 0) {
+        outputs.push({ address: changeAddress, amountSats: changeSats, isChange: true });
+      }
+
+      const estimatedVBytes = this.feeEstimation.estimateVBytes(
+        selectedUtxos.length,
+        outputs.length,
+      );
+
+      return {
+        id: generateId(),
+        walletId: params.walletId,
+        inputs,
+        outputs,
+        amountSats: recipientAmountSats,
+        feeSats,
+        totalSats: params.amountSats,
+        changeSats,
+        feeRateSatsPerVByte: feeRate,
+        estimatedVBytes,
+        status: 'built',
+        createdAt: new Date().toISOString(),
+      };
+    } else {
+      // Standard mode: fee is paid from sender's change
+      let feeSats = this.feeEstimation.estimateFeeSats(selectedUtxos.length, 2, feeRate);
+      let changeSats = totalInputSats - params.amountSats - feeSats;
+
+      // Absorb dust change into the fee rather than creating an unspendable output.
+      if (changeSats > 0 && changeSats < DUST_THRESHOLD_SATS) {
+        feeSats += changeSats;
+        changeSats = 0;
+      }
+
+      // ── Build outputs ─────────────────────────────────────────────────────────
+      const outputs: BuiltTransactionOutput[] = [
+        { address: params.toAddress, amountSats: params.amountSats, isChange: false },
+      ];
+      if (changeSats > 0) {
+        outputs.push({ address: changeAddress, amountSats: changeSats, isChange: true });
+      }
+
+      const estimatedVBytes = this.feeEstimation.estimateVBytes(
+        selectedUtxos.length,
+        outputs.length,
+      );
+
+      return {
+        id: generateId(),
+        walletId: params.walletId,
+        inputs,
+        outputs,
+        amountSats: params.amountSats,
+        feeSats,
+        totalSats: params.amountSats + feeSats,
+        changeSats,
+        feeRateSatsPerVByte: feeRate,
+        estimatedVBytes,
+        status: 'built',
+        createdAt: new Date().toISOString(),
+      };
     }
-
-    const estimatedVBytes = this.feeEstimation.estimateVBytes(
-      selectedUtxos.length,
-      outputs.length,
-    );
-
-    return {
-      id: generateId(),
-      walletId: params.walletId,
-      inputs,
-      outputs,
-      amountSats: params.amountSats,
-      feeSats,
-      totalSats: params.amountSats + feeSats,
-      changeSats,
-      feeRateSatsPerVByte: feeRate,
-      estimatedVBytes,
-      status: 'built',
-      createdAt: new Date().toISOString(),
-    };
   }
 }

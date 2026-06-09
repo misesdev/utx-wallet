@@ -45,6 +45,7 @@ function makeBlockchainProvider(
     getCurrentBlockHeight: jest.fn().mockResolvedValue(100),
     getFeeRates: jest.fn(),
     broadcastTransaction: jest.fn(),
+    getRawTransaction: jest.fn(),
   };
 }
 
@@ -52,6 +53,7 @@ function makeSyncStateRepo(): jest.Mocked<SyncStateRepository> {
   return {
     getLastSyncAt: jest.fn().mockResolvedValue(null),
     saveLastSyncAt: jest.fn().mockResolvedValue(undefined),
+    removeLastSyncAt: jest.fn().mockResolvedValue(undefined),
   };
 }
 

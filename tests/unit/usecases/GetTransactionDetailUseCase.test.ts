@@ -46,6 +46,7 @@ function makeProvider(
     getCurrentBlockHeight: jest.fn().mockResolvedValue(currentHeight),
     getFeeRates: jest.fn(),
     broadcastTransaction: jest.fn(),
+    getRawTransaction: jest.fn(),
   };
 }
 

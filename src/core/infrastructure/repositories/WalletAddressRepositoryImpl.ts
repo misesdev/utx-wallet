@@ -37,6 +37,10 @@ export class WalletAddressRepositoryImpl implements WalletAddressRepository {
     return this.storage.updateStatus(id, status, usedAt);
   }
 
+  updateOriginName(originId: string, originName: string): Promise<void> {
+    return this.storage.updateOriginName(originId, originName);
+  }
+
   updateSyncData(
     id: string,
     data: Partial<Pick<WalletAddress,
@@ -53,5 +57,9 @@ export class WalletAddressRepositoryImpl implements WalletAddressRepository {
 
   getMaxIndexByChain(walletId: string, originId: string, chain: AddressChain): Promise<number> {
     return this.storage.getMaxIndexByChain(walletId, originId, chain);
+  }
+
+  deleteByWallet(walletId: string): Promise<void> {
+    return this.storage.deleteByWallet(walletId);
   }
 }

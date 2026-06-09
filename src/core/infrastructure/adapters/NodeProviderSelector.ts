@@ -1,5 +1,5 @@
 import type { BitcoinNetwork, NetworkConfig } from '../../domain/entities/Network';
-import type { AddressBalance, BlockchainProvider, FeeRates, RemoteTransactionStatus } from '../../domain/repositories/BlockchainProvider';
+import type { AddressBalance, BlockchainProvider, FeeRates, RawTransaction, RemoteTransactionStatus } from '../../domain/repositories/BlockchainProvider';
 import type { NodeConnectionTester, NodeRepository } from '../../domain/repositories/NodeRepository';
 import type { Transaction } from '../../domain/entities/Transaction';
 import type { Utxo } from '../../domain/entities/Utxo';
@@ -54,6 +54,10 @@ export class NodeProviderSelector implements NodeRepository, BlockchainProvider 
 
   async broadcastTransaction(rawHex: string): Promise<string> {
     return this.selectProvider().then(provider => provider.broadcastTransaction(rawHex));
+  }
+
+  async getRawTransaction(txid: string): Promise<RawTransaction> {
+    return this.selectProvider().then(provider => provider.getRawTransaction(txid));
   }
 
   private async selectProvider(): Promise<BlockchainProvider> {

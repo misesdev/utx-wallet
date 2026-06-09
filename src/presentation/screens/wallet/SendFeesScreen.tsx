@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { AppCard } from '../../components/base/AppCard';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
@@ -35,11 +35,13 @@ export function SendFeesScreen() {
   const navigation = useNavigation<SendFeesNavProp>();
 
   let originId: string | undefined;
+  let originName: string | undefined;
   let initialAddress = '';
   let initialAmount = '';
   try {
     const route = useRoute<SendFeesRouteProps>();
     originId = route.params?.originId;
+    originName = route.params?.originName;
     initialAddress = route.params?.toAddress ?? '';
     initialAmount = route.params?.amountSats ?? '';
   } catch {
@@ -60,6 +62,8 @@ export function SendFeesScreen() {
     isSending,
     sendError,
     sentResult,
+    payFee,
+    isWatchOnly,
     setToAddress,
     setAmountSats,
     setFeeTier,
@@ -69,6 +73,7 @@ export function SendFeesScreen() {
     closeReview,
     sendTransaction,
     resetSend,
+    setPayFee,
   } = useSendBitcoin({ originId, initialAddress, initialAmount });
 
   // Sync params into hook state if hook initialized before params resolved
@@ -100,6 +105,31 @@ export function SendFeesScreen() {
     parsedAmount > 0 &&
     !isPreviewing;
 
+  if (isWatchOnly) {
+    return (
+      <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('common.back')}
+            onPress={() => navigation.goBack()}
+            style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+          >
+            <AppIcon name="back" size={24} color={theme.colors.textMuted} />
+          </Pressable>
+          <AppText variant="subtitle" style={styles.headerTitle}>{t('fees.title')}</AppText>
+          <View style={styles.backBtn} />
+        </View>
+        <View style={[styles.watchOnlyBanner, { backgroundColor: theme.colors.dangerMuted, borderColor: theme.colors.danger, borderRadius: theme.radii.md }]}>
+          <AppIcon name="warning" size={20} color={theme.colors.danger} />
+          <AppText variant="body" style={[styles.watchOnlyText, { color: theme.colors.danger }]}>
+            {t('send.errorWatchOnly')}
+          </AppText>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
       {/* Header */}
@@ -112,7 +142,14 @@ export function SendFeesScreen() {
         >
           <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
-        <AppText variant="subtitle" style={styles.headerTitle}>{t('fees.title')}</AppText>
+        <View style={styles.headerCenter}>
+          <AppText variant="subtitle" style={styles.headerTitle}>{t('fees.title')}</AppText>
+          {originName && (
+            <View style={[styles.originBadge, { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radii.sm }]}>
+              <AppText variant="label" color="accent">{originName}</AppText>
+            </View>
+          )}
+        </View>
         <View style={styles.backBtn} />
       </View>
 
@@ -160,6 +197,26 @@ export function SendFeesScreen() {
           </AppText>
         )}
 
+        {/* Pay fee toggle */}
+        <AppCard>
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleInfo}>
+              <AppText variant="body">{t('fees.payFee')}</AppText>
+              <AppText variant="caption" color="muted">
+                {payFee ? t('fees.payFeeHint') : t('fees.noPayFeeHint')}
+              </AppText>
+            </View>
+            <Switch
+              value={payFee}
+              onValueChange={setPayFee}
+              testID="toggle-pay-fee"
+              trackColor={{ false: theme.colors.border, true: theme.colors.accent }}
+              thumbColor={theme.colors.surface}
+              accessibilityLabel={t('fees.payFee')}
+            />
+          </View>
+        </AppCard>
+
         {/* Review button */}
         <AppButton
           title={isPreviewing ? t('fees.calculating') : t('fees.previewTitle')}
@@ -194,6 +251,12 @@ export function SendFeesScreen() {
                 <AppText testID="preview-change">{`${formatSats(preview.changeSats)} sats`}</AppText>
               </View>
             )}
+            <View style={styles.row}>
+              <AppText color="muted">{t('fees.recipientReceives')}</AppText>
+              <AppText testID="preview-recipient-amount">
+                {`${formatSats(preview.recipientAmountSats)} sats`}
+              </AppText>
+            </View>
             <View style={styles.row}>
               <AppText color="muted">{t('fees.recipient')}</AppText>
               <AppText style={styles.address} testID="preview-address">
@@ -246,10 +309,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 40,
   },
-  headerTitle: {
+  headerCenter: {
+    alignItems: 'center',
     flex: 1,
+    gap: 4,
+  },
+  headerTitle: {
     fontWeight: '700',
     textAlign: 'center',
+  },
+  originBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
 
   // Scroll
@@ -280,6 +351,18 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 
+  // Toggle
+  toggleRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  toggleInfo: {
+    flex: 1,
+    gap: 2,
+  },
+
   // Preview card
   row: {
     alignItems: 'center',
@@ -298,5 +381,16 @@ const styles = StyleSheet.create({
   },
   center: {
     textAlign: 'center',
+  },
+  watchOnlyBanner: {
+    alignItems: 'center',
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    margin: 20,
+    padding: 16,
+  },
+  watchOnlyText: {
+    flex: 1,
   },
 });

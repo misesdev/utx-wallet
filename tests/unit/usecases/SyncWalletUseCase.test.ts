@@ -42,6 +42,8 @@ function makeWalletRepo(wallet: Wallet | null = WALLET): jest.Mocked<WalletRepos
     import: jest.fn(),
     list: jest.fn(),
     findById: jest.fn().mockResolvedValue(wallet),
+    rename: jest.fn(),
+    retrieveSeed: jest.fn(),
     delete: jest.fn(),
   };
 }
@@ -54,6 +56,7 @@ function makeAddressRepo(addresses: Address[] = [ADDR_0]): jest.Mocked<AddressRe
     save: jest.fn().mockResolvedValue(undefined),
     saveMany: jest.fn().mockResolvedValue(undefined),
     markUsed: jest.fn().mockResolvedValue(undefined),
+    deleteByWallet: jest.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -61,6 +64,7 @@ function makeSyncStateRepo(): jest.Mocked<SyncStateRepository> {
   return {
     getLastSyncAt: jest.fn().mockResolvedValue(null),
     saveLastSyncAt: jest.fn().mockResolvedValue(undefined),
+    removeLastSyncAt: jest.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -138,6 +142,7 @@ describe('SyncWalletUseCase', () => {
         WALLET_ID,
         [ADDR_0.value, ADDR_1.value],
         WALLET.network,
+        expect.any(Map),
       );
     });
 

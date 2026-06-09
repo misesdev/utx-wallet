@@ -49,4 +49,9 @@ export class TransactionRepositoryImpl implements TransactionRepository {
       await this.transactionStorage.save(walletId, tx);
     }
   }
+
+  async deleteByWallet(walletId: string): Promise<void> {
+    if (!this.transactionStorage) return;
+    await this.transactionStorage.deleteByWallet(walletId);
+  }
 }

@@ -1,73 +1,43 @@
-import React from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppConfirmModal } from '../../components/base/AppConfirmModal';
 import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
 import type { IconName } from '../../../shared/icons/iconNames';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
-import { useNetwork } from '../../hooks/useNetwork';
 import { useTheme } from '../../hooks/useTheme';
+import { useWallet } from '../../hooks/useWallet';
 import { AppRoutes } from '../../../app/navigation/routes';
-import type { AppStackParamList } from '../../../app/navigation/routes';
 
-type SettingsRoute = keyof Pick<
-  AppStackParamList,
-  | 'SecuritySettings'
-  | 'NetworkSettings'
-  | 'NodeSettings'
-  | 'BackupSettings'
-  | 'OfflineMode'
-  | 'SafeMode'
-  | 'LanguageSettings'
->;
+type WalletSettingsRoute = 'ViewSeed' | 'Addresses' | 'Utxos';
 
 type NavItem = {
   icon: IconName;
   titleKey: string;
   descKey: string;
-  route: SettingsRoute;
+  route: WalletSettingsRoute;
   testID?: string;
-  danger?: boolean;
 };
 
-type NavGroup = {
-  labelKey: string;
-  items: NavItem[];
-};
-
-const GROUPS: NavGroup[] = [
-  {
-    labelKey: 'settings.groupWallet',
-    items: [
-      { icon: 'language', titleKey: 'settings.language', descKey: 'settings.languageDesc', route: 'LanguageSettings', testID: 'settings-language' },
-      { icon: 'security', titleKey: 'settings.security', descKey: 'settings.securityDesc', route: 'SecuritySettings', testID: 'settings-security', danger: true },
-      { icon: 'backup', titleKey: 'settings.backup', descKey: 'settings.backupDesc', route: 'BackupSettings', testID: 'settings-backup' },
-    ],
-  },
-  {
-    labelKey: 'settings.groupNetwork',
-    items: [
-      { icon: 'network', titleKey: 'settings.network', descKey: 'settings.networkDesc', route: 'NetworkSettings', testID: 'settings-network' },
-      { icon: 'node', titleKey: 'settings.node', descKey: 'settings.nodeDesc', route: 'NodeSettings', testID: 'settings-node' },
-    ],
-  },
-  {
-    labelKey: 'settings.groupAdvanced',
-    items: [
-      { icon: 'offline', titleKey: 'settings.offline', descKey: 'settings.offlineDesc', route: 'OfflineMode', testID: 'settings-offline' },
-      { icon: 'safeMode', titleKey: 'settings.safeMode', descKey: 'settings.safeModeDesc', route: 'SafeMode', testID: 'settings-safe-mode' },
-    ],
-  },
+const WALLET_ITEMS: NavItem[] = [
+  { icon: 'backup', titleKey: 'settings.viewSeed', descKey: 'settings.viewSeedDesc', route: 'ViewSeed', testID: 'settings-view-seed' },
+  { icon: 'addresses', titleKey: 'settings.addresses', descKey: 'settings.addressesDesc', route: 'Addresses', testID: 'settings-addresses' },
+  { icon: 'wallet', titleKey: 'settings.utxos', descKey: 'settings.utxosDesc', route: 'Utxos', testID: 'settings-utxos' },
 ];
 
-type NavRowProps = NavItem & { title: string; description: string; onPress: () => void; isLast: boolean };
+type NavRowProps = {
+  icon: IconName;
+  title: string;
+  description: string;
+  testID?: string;
+  onPress: () => void;
+  isLast: boolean;
+};
 
-function NavRow({ icon, title, description, testID, danger, onPress, isLast }: NavRowProps) {
+function NavRow({ icon, title, description, testID, onPress, isLast }: NavRowProps) {
   const { theme } = useTheme();
-  const iconBg = danger ? theme.colors.dangerMuted : theme.colors.accentMuted;
-  const iconColor = danger ? theme.colors.danger : theme.colors.accent;
-
   return (
     <>
       <Pressable
@@ -76,8 +46,8 @@ function NavRow({ icon, title, description, testID, danger, onPress, isLast }: N
         onPress={onPress}
         style={({ pressed }) => [styles.navRow, { opacity: pressed ? 0.72 : 1 }]}
       >
-        <View style={[styles.navIcon, { backgroundColor: iconBg, borderRadius: theme.radii.md }]}>
-          <AppIcon name={icon} size={22} color={iconColor} />
+        <View style={[styles.navIcon, { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radii.md }]}>
+          <AppIcon name={icon} size={22} color={theme.colors.accent} />
         </View>
         <View style={styles.navBody}>
           <AppText variant="body" style={styles.navTitle}>{title}</AppText>
@@ -94,11 +64,63 @@ export function SettingsScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
-  const { networkConfig } = useNetwork();
   const { t } = useAppTranslation();
+  const { selectedWallet, renameWallet, deleteWallet } = useWallet();
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const [isSavingName, setIsSavingName] = useState(false);
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  function startEdit() {
+    setEditName(selectedWallet?.name ?? '');
+    setRenameError(null);
+    setIsEditing(true);
+  }
+
+  function cancelEdit() {
+    setIsEditing(false);
+    setRenameError(null);
+  }
+
+  async function saveEdit() {
+    const trimmed = editName.trim();
+    if (!trimmed) {
+      setRenameError(t('walletSettings.errorNameRequired'));
+      return;
+    }
+    if (!selectedWallet) return;
+    setIsSavingName(true);
+    setRenameError(null);
+    try {
+      await renameWallet(selectedWallet.id, trimmed);
+      setIsEditing(false);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setRenameError(msg);
+    } finally {
+      setIsSavingName(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!selectedWallet) return;
+    setIsDeleting(true);
+    try {
+      await deleteWallet(selectedWallet.id);
+      navigation.navigate(AppRoutes.WalletList);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+    }
+  }
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+      {/* Header */}
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
@@ -108,7 +130,7 @@ export function SettingsScreen() {
         >
           <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
-        <AppText variant="subtitle" style={styles.headerTitle}>{t('settings.title')}</AppText>
+        <AppText variant="subtitle" style={styles.headerTitle}>{t('settings.walletTitle')}</AppText>
         <View style={styles.backBtn} />
       </View>
 
@@ -116,9 +138,10 @@ export function SettingsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: Math.max(insets.bottom, 16) + 24 }]}
       >
+        {/* Wallet name card */}
         <View
           style={[
-            styles.networkStrip,
+            styles.nameCard,
             {
               backgroundColor: theme.colors.surfaceRaised,
               borderColor: theme.colors.border,
@@ -126,39 +149,171 @@ export function SettingsScreen() {
             },
           ]}
         >
-          <AppText variant="caption" color="muted">{t('settings.activeNetwork')}</AppText>
-          <View style={[styles.networkBadge, { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radii.sm }]}>
-            <AppText variant="label" color="accent">{networkConfig.network}</AppText>
+          <View style={[styles.nameIconWrap, { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radii.md }]}>
+            <AppIcon name="wallet" size={22} color={theme.colors.accent} />
+          </View>
+          <View style={styles.nameBody}>
+            {isEditing ? (
+              <>
+                <TextInput
+                  value={editName}
+                  onChangeText={setEditName}
+                  autoFocus
+                  style={[
+                    styles.nameInput,
+                    {
+                      color: theme.colors.text,
+                      borderColor: renameError ? theme.colors.danger : theme.colors.accent,
+                      borderRadius: theme.radii.md,
+                      backgroundColor: theme.colors.surfaceMuted,
+                    },
+                  ]}
+                  testID="wallet-name-input"
+                  maxLength={48}
+                  returnKeyType="done"
+                  onSubmitEditing={saveEdit}
+                  editable={!isSavingName}
+                />
+                {renameError ? (
+                  <AppText variant="caption" color="danger" testID="rename-error">{renameError}</AppText>
+                ) : null}
+                <View style={styles.nameActions}>
+                  <Pressable
+                    onPress={cancelEdit}
+                    style={({ pressed }) => [styles.nameActionBtn, { opacity: pressed ? 0.7 : 1 }]}
+                    testID="rename-cancel"
+                    accessibilityRole="button"
+                  >
+                    <AppText variant="caption" color="muted">{t('common.cancel')}</AppText>
+                  </Pressable>
+                  <Pressable
+                    onPress={saveEdit}
+                    disabled={isSavingName}
+                    style={({ pressed }) => [
+                      styles.nameActionBtn,
+                      styles.nameSaveBtn,
+                      { backgroundColor: theme.colors.accent, borderRadius: theme.radii.md, opacity: pressed ? 0.8 : 1 },
+                    ]}
+                    testID="rename-save"
+                    accessibilityRole="button"
+                  >
+                    <AppText variant="caption" style={styles.nameSaveBtnText}>
+                      {isSavingName ? t('common.loading') : t('common.save')}
+                    </AppText>
+                  </Pressable>
+                </View>
+              </>
+            ) : (
+              <>
+                <AppText variant="caption" color="muted">{t('walletSettings.walletName')}</AppText>
+                <AppText variant="body" style={styles.walletNameText} testID="wallet-name-display">
+                  {selectedWallet?.name ?? '—'}
+                </AppText>
+              </>
+            )}
+          </View>
+          {!isEditing && (
+            <Pressable
+              onPress={startEdit}
+              style={({ pressed }) => [styles.editBtn, { opacity: pressed ? 0.6 : 1 }]}
+              testID="rename-edit-btn"
+              accessibilityRole="button"
+              accessibilityLabel={t('walletSettings.editName')}
+            >
+              <AppIcon name="edit" size={20} color={theme.colors.textMuted} />
+            </Pressable>
+          )}
+        </View>
+
+        {/* Network badge (read-only) */}
+        {selectedWallet && (
+          <View
+            style={[
+              styles.networkBadge,
+              {
+                backgroundColor: theme.colors.accentMuted,
+                borderColor: theme.colors.accent + '44',
+                borderRadius: theme.radii.md,
+              },
+            ]}
+          >
+            <AppIcon name="network" size={16} color={theme.colors.accent} />
+            <AppText variant="caption" style={{ color: theme.colors.accent }}>
+              {selectedWallet.network}
+            </AppText>
+          </View>
+        )}
+
+        {/* Wallet actions group */}
+        <View style={styles.group}>
+          <AppText variant="label" color="muted" style={styles.groupLabel}>{t('settings.groupWallet')}</AppText>
+          <View
+            style={[
+              styles.groupCard,
+              {
+                backgroundColor: theme.colors.surfaceRaised,
+                borderColor: theme.colors.border,
+                borderRadius: theme.radii.lg,
+              },
+            ]}
+          >
+            {WALLET_ITEMS.map((item, idx) => (
+              <NavRow
+                key={item.route}
+                icon={item.icon}
+                title={t(item.titleKey as any)}
+                description={t(item.descKey as any)}
+                testID={item.testID}
+                onPress={() => navigation.navigate(AppRoutes[item.route])}
+                isLast={idx === WALLET_ITEMS.length - 1}
+              />
+            ))}
           </View>
         </View>
 
-        {GROUPS.map(group => (
-          <View key={group.labelKey} style={styles.group}>
-            <AppText variant="label" color="muted" style={styles.groupLabel}>{t(group.labelKey as any)}</AppText>
-            <View
-              style={[
-                styles.groupCard,
-                {
-                  backgroundColor: theme.colors.surfaceRaised,
-                  borderColor: theme.colors.border,
-                  borderRadius: theme.radii.lg,
-                },
-              ]}
-            >
-              {group.items.map((item, idx) => (
-                <NavRow
-                  key={item.route}
-                  {...item}
-                  title={t(item.titleKey as any)}
-                  description={t(item.descKey as any)}
-                  onPress={() => navigation.navigate(AppRoutes[item.route])}
-                  isLast={idx === group.items.length - 1}
-                />
-              ))}
+        {/* Delete wallet */}
+        <View style={styles.deleteSection}>
+          <AppText variant="label" color="muted" style={styles.groupLabel}>{t('walletSettings.dangerZone')}</AppText>
+          <Pressable
+            onPress={() => setShowDeleteModal(true)}
+            style={({ pressed }) => [
+              styles.deleteBtn,
+              {
+                backgroundColor: theme.colors.dangerMuted ?? theme.colors.surfaceMuted,
+                borderColor: theme.colors.danger + '66',
+                borderRadius: theme.radii.lg,
+                opacity: pressed ? 0.8 : 1,
+              },
+            ]}
+            testID="delete-wallet-btn"
+            accessibilityRole="button"
+          >
+            <View style={[styles.navIcon, { backgroundColor: theme.colors.dangerMuted, borderRadius: theme.radii.md }]}>
+              <AppIcon name="trash" size={22} color={theme.colors.danger} />
             </View>
-          </View>
-        ))}
+            <View style={styles.navBody}>
+              <AppText variant="body" style={[styles.navTitle, { color: theme.colors.danger }]}>
+                {t('walletSettings.deleteWallet')}
+              </AppText>
+              <AppText variant="caption" color="muted" numberOfLines={1}>
+                {t('walletSettings.deleteWalletDesc')}
+              </AppText>
+            </View>
+          </Pressable>
+        </View>
       </ScrollView>
+
+      <AppConfirmModal
+        visible={showDeleteModal}
+        title={t('walletList.deleteTitle')}
+        message={t('walletList.deleteMessage', { name: selectedWallet?.name ?? '' })}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        variant="danger"
+        isLoading={isDeleting}
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteModal(false)}
+      />
     </View>
   );
 }
@@ -186,23 +341,74 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   scroll: {
-    gap: 20,
+    gap: 16,
     paddingHorizontal: 20,
     paddingTop: 4,
   },
 
-  // Network strip
-  networkStrip: {
+  // Name card
+  nameCard: {
     alignItems: 'center',
     borderWidth: 1,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 14,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
-  networkBadge: {
+  nameIconWrap: {
+    alignItems: 'center',
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
+  },
+  nameBody: {
+    flex: 1,
+    gap: 4,
+  },
+  walletNameText: {
+    fontWeight: '700',
+  },
+  nameInput: {
+    borderWidth: 1,
+    fontSize: 15,
+    fontWeight: '600',
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 6,
+  },
+  nameActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  nameActionBtn: {
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  nameSaveBtn: {
+    elevation: 1,
+  },
+  nameSaveBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+  editBtn: {
+    alignItems: 'center',
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
+
+  // Network badge
+  networkBadge: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
 
   // Groups
@@ -232,9 +438,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 38,
   },
-  navIconText: {
-    fontSize: 18,
-  },
   navBody: {
     flex: 1,
     gap: 3,
@@ -243,11 +446,22 @@ const styles = StyleSheet.create({
   navTitle: {
     fontWeight: '600',
   },
-  navChevron: {
-    fontSize: 22,
-  },
   rowDivider: {
     height: StyleSheet.hairlineWidth,
     marginLeft: 68,
+  },
+
+  // Delete section
+  deleteSection: {
+    gap: 8,
+    marginTop: 4,
+  },
+  deleteBtn: {
+    alignItems: 'center',
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
 });

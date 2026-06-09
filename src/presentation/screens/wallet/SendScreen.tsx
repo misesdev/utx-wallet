@@ -8,6 +8,7 @@ import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
 import { AddressInput } from '../../components/wallet/AddressInput';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
+import { useHideBalance } from '../../hooks/useHideBalance';
 import { useSendBitcoin } from '../../hooks/useSendBitcoin';
 import { useTheme } from '../../hooks/useTheme';
 import type { AppStackParamList } from '../../../app/navigation/routes';
@@ -27,12 +28,17 @@ export function SendScreen() {
   const navigation = useNavigation<SendNavProp>();
 
   let originId: string | undefined;
+  let originName: string | undefined;
   try {
     const route = useRoute<SendRouteProps>();
     originId = route.params?.originId;
+    originName = route.params?.originName;
   } catch {
     originId = undefined;
+    originName = undefined;
   }
+
+  const hideBalance = useHideBalance();
 
   const {
     toAddress,
@@ -40,6 +46,7 @@ export function SendScreen() {
     availableBalanceSats,
     addressError,
     amountError,
+    isWatchOnly,
     setToAddress,
     setAmountSats,
   } = useSendBitcoin({ originId });
@@ -53,12 +60,14 @@ export function SendScreen() {
     toAddress.trim().length > 0 &&
     addressError === null &&
     amountSats.trim().length > 0 &&
-    parseInt(amountSats.trim(), 10) > 0;
+    parseInt(amountSats.trim(), 10) > 0 &&
+    !isWatchOnly;
 
   const handleNext = () => {
     if (!canNext) return;
     navigation.navigate(AppRoutes.SendFees, {
       originId,
+      originName,
       toAddress: toAddress.trim(),
       amountSats: amountSats.trim(),
     });
@@ -90,7 +99,7 @@ export function SendScreen() {
                 { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radii.sm },
               ]}
             >
-              <AppText variant="label" color="accent">{t('send.accountSelected')}</AppText>
+              <AppText variant="label" color="accent">{originName ?? t('send.accountSelected')}</AppText>
             </View>
           )}
         </View>
@@ -98,10 +107,31 @@ export function SendScreen() {
         <View style={styles.backBtn} />
       </View>
 
+      {isWatchOnly && (
+        <View
+          style={[
+            styles.watchOnlyBanner,
+            {
+              backgroundColor: theme.colors.warningMuted,
+              borderColor: theme.colors.warning,
+              borderRadius: theme.radii.lg,
+            },
+          ]}
+          testID="watch-only-send-banner"
+        >
+          <AppIcon name="warning" size={20} color={theme.colors.warning} />
+          <AppText variant="caption" color="warning" style={styles.watchOnlyText}>
+            {t('send.errorWatchOnly')}
+          </AppText>
+        </View>
+      )}
+
       {/* Available balance */}
       <View style={styles.balanceRow}>
         <AppText variant="caption" color="muted">{t('send.available')}</AppText>
-        <AppText variant="body" testID="available-balance">{formatSats(availableBalanceSats)} {t('common.sats')}</AppText>
+        <AppText variant="body" testID="available-balance">
+          {hideBalance ? '••••••' : `${formatSats(availableBalanceSats)} ${t('common.sats')}`}
+        </AppText>
       </View>
 
       {/* Big amount field (Nubank-style) */}
@@ -216,6 +246,20 @@ const styles = StyleSheet.create({
   originBadge: {
     paddingHorizontal: 10,
     paddingVertical: 3,
+  },
+
+  watchOnlyBanner: {
+    alignItems: 'center',
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    marginHorizontal: 20,
+    marginTop: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  watchOnlyText: {
+    flex: 1,
   },
 
   // Balance

@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FeeRates } from '../../core/domain/repositories/BlockchainProvider';
 import type { TransactionPreview, FeeRateTier } from '../../core/domain/entities/TransactionPreview';
 import type { BroadcastResult } from '../../core/domain/usecases/transaction/BroadcastTransactionUseCase';
 import { AppError } from '../../core/application/errors/AppError';
 import { useSend } from '../../app/providers/SendProvider';
+import { useAddressManager } from '../../app/providers/AddressManagerProvider';
 import { useNetwork } from './useNetwork';
 import { useWallet } from './useWallet';
 import { useAppTranslation } from './useAppTranslation';
@@ -28,6 +29,8 @@ export type SendBitcoinState = {
   isSending: boolean;
   sendError: string | null;
   sentResult: BroadcastResult | null;
+  isWatchOnly: boolean;
+  payFee: boolean;
   setToAddress: (v: string) => void;
   setAmountSats: (v: string) => void;
   setFeeTier: (tier: FeeRateTier) => void;
@@ -38,6 +41,7 @@ export type SendBitcoinState = {
   closeReview: () => void;
   sendTransaction: () => Promise<void>;
   resetSend: () => void;
+  setPayFee: (v: boolean) => void;
 };
 
 export type UseSendBitcoinOpts = {
@@ -51,7 +55,9 @@ export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
   const { t } = useAppTranslation();
   const { isOnline } = useNetwork();
   const { validateAddress, fetchFeeRates, preview, send } = useSend();
+  const { listAddresses } = useAddressManager();
   const originId = opts?.originId;
+  const isWatchOnly = selectedWallet?.status === 'watch-only';
 
   const [toAddress, setToAddressRaw] = useState(opts?.initialAddress ?? '');
   const [amountSats, setAmountSatsRaw] = useState(opts?.initialAmount ?? '');
@@ -73,20 +79,32 @@ export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sentResult, setSentResult] = useState<BroadcastResult | null>(null);
+  const [payFee, setPayFeeRaw] = useState(false);
+
+  // Stable ref to addresses belonging to the selected origin — used in send/preview callbacks
+  const originAddressesRef = useRef<string[] | null>(null);
 
   useEffect(() => {
     if (!selectedWallet || !isOnline) return;
     setIsLoadingFeeRates(true);
-    Promise.all([fetchFeeRates(), listUtxos(selectedWallet.id)])
-      .then(([rates, utxos]) => {
+    Promise.all([fetchFeeRates(), listUtxos(selectedWallet.id), listAddresses(selectedWallet.id)])
+      .then(([rates, utxos, addresses]) => {
         setFeeRates(rates);
+        const filtered = originId
+          ? addresses.filter(a => a.originId === originId).map(a => a.address)
+          : null;
+        originAddressesRef.current = filtered;
+        const allowedSet = filtered ? new Set(filtered) : null;
         setAvailableBalanceSats(
-          utxos.filter(u => u.isConfirmed).reduce((sum, u) => sum + u.valueSats, 0),
+          utxos
+            .filter(u => u.isConfirmed)
+            .filter(u => !allowedSet || allowedSet.has(u.address))
+            .reduce((sum, u) => sum + u.valueSats, 0),
         );
       })
       .catch(() => {})
       .finally(() => setIsLoadingFeeRates(false));
-  }, [selectedWallet, isOnline, fetchFeeRates, listUtxos]);
+  }, [selectedWallet, isOnline, fetchFeeRates, listUtxos, listAddresses, originId]);
 
   const selectedFeeRate = useMemo(() => {
     if (feeTier === 'custom') {
@@ -136,6 +154,12 @@ export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
     setPreviewError(null);
   }, []);
 
+  const setPayFee = useCallback((v: boolean) => {
+    setPayFeeRaw(v);
+    setTxPreview(null);
+    setPreviewError(null);
+  }, []);
+
   const reviewTransaction = useCallback(async () => {
     if (!selectedWallet) return;
 
@@ -157,6 +181,8 @@ export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
         toAddress: toAddress.trim(),
         amountSats: parsedAmount,
         feeRateSatsPerVByte: selectedFeeRate,
+        subtractFeeFromAmount: !payFee,
+        allowedAddresses: originAddressesRef.current ?? undefined,
       });
       setTxPreview(result);
     } catch (err) {
@@ -164,7 +190,7 @@ export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
     } finally {
       setIsPreviewing(false);
     }
-  }, [selectedWallet, toAddress, amountSats, selectedFeeRate, addressError, preview, t]);
+  }, [selectedWallet, toAddress, amountSats, selectedFeeRate, addressError, preview, payFee, t]);
 
   const clearPreview = useCallback(() => {
     setTxPreview(null);
@@ -197,6 +223,8 @@ export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
         amountSats: parsedAmount,
         feeRateSatsPerVByte: selectedFeeRate,
         changeOriginId: originId,
+        subtractFeeFromAmount: !payFee,
+        allowedAddresses: originAddressesRef.current ?? undefined,
       });
       setSentResult(result);
       setIsReviewVisible(false);
@@ -205,7 +233,7 @@ export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
     } finally {
       setIsSending(false);
     }
-  }, [selectedWallet, toAddress, amountSats, selectedFeeRate, send, originId, t]);
+  }, [selectedWallet, toAddress, amountSats, selectedFeeRate, send, originId, payFee, t]);
 
   const resetSend = useCallback(() => {
     setSentResult(null);
@@ -218,6 +246,7 @@ export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
     setCustomFeeRateRaw('');
     setAddressError(null);
     setAmountError(null);
+    setPayFeeRaw(false);
   }, []);
 
   return {
@@ -238,6 +267,8 @@ export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
     isSending,
     sendError,
     sentResult,
+    isWatchOnly,
+    payFee,
     setToAddress,
     setAmountSats,
     setFeeTier,
@@ -248,5 +279,6 @@ export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
     closeReview,
     sendTransaction,
     resetSend,
+    setPayFee,
   };
 }

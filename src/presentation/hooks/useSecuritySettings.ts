@@ -4,7 +4,7 @@ import { useSecurity } from '../../app/providers/SecurityProvider';
 import { useAppTranslation } from './useAppTranslation';
 import type { AutoLockSeconds, SecuritySettings } from '../../core/domain/entities/SecuritySettings';
 
-export type PinModalStep = 'none' | 'set-new' | 'confirm-new' | 'verify-to-remove';
+export type PinModalStep = 'none' | 'set-new' | 'confirm-new' | 'verify-to-remove' | 'verify';
 
 export type UseSecuritySettingsState = {
   settings: SecuritySettings;

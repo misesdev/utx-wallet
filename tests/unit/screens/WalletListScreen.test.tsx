@@ -193,6 +193,27 @@ describe('WalletListScreen', () => {
     });
   });
 
+
+  describe('Bottom menu', () => {
+    it('renders fixed bottom actions for global settings and QR import', () => {
+      const screen = renderWithTheme(<WalletListScreen />);
+      expect(screen.getByTestId('wallet-list-global-settings')).toBeTruthy();
+      expect(screen.getByTestId('wallet-list-scan-import')).toBeTruthy();
+    });
+
+    it('navigates to GlobalSettings from the bottom menu', () => {
+      const screen = renderWithTheme(<WalletListScreen />);
+      fireEvent.press(screen.getByTestId('wallet-list-global-settings'));
+      expect(mockNavigate).toHaveBeenCalledWith('GlobalSettings');
+    });
+
+    it('navigates to the QR scanner from the bottom menu', () => {
+      const screen = renderWithTheme(<WalletListScreen />);
+      fireEvent.press(screen.getByTestId('wallet-list-scan-import'));
+      expect(mockNavigate).toHaveBeenCalledWith('ScanWalletQr', { network: 'mainnet' });
+    });
+  });
+
   describe('Delete wallet', () => {
     it('shows confirm modal when delete button is pressed', () => {
       mockWallets = [makeWallet({ name: 'My Wallet', network: 'mainnet' })];

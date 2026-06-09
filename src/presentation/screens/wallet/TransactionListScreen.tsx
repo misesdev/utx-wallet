@@ -8,6 +8,7 @@ import { AppIcon } from '../../components/base/AppIcon';
 import { TransactionItem } from '../../components/wallet/TransactionItem';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
+import { useHideBalance } from '../../hooks/useHideBalance';
 import { useHomeWallet } from '../../hooks/useHomeWallet';
 import { useTheme } from '../../hooks/useTheme';
 import { AppRoutes } from '../../../app/navigation/routes';
@@ -23,6 +24,7 @@ export function TransactionListScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
   const { transactions, isLoading, error } = useHomeWallet();
+  const hideBalance = useHideBalance();
 
   const handleOpen = useCallback((tx: Transaction) => {
     navigation.navigate(AppRoutes.TransactionDetails, { txid: tx.txid ?? tx.id });
@@ -68,15 +70,15 @@ export function TransactionListScreen() {
         >
           <View style={styles.summaryItem}>
             <AppText variant="label" color="muted">{t('transactions.received')}</AppText>
-            <AppText variant="body" style={[styles.summaryAmountIn, { color: theme.colors.success }]}>
-              +{formatSats(received)}
+            <AppText testID="summary-received" variant="body" style={[styles.summaryAmountIn, { color: theme.colors.success }]}>
+              {hideBalance ? '••••••' : `+${formatSats(received)}`}
             </AppText>
           </View>
           <View style={[styles.summaryDivider, { backgroundColor: theme.colors.border }]} />
           <View style={styles.summaryItem}>
             <AppText variant="label" color="muted">{t('transactions.sent')}</AppText>
-            <AppText variant="body" style={styles.summaryAmountOut}>
-              −{formatSats(sent)}
+            <AppText testID="summary-sent" variant="body" style={styles.summaryAmountOut}>
+              {hideBalance ? '••••••' : `−${formatSats(sent)}`}
             </AppText>
           </View>
         </View>

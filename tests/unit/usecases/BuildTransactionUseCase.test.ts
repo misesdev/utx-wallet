@@ -36,6 +36,7 @@ function makeRepo(utxos: Utxo[]): jest.Mocked<UtxoRepository> {
     replaceAll: jest.fn().mockResolvedValue(undefined),
     freeze: jest.fn().mockResolvedValue(undefined),
     unfreeze: jest.fn().mockResolvedValue(undefined),
+    deleteByWallet: jest.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -341,6 +342,91 @@ describe('BuildTransactionUseCase', () => {
 
       // No change output → 1 output only
       expect(result.estimatedVBytes).toBe(feeEstimation.estimateVBytes(1, 1));
+    });
+  });
+
+  describe('subtractFeeFromAmount mode', () => {
+    it('recipient output equals amountSats minus fee', async () => {
+      const balance = 500_000;
+      const useCase = makeUseCase([makeUtxo(balance)]);
+      const result = await useCase.execute(baseParams({ subtractFeeFromAmount: true }));
+      const recipientOutput = result.outputs.find(o => !o.isChange)!;
+      const expectedFee = fee(1); // 1 input, 2 outputs
+      expect(recipientOutput.amountSats).toBe(100_000 - expectedFee);
+    });
+
+    it('totalSats equals the requested amountSats', async () => {
+      const useCase = makeUseCase([makeUtxo(500_000)]);
+      const result = await useCase.execute(baseParams({ subtractFeeFromAmount: true }));
+      expect(result.totalSats).toBe(100_000);
+    });
+
+    it('amountSats on result is recipientAmountSats (actual output)', async () => {
+      const useCase = makeUseCase([makeUtxo(500_000)]);
+      const result = await useCase.execute(baseParams({ subtractFeeFromAmount: true }));
+      const expectedFee = fee(1);
+      expect(result.amountSats).toBe(100_000 - expectedFee);
+    });
+
+    it('change is totalInputSats minus amountSats', async () => {
+      const utxoValue = 500_000;
+      const useCase = makeUseCase([makeUtxo(utxoValue)]);
+      const result = await useCase.execute(baseParams({ subtractFeeFromAmount: true }));
+      expect(result.changeSats).toBe(utxoValue - 100_000);
+    });
+
+    it('throws BELOW_DUST when recipient amount would be below dust threshold', async () => {
+      const useCase = makeUseCase([makeUtxo(1_000_000)]);
+      // fee(1, 2) at 50 sat/vB = (10+68+62)*50 = 7000; amountSats=7_100 → recipient=100 < 546
+      await expect(
+        useCase.execute(baseParams({ amountSats: 7_100, feeRateSatsPerVByte: 50, subtractFeeFromAmount: true })),
+      ).rejects.toMatchObject({ code: 'BELOW_DUST' });
+    });
+  });
+
+  describe('allowedAddresses (account isolation)', () => {
+    it('restricts coin selection to UTXOs at allowed addresses', async () => {
+      const originAddr = 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq';
+      const otherAddr  = 'bc1q2huh508fyvu04z98cvnrd2stuzyqzwe80eqark';
+      const utxos = [
+        makeUtxo(1_000_000, originAddr),
+        makeUtxo(500_000, otherAddr),
+      ];
+      const useCase = makeUseCase(utxos);
+
+      const result = await useCase.execute(
+        baseParams({ allowedAddresses: [originAddr] }),
+      );
+
+      expect(result.inputs.every(i => i.address === originAddr)).toBe(true);
+    });
+
+    it('uses all UTXOs when allowedAddresses is empty (no filter)', async () => {
+      const addr1 = 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq';
+      const addr2 = 'bc1q2huh508fyvu04z98cvnrd2stuzyqzwe80eqark';
+      const utxos = [makeUtxo(300_000, addr1), makeUtxo(300_000, addr2)];
+      const useCase = makeUseCase(utxos);
+
+      const result = await useCase.execute(
+        baseParams({ amountSats: 500_000, allowedAddresses: [] }),
+      );
+
+      // No filter applied — inputs from both accounts
+      expect(result.inputs.length).toBeGreaterThan(0);
+    });
+
+    it('throws INSUFFICIENT_BALANCE when allowed UTXOs have insufficient funds', async () => {
+      const originAddr = 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq';
+      const otherAddr  = 'bc1q2huh508fyvu04z98cvnrd2stuzyqzwe80eqark';
+      const utxos = [
+        makeUtxo(50_000, originAddr),   // only 50k in origin
+        makeUtxo(5_000_000, otherAddr), // 5M in other account — must not be used
+      ];
+      const useCase = makeUseCase(utxos);
+
+      await expect(
+        useCase.execute(baseParams({ amountSats: 100_000, allowedAddresses: [originAddr] })),
+      ).rejects.toMatchObject({ code: 'INSUFFICIENT_BALANCE' });
     });
   });
 });

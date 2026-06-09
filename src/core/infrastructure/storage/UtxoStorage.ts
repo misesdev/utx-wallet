@@ -51,4 +51,8 @@ export class UtxoStorage {
       [walletId, txid, vout],
     );
   }
+
+  async deleteByWallet(walletId: string): Promise<void> {
+    await this.db.execute('DELETE FROM utxos WHERE wallet_id = ?', [walletId]);
+  }
 }

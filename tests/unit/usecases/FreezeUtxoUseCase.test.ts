@@ -12,6 +12,7 @@ function makeRepo(): jest.Mocked<UtxoRepository> {
     replaceAll: jest.fn(),
     freeze: jest.fn().mockResolvedValue(undefined),
     unfreeze: jest.fn().mockResolvedValue(undefined),
+    deleteByWallet: jest.fn().mockResolvedValue(undefined),
   };
 }
 

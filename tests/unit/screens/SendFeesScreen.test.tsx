@@ -19,11 +19,13 @@ const FEE_RATES: FeeRates = {
 const PREVIEW: TransactionPreview = {
   toAddress: VALID_ADDRESS,
   amountSats: 100_000,
+  recipientAmountSats: 99_100,
   feeSats: 900,
   totalSats: 100_900,
   changeSats: 899_100,
   feeRateSatsPerVByte: 5,
   estimatedVBytes: 180,
+  subtractFeeFromAmount: false,
 };
 
 const mockReviewTransaction = jest.fn().mockResolvedValue(undefined);
@@ -36,6 +38,7 @@ const mockOpenReview = jest.fn();
 const mockCloseReview = jest.fn();
 const mockSendTransaction = jest.fn().mockResolvedValue(undefined);
 const mockResetSend = jest.fn();
+const mockSetPayFee = jest.fn();
 const mockNavigate = jest.fn();
 const mockReplace = jest.fn();
 
@@ -64,6 +67,8 @@ const BASE_STATE: SendBitcoinState = {
   isSending: false,
   sendError: null,
   sentResult: null,
+  isWatchOnly: false,
+  payFee: false,
   setToAddress: mockSetToAddress,
   setAmountSats: mockSetAmountSats,
   setFeeTier: mockSetFeeTier,
@@ -74,6 +79,7 @@ const BASE_STATE: SendBitcoinState = {
   closeReview: mockCloseReview,
   sendTransaction: mockSendTransaction,
   resetSend: mockResetSend,
+  setPayFee: mockSetPayFee,
 };
 
 let mockState: SendBitcoinState = BASE_STATE;
@@ -208,6 +214,56 @@ describe('SendFeesScreen', () => {
       const screen = renderWithTheme(<SendFeesScreen />);
       fireEvent.press(screen.getByTestId('btn-open-review'));
       expect(mockOpenReview).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('payFee toggle', () => {
+    it('renders the pay fee toggle', () => {
+      const screen = renderWithTheme(<SendFeesScreen />);
+      expect(screen.getByTestId('toggle-pay-fee')).toBeTruthy();
+    });
+
+    it('toggle is off by default', () => {
+      const screen = renderWithTheme(<SendFeesScreen />);
+      expect(screen.getByTestId('toggle-pay-fee').props.value).toBe(false);
+    });
+
+    it('toggle shows on when payFee is true', () => {
+      mockState = { ...BASE_STATE, payFee: true };
+      const screen = renderWithTheme(<SendFeesScreen />);
+      expect(screen.getByTestId('toggle-pay-fee').props.value).toBe(true);
+    });
+
+    it('calls setPayFee when toggle is pressed', () => {
+      const screen = renderWithTheme(<SendFeesScreen />);
+      fireEvent(screen.getByTestId('toggle-pay-fee'), 'valueChange', true);
+      expect(mockSetPayFee).toHaveBeenCalledWith(true);
+    });
+  });
+
+  it('renders recipient amount in preview', () => {
+    mockState = { ...BASE_STATE, preview: PREVIEW };
+    const screen = renderWithTheme(<SendFeesScreen />);
+    expect(screen.getByTestId('preview-recipient-amount').props.children).toBe('99,100 sats');
+  });
+
+  describe('watch-only wallet guard', () => {
+    it('shows watch-only banner when isWatchOnly is true', () => {
+      mockState = { ...BASE_STATE, isWatchOnly: true };
+      const screen = renderWithTheme(<SendFeesScreen />);
+      expect(screen.getByText('send.errorWatchOnly')).toBeTruthy();
+    });
+
+    it('does not show fee selector for watch-only wallets', () => {
+      mockState = { ...BASE_STATE, isWatchOnly: true };
+      const screen = renderWithTheme(<SendFeesScreen />);
+      expect(screen.queryByTestId('fee-tile-normal')).toBeNull();
+    });
+
+    it('does not show review button for watch-only wallets', () => {
+      mockState = { ...BASE_STATE, isWatchOnly: true };
+      const screen = renderWithTheme(<SendFeesScreen />);
+      expect(screen.queryByTestId('btn-review')).toBeNull();
     });
   });
 });

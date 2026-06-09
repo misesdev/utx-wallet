@@ -113,6 +113,13 @@ export class WalletAddressStorage {
     }
   }
 
+  async updateOriginName(originId: string, originName: string): Promise<void> {
+    await this.db.execute(
+      'UPDATE wallet_addresses SET origin_name = ? WHERE origin_id = ?',
+      [originName, originId],
+    );
+  }
+
   async updateSyncData(
     id: string,
     data: Partial<Pick<WalletAddress,
@@ -152,6 +159,10 @@ export class WalletAddressStorage {
     );
     if (rows.length === 0) return -1;
     return Math.max(...rows.map(r => r.index_num));
+  }
+
+  async deleteByWallet(walletId: string): Promise<void> {
+    await this.db.execute('DELETE FROM wallet_addresses WHERE wallet_id = ?', [walletId]);
   }
 
   private mapRow(row: WalletAddressRow): WalletAddress {

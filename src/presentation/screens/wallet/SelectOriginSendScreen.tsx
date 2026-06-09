@@ -1,19 +1,17 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppLoading } from '../../components/base/AppLoading';
 import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
-import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
-import { useWallet } from '../../hooks/useWallet';
+import { useAccountSummaries } from '../../hooks/useAccountSummaries';
 import { AppRoutes } from '../../../app/navigation/routes';
-import type { AddressOrigin } from '../../../core/domain/entities/AddressOrigin';
-import type { WalletAddress } from '../../../core/domain/entities/WalletAddress';
+import type { AccountSummary } from '../../../core/domain/services/AccountSummaryService';
 
-type OriginWithBalance = AddressOrigin & { hasBalance: boolean };
+type OriginWithBalance = AccountSummary & { hasBalance: boolean };
 
 type OriginItemProps = {
   item: OriginWithBalance;
@@ -73,6 +71,9 @@ function OriginItem({ item, noBalanceId, onPress }: OriginItemProps) {
           )}
         </View>
         <AppText variant="caption" color="muted">{t('common.account', { accountIndex: item.accountIndex })}</AppText>
+        <AppText variant="subtitle" style={styles.balanceText}>
+          {item.confirmedBalanceSats.toLocaleString()} {t('common.sats')}
+        </AppText>
         {showNoBalance && (
           <AppText variant="caption" color="danger" style={styles.noBalanceMsg}>
             {t('send.noBalance')}
@@ -90,44 +91,13 @@ export function SelectOriginSendScreen() {
   const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
-  const { getOrigins, listAddresses } = useAddressManager();
-  const { selectedWallet, listUtxos } = useWallet();
+  const { summaries, isLoading } = useAccountSummaries();
 
-  const [items, setItems] = useState<OriginWithBalance[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const items: OriginWithBalance[] = summaries.map(summary => ({
+    ...summary,
+    hasBalance: summary.confirmedBalanceSats > 0,
+  }));
   const [noBalanceId, setNoBalanceId] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    if (!selectedWallet) return;
-    setIsLoading(true);
-    try {
-      const [origins, addresses, utxos] = await Promise.all([
-        getOrigins(selectedWallet.id),
-        listAddresses(selectedWallet.id),
-        listUtxos(selectedWallet.id),
-      ]);
-
-      const utxoAddressSet = new Set(utxos.filter(u => u.isConfirmed).map(u => u.address));
-
-      const withBalance: OriginWithBalance[] = origins.map(origin => {
-        const originAddresses = (addresses as WalletAddress[]).filter(
-          a => a.accountIndex === origin.accountIndex,
-        );
-        const hasBalance = originAddresses.some(a => utxoAddressSet.has(a.address));
-        return { ...origin, hasBalance };
-      });
-
-      setItems(withBalance);
-    } catch {
-      // silent
-    } finally {
-      setIsLoading(false);
-    }
-  }, [selectedWallet, getOrigins, listAddresses, listUtxos]);
-
-  useEffect(() => {
-    load().catch(() => undefined);
-  }, [load]);
 
   const handleSelect = useCallback(
     (item: OriginWithBalance) => {
@@ -136,7 +106,7 @@ export function SelectOriginSendScreen() {
         return;
       }
       setNoBalanceId(null);
-      navigation.navigate(AppRoutes.Send, { originId: item.id });
+      navigation.navigate(AppRoutes.Send, { originId: item.id, originName: item.name });
     },
     [navigation],
   );
@@ -257,6 +227,9 @@ const styles = StyleSheet.create({
   },
   originName: {
     fontWeight: '600',
+  },
+  balanceText: {
+    fontWeight: '700',
   },
   badge: {
     paddingHorizontal: 7,

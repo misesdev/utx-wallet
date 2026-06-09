@@ -12,6 +12,7 @@ function createProvider(): jest.Mocked<BlockchainProvider> {
     getCurrentBlockHeight: jest.fn(),
     getFeeRates: jest.fn(),
     broadcastTransaction: jest.fn(),
+    getRawTransaction: jest.fn(),
   };
 }
 

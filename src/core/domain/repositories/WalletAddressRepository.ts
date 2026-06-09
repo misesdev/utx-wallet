@@ -9,6 +9,7 @@ export interface WalletAddressRepository {
   save(address: WalletAddress): Promise<void>;
   saveMany(addresses: WalletAddress[]): Promise<void>;
   updateStatus(id: string, status: AddressStatus, usedAt?: string): Promise<void>;
+  updateOriginName(originId: string, originName: string): Promise<void>;
   updateSyncData(
     id: string,
     data: Partial<Pick<WalletAddress,
@@ -24,4 +25,5 @@ export interface WalletAddressRepository {
   ): Promise<void>;
   countFreshByChain(walletId: string, originId: string, chain: AddressChain): Promise<number>;
   getMaxIndexByChain(walletId: string, originId: string, chain: AddressChain): Promise<number>;
+  deleteByWallet(walletId: string): Promise<void>;
 }

@@ -19,6 +19,9 @@ export class BroadcastTransactionUseCase {
   async execute(signed: SignedTransaction, walletId: string): Promise<BroadcastResult> {
     const txid = await this.blockchainProvider.broadcastTransaction(signed.rawHex);
 
+    // Find the non-change output = recipient
+    const recipientOutput = signed.builtTransaction.outputs.find(o => !o.isChange);
+
     const tx: Transaction = {
       id: txid,
       txid,
@@ -27,6 +30,7 @@ export class BroadcastTransactionUseCase {
       direction: 'outgoing',
       status: 'pending',
       createdAt: new Date().toISOString(),
+      address: recipientOutput?.address,
     };
 
     // Persist the new transaction locally

@@ -15,6 +15,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useTransactionDetails } from '../../hooks/useTransactionDetails';
 import type { TransactionDetail } from '../../../core/domain/entities/TransactionDetail';
 import type { AppStackParamList } from '../../../app/navigation/routes';
+import { AppRoutes } from '../../../app/navigation/routes';
 
 function formatSats(sats: number): string {
   return sats.toLocaleString('pt-BR');
@@ -41,6 +42,7 @@ type TxCardProps = { tx: TransactionDetail };
 function TxCard({ tx }: TxCardProps) {
   const { theme } = useTheme();
   const { t } = useAppTranslation();
+  const navigation = useAppNavigation();
 
   const isIncoming = tx.direction === 'incoming';
   const accentColor = isIncoming ? theme.colors.success : theme.colors.text;
@@ -169,6 +171,35 @@ function TxCard({ tx }: TxCardProps) {
           </View>
         )}
       </View>
+
+      {/* Accelerate button — pending outgoing only */}
+      {tx.direction === 'outgoing' && !tx.isConfirmed && tx.txid && (
+        <Pressable
+          onPress={() => navigation.navigate(AppRoutes.AccelerateTransaction, {
+            txid: tx.txid!,
+            toAddress: tx.address ?? '',
+            amountSats: tx.amountSats,
+            feeSats: tx.feeSats ?? 0,
+            isConfirmed: false,
+          })}
+          testID={`tx-accelerate-${tx.id}`}
+          accessibilityRole="button"
+          accessibilityLabel={t('rbf.accelerateButton')}
+          style={({ pressed }) => [
+            styles.accelerateBtn,
+            {
+              backgroundColor: theme.colors.accent,
+              borderRadius: theme.radii.md,
+              opacity: pressed ? 0.8 : 1,
+            },
+          ]}
+        >
+          <AppIcon name="send" size={16} color={theme.colors.background} />
+          <AppText variant="body" style={[styles.accelerateLabel, { color: theme.colors.background }]}>
+            {t('rbf.accelerateButton')}
+          </AppText>
+        </Pressable>
+      )}
 
       {/* Explorer link */}
       {tx.explorerUrl ? (
@@ -393,12 +424,26 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
 
+  // Accelerate
+  accelerateBtn: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    marginHorizontal: 20,
+    marginTop: 16,
+    paddingVertical: 13,
+  },
+  accelerateLabel: {
+    fontWeight: '700',
+  },
+
   // Explorer
   explorerBtn: {
     alignItems: 'center',
     borderWidth: 1,
     marginHorizontal: 20,
-    marginTop: 16,
+    marginTop: 12,
     paddingVertical: 12,
   },
   explorerLabel: {

@@ -60,6 +60,10 @@ export class AddressStorage {
     await this.db.execute('UPDATE addresses SET is_used = 1 WHERE value = ?', [addressValue]);
   }
 
+  async deleteByWallet(walletId: string): Promise<void> {
+    await this.db.execute('DELETE FROM addresses WHERE wallet_id = ?', [walletId]);
+  }
+
   private toEntity(row: AddressRow): Address {
     return {
       id: row.id,

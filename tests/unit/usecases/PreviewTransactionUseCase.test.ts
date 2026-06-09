@@ -19,6 +19,7 @@ function makeRepo(utxos: Utxo[] = []): jest.Mocked<UtxoRepository> {
     replaceAll: jest.fn().mockResolvedValue(undefined),
     freeze: jest.fn().mockResolvedValue(undefined),
     unfreeze: jest.fn().mockResolvedValue(undefined),
+    deleteByWallet: jest.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -210,6 +211,171 @@ describe('PreviewTransactionUseCase', () => {
 
       expect(result.feeSats).toBe(Math.ceil(customRate * 180));
       expect(result.feeRateSatsPerVByte).toBe(customRate);
+    });
+  });
+
+  describe('subtractFeeFromAmount mode', () => {
+    it('recipient gets amountSats minus fee', async () => {
+      const useCase = makeUseCase([makeUtxo(1_000_000)]);
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: 100_000,
+        feeRateSatsPerVByte: FEE_RATE,
+        subtractFeeFromAmount: true,
+      });
+      expect(result.recipientAmountSats).toBe(100_000 - Math.ceil(FEE_RATE * 180));
+    });
+
+    it('totalSats equals the requested amountSats', async () => {
+      const useCase = makeUseCase([makeUtxo(1_000_000)]);
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: 100_000,
+        feeRateSatsPerVByte: FEE_RATE,
+        subtractFeeFromAmount: true,
+      });
+      expect(result.totalSats).toBe(100_000);
+    });
+
+    it('change is balance minus amountSats', async () => {
+      const balance = 1_000_000;
+      const useCase = makeUseCase([makeUtxo(balance)]);
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: 100_000,
+        feeRateSatsPerVByte: FEE_RATE,
+        subtractFeeFromAmount: true,
+      });
+      expect(result.changeSats).toBe(balance - 100_000);
+    });
+
+    it('throws INSUFFICIENT_BALANCE when amountSats exceeds confirmed balance', async () => {
+      const useCase = makeUseCase([makeUtxo(50_000)]);
+      await expect(
+        useCase.execute({
+          walletId: WALLET_ID,
+          toAddress: VALID_ADDRESS,
+          amountSats: 100_000,
+          feeRateSatsPerVByte: FEE_RATE,
+          subtractFeeFromAmount: true,
+        }),
+      ).rejects.toMatchObject({ code: 'INSUFFICIENT_BALANCE' });
+    });
+
+    it('throws BELOW_DUST when recipient would get less than dust threshold', async () => {
+      // fee=180*50=9000, amount=9_100 → recipient=100, which is below 546
+      const useCase = makeUseCase([makeUtxo(1_000_000)]);
+      await expect(
+        useCase.execute({
+          walletId: WALLET_ID,
+          toAddress: VALID_ADDRESS,
+          amountSats: 9_100,
+          feeRateSatsPerVByte: 50,
+          subtractFeeFromAmount: true,
+        }),
+      ).rejects.toMatchObject({ code: 'BELOW_DUST' });
+    });
+
+    it('sets subtractFeeFromAmount=true in result', async () => {
+      const useCase = makeUseCase([makeUtxo(1_000_000)]);
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: 100_000,
+        feeRateSatsPerVByte: FEE_RATE,
+        subtractFeeFromAmount: true,
+      });
+      expect(result.subtractFeeFromAmount).toBe(true);
+    });
+
+    it('sets subtractFeeFromAmount=false for default mode', async () => {
+      const useCase = makeUseCase([makeUtxo(1_000_000)]);
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: 100_000,
+        feeRateSatsPerVByte: FEE_RATE,
+      });
+      expect(result.subtractFeeFromAmount).toBe(false);
+    });
+
+    it('recipientAmountSats equals amountSats in default mode', async () => {
+      const useCase = makeUseCase([makeUtxo(1_000_000)]);
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: 100_000,
+        feeRateSatsPerVByte: FEE_RATE,
+      });
+      expect(result.recipientAmountSats).toBe(100_000);
+    });
+  });
+
+  describe('allowedAddresses (account isolation)', () => {
+    function makeUtxoAt(valueSats: number, address: string, isConfirmed = true): Utxo {
+      return { txid: 'abc', vout: 0, valueSats, address, isConfirmed };
+    }
+
+    it('restricts balance check to allowed addresses', async () => {
+      const origin = 'addr-origin';
+      const other  = 'addr-other';
+      const repo = makeRepo([
+        makeUtxoAt(200_000, origin),
+        makeUtxoAt(800_000, other),
+      ]);
+      const useCase = new PreviewTransactionUseCase(repo);
+
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: 100_000,
+        feeRateSatsPerVByte: FEE_RATE,
+        allowedAddresses: [origin],
+      });
+
+      // change = 200k - 100k - fee (based on origin balance only)
+      const fee = Math.ceil(FEE_RATE * 180);
+      expect(result.changeSats).toBe(200_000 - 100_000 - fee);
+    });
+
+    it('throws INSUFFICIENT_BALANCE when allowed UTXOs have insufficient funds', async () => {
+      const origin = 'addr-origin';
+      const other  = 'addr-other';
+      const repo = makeRepo([
+        makeUtxoAt(50_000, origin),   // only 50k in origin
+        makeUtxoAt(5_000_000, other), // 5M in other — should not count
+      ]);
+      const useCase = new PreviewTransactionUseCase(repo);
+
+      await expect(
+        useCase.execute({
+          walletId: WALLET_ID,
+          toAddress: VALID_ADDRESS,
+          amountSats: 100_000,
+          feeRateSatsPerVByte: FEE_RATE,
+          allowedAddresses: [origin],
+        }),
+      ).rejects.toMatchObject({ code: 'INSUFFICIENT_BALANCE' });
+    });
+
+    it('uses all UTXOs when allowedAddresses is undefined', async () => {
+      const addr1 = 'addr-1';
+      const addr2 = 'addr-2';
+      const repo = makeRepo([makeUtxoAt(300_000, addr1), makeUtxoAt(300_000, addr2)]);
+      const useCase = new PreviewTransactionUseCase(repo);
+
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: 400_000,
+        feeRateSatsPerVByte: FEE_RATE,
+      });
+
+      // 600k total is enough; would fail if filtered
+      expect(result.amountSats).toBe(400_000);
     });
   });
 });

@@ -5,6 +5,7 @@ import type { FeeRates } from '../../../src/core/domain/repositories/BlockchainP
 import type { TransactionPreview } from '../../../src/core/domain/entities/TransactionPreview';
 import type { Utxo } from '../../../src/core/domain/entities/Utxo';
 import type { Wallet } from '../../../src/core/domain/entities/Wallet';
+import type { WalletAddress } from '../../../src/core/domain/entities/WalletAddress';
 
 const VALID_ADDRESS = 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq';
 const WALLET: Wallet = {
@@ -24,11 +25,13 @@ const FEE_RATES: FeeRates = {
 const PREVIEW: TransactionPreview = {
   toAddress: VALID_ADDRESS,
   amountSats: 100_000,
+  recipientAmountSats: 100_000,
   feeSats: 900,
   totalSats: 100_900,
   changeSats: 899_100,
   feeRateSatsPerVByte: 5,
   estimatedVBytes: 180,
+  subtractFeeFromAmount: false,
 };
 const UTXO: Utxo = {
   txid: 'abc',
@@ -45,6 +48,7 @@ const mockPreview = jest.fn<Promise<TransactionPreview>, [object]>();
 const mockSend = jest.fn<Promise<BroadcastResult>, [object]>();
 const mockValidateAddress = jest.fn();
 const mockListUtxos = jest.fn<Promise<Utxo[]>, [string]>();
+const mockListAddresses = jest.fn().mockResolvedValue([]);
 
 let mockSelectedWallet: Wallet | null = WALLET;
 let mockIsOnline = true;
@@ -69,6 +73,10 @@ jest.mock('../../../src/app/providers/SendProvider', () => ({
   }),
 }));
 
+jest.mock('../../../src/app/providers/AddressManagerProvider', () => ({
+  useAddressManager: () => ({ listAddresses: mockListAddresses }),
+}));
+
 describe('useSendBitcoin', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -76,6 +84,7 @@ describe('useSendBitcoin', () => {
     mockIsOnline = true;
     mockFetchFeeRates.mockResolvedValue(FEE_RATES);
     mockListUtxos.mockResolvedValue([UTXO]);
+    mockListAddresses.mockResolvedValue([]);
     mockValidateAddress.mockReturnValue({ valid: true, error: null });
     mockPreview.mockResolvedValue(PREVIEW);
   });
@@ -106,6 +115,88 @@ describe('useSendBitcoin', () => {
     it('loads available balance from confirmed UTXOs', async () => {
       const { result } = renderHook(() => useSendBitcoin());
       await waitFor(() => expect(result.current.availableBalanceSats).toBe(1_000_000));
+    });
+  });
+
+  describe('origin address filtering', () => {
+    const ORIGIN_ADDR = 'bc1qorigin';
+    const OTHER_ADDR  = 'bc1qother';
+
+    const ORIGIN_WALLET_ADDR: WalletAddress = {
+      id: 'wa-1', walletId: WALLET.id, originId: 'origin-1', originName: 'Poupança',
+      address: ORIGIN_ADDR, path: "m/84'/0'/1'/0/0", accountIndex: 1,
+      chain: 'receive', index: 0, status: 'received', totalReceivedSats: 500_000,
+      totalSentSats: 0, txCount: 1, incomingTxCount: 1, outgoingTxCount: 0,
+      hasUtxos: true, isFrozen: false, createdAt: '2026-01-01T00:00:00Z', usedAt: null, lastSyncedAt: null,
+    };
+
+    const ORIGIN_UTXO: Utxo = { txid: 'o', vout: 0, valueSats: 500_000, address: ORIGIN_ADDR, isConfirmed: true };
+    const OTHER_UTXO:  Utxo = { txid: 'x', vout: 0, valueSats: 800_000, address: OTHER_ADDR,  isConfirmed: true };
+
+    it('shows only origin balance when originId is provided', async () => {
+      mockListUtxos.mockResolvedValue([ORIGIN_UTXO, OTHER_UTXO]);
+      mockListAddresses.mockResolvedValue([ORIGIN_WALLET_ADDR]);
+
+      const { result } = renderHook(() => useSendBitcoin({ originId: 'origin-1' }));
+      await waitFor(() => expect(result.current.availableBalanceSats).toBe(500_000));
+    });
+
+    it('shows total balance when no originId', async () => {
+      mockListUtxos.mockResolvedValue([ORIGIN_UTXO, OTHER_UTXO]);
+      mockListAddresses.mockResolvedValue([ORIGIN_WALLET_ADDR]);
+
+      const { result } = renderHook(() => useSendBitcoin());
+      await waitFor(() => expect(result.current.availableBalanceSats).toBe(1_300_000));
+    });
+
+    it('passes allowedAddresses to preview when originId is set', async () => {
+      mockListUtxos.mockResolvedValue([ORIGIN_UTXO, OTHER_UTXO]);
+      mockListAddresses.mockResolvedValue([ORIGIN_WALLET_ADDR]);
+
+      const { result } = renderHook(() => useSendBitcoin({ originId: 'origin-1' }));
+      await waitFor(() => expect(result.current.availableBalanceSats).toBe(500_000));
+
+      act(() => {
+        result.current.setToAddress(VALID_ADDRESS);
+        result.current.setAmountSats('100000');
+      });
+
+      await act(async () => { await result.current.reviewTransaction(); });
+
+      expect(mockPreview).toHaveBeenCalledWith(
+        expect.objectContaining({ allowedAddresses: [ORIGIN_ADDR] }),
+      );
+    });
+
+    it('passes allowedAddresses to send when originId is set', async () => {
+      const BROADCAST_RESULT = {
+        txid: 'deadbeef' + '00'.repeat(28),
+        transaction: {
+          id: 'deadbeef' + '00'.repeat(28), txid: 'deadbeef' + '00'.repeat(28),
+          amountSats: 100_000, feeSats: 900, direction: 'outgoing' as const,
+          status: 'pending' as const, createdAt: new Date().toISOString(),
+        },
+      };
+      mockSend.mockResolvedValue(BROADCAST_RESULT);
+      mockListUtxos.mockResolvedValue([ORIGIN_UTXO, OTHER_UTXO]);
+      mockListAddresses.mockResolvedValue([ORIGIN_WALLET_ADDR]);
+
+      const { result } = renderHook(() => useSendBitcoin({ originId: 'origin-1' }));
+      await waitFor(() => expect(result.current.availableBalanceSats).toBe(500_000));
+
+      act(() => {
+        result.current.setToAddress(VALID_ADDRESS);
+        result.current.setAmountSats('100000');
+      });
+
+      await act(async () => { await result.current.sendTransaction(); });
+
+      expect(mockSend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          allowedAddresses: [ORIGIN_ADDR],
+          changeOriginId: 'origin-1',
+        }),
+      );
     });
   });
 
@@ -204,6 +295,7 @@ describe('useSendBitcoin', () => {
           walletId: WALLET.id,
           toAddress: VALID_ADDRESS,
           amountSats: 100_000,
+          allowedAddresses: undefined,
         }),
       );
       expect(result.current.preview).toEqual(PREVIEW);
@@ -362,6 +454,7 @@ describe('useSendBitcoin', () => {
           walletId: WALLET.id,
           toAddress: VALID_ADDRESS,
           amountSats: 100_000,
+          allowedAddresses: undefined,
         }),
       );
       expect(result.current.sentResult).toEqual(BROADCAST_RESULT);

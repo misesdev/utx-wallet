@@ -258,6 +258,14 @@ export function WalletListScreen() {
     navigation.navigate(AppRoutes.ImportWallet, { network: activeTab });
   }
 
+  function handleOpenGlobalSettings() {
+    navigation.navigate(AppRoutes.GlobalSettings);
+  }
+
+  function handleScanImportQr() {
+    navigation.navigate(AppRoutes.ScanWalletQr, { network: activeTab });
+  }
+
   async function handleConfirmDelete() {
     if (!pendingDelete) return;
     setIsDeleting(true);
@@ -321,7 +329,7 @@ export function WalletListScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
             styles.list,
-            { paddingBottom: Math.max(insets.bottom, 16) + 32 },
+            { paddingBottom: Math.max(insets.bottom, 16) + 112 },
           ]}
         >
           {filtered.length === 0 ? (
@@ -343,12 +351,52 @@ export function WalletListScreen() {
         </ScrollView>
       )}
 
+
+      {/* Floating bottom dock */}
+      <View
+        style={[styles.dockWrap, { paddingBottom: Math.max(insets.bottom, 16) }]}
+        pointerEvents="box-none"
+      >
+        <View
+          style={[
+            styles.dock,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.borderHighlight,
+            },
+            theme.shadows.elevated,
+          ]}
+        >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('walletList.globalSettings')}
+            testID="wallet-list-global-settings"
+            onPress={handleOpenGlobalSettings}
+            style={({ pressed }) => [styles.dockBtn, { opacity: pressed ? 0.65 : 1 }]}
+          >
+            <AppIcon name="settings" size={22} color={theme.colors.textMuted} />
+          </Pressable>
+
+          <View style={[styles.dockDivider, { backgroundColor: theme.colors.border }]} />
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('walletList.scanImport')}
+            testID="wallet-list-scan-import"
+            onPress={handleScanImportQr}
+            style={({ pressed }) => [styles.dockBtn, { opacity: pressed ? 0.65 : 1 }]}
+          >
+            <AppIcon name="scan" size={22} color={theme.colors.textMuted} />
+          </Pressable>
+        </View>
+      </View>
+
       {/* Delete confirmation */}
       <AppConfirmModal
         visible={!!pendingDelete}
         title={t('walletList.deleteTitle')}
         message={t('walletList.deleteMessage', { name: pendingDelete?.name ?? '' })}
-        confirmLabel="Delete"
+        confirmLabel={t('common.delete')}
         variant="danger"
         isLoading={isDeleting}
         onConfirm={handleConfirmDelete}
@@ -529,5 +577,34 @@ const styles = StyleSheet.create({
   emptyBtnPrimaryText: {
     color: '#fff',
     fontWeight: '700',
+  },
+  dockWrap: {
+    bottom: 10,
+    left: 0,
+    paddingHorizontal: 28,
+    position: 'absolute',
+    right: 0,
+    alignItems: "center"
+  },
+  dock: {
+    alignItems: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+    maxWidth: 200,
+  },
+  dockBtn: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  dockDivider: {
+    alignSelf: 'stretch',
+    marginVertical: 8,
+    width: StyleSheet.hairlineWidth,
   },
 });

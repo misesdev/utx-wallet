@@ -9,6 +9,8 @@ import { ImportWalletUseCase } from '../../domain/usecases/wallet/ImportWalletUs
 import { LoadWalletsUseCase } from '../../domain/usecases/wallet/LoadWalletsUseCase';
 import { SelectWalletUseCase } from '../../domain/usecases/wallet/SelectWalletUseCase';
 import { DeleteWalletUseCase } from '../../domain/usecases/wallet/DeleteWalletUseCase';
+import { RenameWalletUseCase } from '../../domain/usecases/wallet/RenameWalletUseCase';
+import { GetWalletSeedUseCase } from '../../domain/usecases/wallet/GetWalletSeedUseCase';
 import { LoadTransactionsUseCase } from '../../domain/usecases/wallet/LoadTransactionsUseCase';
 import { LoadUtxosUseCase } from '../../domain/usecases/wallet/LoadUtxosUseCase';
 import { SyncWalletUseCase } from '../../domain/usecases/wallet/SyncWalletUseCase';
@@ -23,6 +25,8 @@ export class WalletService {
     private readonly loadWalletsUseCase: LoadWalletsUseCase,
     private readonly selectWalletUseCase: SelectWalletUseCase,
     private readonly deleteWalletUseCase: DeleteWalletUseCase,
+    private readonly renameWalletUseCase: RenameWalletUseCase,
+    private readonly getWalletSeedUseCase: GetWalletSeedUseCase,
     private readonly loadTransactionsUseCase: LoadTransactionsUseCase,
     private readonly loadUtxosUseCase: LoadUtxosUseCase,
     private readonly syncWalletUseCase: SyncWalletUseCase,
@@ -57,6 +61,14 @@ export class WalletService {
 
   deleteWallet(id: string): Promise<void> {
     return this.deleteWalletUseCase.execute(id);
+  }
+
+  renameWallet(id: string, name: string): Promise<Wallet> {
+    return this.renameWalletUseCase.execute(id, name);
+  }
+
+  getWalletSeed(walletId: string): Promise<{ mnemonic: string; passphrase?: string } | null> {
+    return this.getWalletSeedUseCase.execute(walletId);
   }
 
   listTransactions(walletId: string): Promise<Transaction[]> {

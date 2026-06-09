@@ -22,6 +22,8 @@ import { LoadWalletsUseCase } from '../../core/domain/usecases/wallet/LoadWallet
 import { LoadTransactionsUseCase } from '../../core/domain/usecases/wallet/LoadTransactionsUseCase';
 import { LoadUtxosUseCase } from '../../core/domain/usecases/wallet/LoadUtxosUseCase';
 import { MarkAddressUsedUseCase } from '../../core/domain/usecases/wallet/MarkAddressUsedUseCase';
+import { RenameWalletUseCase } from '../../core/domain/usecases/wallet/RenameWalletUseCase';
+import { GetWalletSeedUseCase } from '../../core/domain/usecases/wallet/GetWalletSeedUseCase';
 import { SelectWalletUseCase } from '../../core/domain/usecases/wallet/SelectWalletUseCase';
 import { SyncWalletUseCase } from '../../core/domain/usecases/wallet/SyncWalletUseCase';
 import { SyncUtxosUseCase } from '../../core/domain/usecases/wallet/SyncUtxosUseCase';
@@ -35,6 +37,7 @@ import { PreviewTransactionUseCase } from '../../core/domain/usecases/transactio
 import { BuildTransactionUseCase } from '../../core/domain/usecases/transaction/BuildTransactionUseCase';
 import { SignTransactionUseCase } from '../../core/domain/usecases/transaction/SignTransactionUseCase';
 import { BroadcastTransactionUseCase } from '../../core/domain/usecases/transaction/BroadcastTransactionUseCase';
+import { AccelerateTransactionUseCase } from '../../core/domain/usecases/transaction/AccelerateTransactionUseCase';
 import { CreateAddressOriginUseCase } from '../../core/domain/usecases/address/CreateAddressOriginUseCase';
 import { ListAddressOriginsUseCase } from '../../core/domain/usecases/address/ListAddressOriginsUseCase';
 import { GetNextReceiveAddressUseCase } from '../../core/domain/usecases/address/GetNextReceiveAddressUseCase';
@@ -88,6 +91,7 @@ import { UtxoStorage } from '../../core/infrastructure/storage/UtxoStorage';
 import { WalletKeyStorage } from '../../core/infrastructure/storage/WalletKeyStorage';
 import { WalletStorage } from '../../core/infrastructure/storage/WalletStorage';
 import { DEFAULT_NETWORK } from '../../shared/constants/networks';
+import { AccelerateProvider } from './AccelerateProvider';
 import { AddressManagerProvider } from './AddressManagerProvider';
 import { AddressProvider } from './AddressProvider';
 import { NetworkProvider } from './NetworkProvider';
@@ -110,6 +114,7 @@ type Dependencies = {
   securityService: SecurityService;
   getCurrentLanguage: GetCurrentLanguageUseCase;
   setLanguageUseCase: SetLanguageUseCase;
+  accelerateUseCase: AccelerateTransactionUseCase;
 };
 
 export function AppProvider({ children }: PropsWithChildren) {
@@ -214,7 +219,17 @@ export function AppProvider({ children }: PropsWithChildren) {
       new ImportWalletUseCase(walletRepository),
       new LoadWalletsUseCase(walletRepository),
       new SelectWalletUseCase(walletRepository),
-      new DeleteWalletUseCase(walletRepository),
+      new DeleteWalletUseCase(
+        walletRepository,
+        utxoRepository,
+        transactionRepository,
+        walletAddressRepository,
+        addressOriginRepository,
+        addressRepository,
+        syncStateStorage,
+      ),
+      new RenameWalletUseCase(walletRepository),
+      new GetWalletSeedUseCase(walletRepository),
       new LoadTransactionsUseCase(transactionRepository),
       new LoadUtxosUseCase(utxoRepository),
       syncWalletUseCase,
@@ -247,13 +262,22 @@ export function AppProvider({ children }: PropsWithChildren) {
     );
     const signTransactionUseCase = new SignTransactionUseCase(walletSigner);
 
+    const broadcastTransactionUseCase = new BroadcastTransactionUseCase(nodeRepository, transactionRepository, utxoRepository);
+
     const sendService = new SendService(
       new ValidateAddressUseCase(),
       new FetchFeeRatesUseCase(nodeRepository),
       new PreviewTransactionUseCase(utxoRepository),
       buildTransactionUseCase,
       signTransactionUseCase,
-      new BroadcastTransactionUseCase(nodeRepository, transactionRepository, utxoRepository),
+      broadcastTransactionUseCase,
+    );
+
+    const accelerateUseCase = new AccelerateTransactionUseCase(
+      nodeRepository,
+      feeEstimation,
+      signTransactionUseCase,
+      broadcastTransactionUseCase,
     );
 
     const offlineTransactionStorage = new OfflineTransactionStorage(db);
@@ -299,10 +323,11 @@ export function AppProvider({ children }: PropsWithChildren) {
       securityService,
       getCurrentLanguage,
       setLanguageUseCase,
+      accelerateUseCase,
     };
   }
 
-  const { walletService, networkService, addressService, addressManagerService, sendService, transactionHistoryService, offlineModeService, securityService, getCurrentLanguage, setLanguageUseCase } = depsRef.current;
+  const { walletService, networkService, addressService, addressManagerService, sendService, transactionHistoryService, offlineModeService, securityService, getCurrentLanguage, setLanguageUseCase, accelerateUseCase } = depsRef.current;
 
   return (
     <LanguageProvider getCurrentLanguage={getCurrentLanguage} setLanguage={setLanguageUseCase}>
@@ -314,11 +339,13 @@ export function AppProvider({ children }: PropsWithChildren) {
             <AddressManagerProvider service={addressManagerService}>
             <AddressProvider addressService={addressService}>
               <SendProvider sendService={sendService}>
+                <AccelerateProvider useCase={accelerateUseCase}>
                 <TransactionHistoryProvider service={transactionHistoryService}>
                   <OfflineModeProvider service={offlineModeService}>
                     {children}
                   </OfflineModeProvider>
                 </TransactionHistoryProvider>
+                </AccelerateProvider>
               </SendProvider>
             </AddressProvider>
             </AddressManagerProvider>

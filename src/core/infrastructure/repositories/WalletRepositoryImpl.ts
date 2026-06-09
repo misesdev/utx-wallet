@@ -8,9 +8,11 @@ import { NetworkType } from '../../domain/value-objects/NetworkType';
 import { generateId } from '../../../shared/utils/generateId';
 import { WalletStorage } from '../storage/WalletStorage';
 import { WalletKeyStorage } from '../storage/WalletKeyStorage';
+import { WalletImportFormatDetector } from '../../domain/services/WalletImportFormatDetector';
 
 export class WalletRepositoryImpl implements WalletRepository {
   private writeQueue: Promise<unknown> = Promise.resolve();
+  private readonly importFormatDetector = new WalletImportFormatDetector();
 
   constructor(
     private readonly walletStorage: WalletStorage,
@@ -50,20 +52,18 @@ export class WalletRepositoryImpl implements WalletRepository {
   async import(name: string, secret: string, network?: BitcoinNetwork, passphrase?: string): Promise<Wallet> {
     const trimmed = secret.trim();
     if (!trimmed) {
-      throw new AppError('Seed phrase or extended key is required', 'INVALID_SECRET');
+      throw new AppError('Seed phrase, private key or extended key is required', 'INVALID_SECRET');
     }
 
-    try {
-      // BIP39 mnemonics are network-agnostic; purpose:44 avoids zpub derivation issues
-      HDWallet.import(trimmed, undefined, { network: 'testnet', purpose: 44 });
-    } catch {
+    const detected = this.importFormatDetector.detect(trimmed, network);
+    if (!detected) {
       throw new AppError(
-        'Invalid input. Provide a valid BIP39 mnemonic or extended key (xpub/xpriv).',
+        'Invalid input. Provide a valid seed phrase, WIF/private key, xpub or xpriv.',
         'INVALID_SECRET',
       );
     }
 
-    const resolvedNetwork = network ?? DEFAULT_NETWORK;
+    const resolvedNetwork = detected.network ?? network ?? DEFAULT_NETWORK;
     const normalizedPassphrase = passphrase?.trim() || undefined;
     return this.serialize(async () => {
       const wallets = await this.walletStorage.load();
@@ -74,11 +74,16 @@ export class WalletRepositoryImpl implements WalletRepository {
         id: generateId(),
         name,
         network: resolvedNetwork,
-        status: 'locked',
+        status: detected.isWatchOnly ? 'watch-only' : 'locked',
         createdAt: new Date().toISOString(),
       };
       await this.walletStorage.save([...wallets, wallet]);
-      await this.walletKeyStorage.storeKey(wallet.id, trimmed, normalizedPassphrase);
+      await this.walletKeyStorage.storeKey(
+        wallet.id,
+        detected.normalizedSecret,
+        normalizedPassphrase,
+        detected.storageKind,
+      );
       return wallet;
     });
   }
@@ -90,6 +95,30 @@ export class WalletRepositoryImpl implements WalletRepository {
   async findById(id: string): Promise<Wallet | null> {
     const wallets = await this.walletStorage.load();
     return wallets.find(w => w.id === id) ?? null;
+  }
+
+  async rename(id: string, name: string): Promise<Wallet> {
+    return this.serialize(async () => {
+      const wallets = await this.walletStorage.load();
+      const index = wallets.findIndex(w => w.id === id);
+      if (index === -1) {
+        throw new AppError(`Wallet not found: "${id}"`, 'WALLET_NOT_FOUND');
+      }
+      if (wallets.some(w => w.id !== id && w.name === name)) {
+        throw new AppError(`Wallet "${name}" already exists`, 'WALLET_EXISTS');
+      }
+      const updated = { ...wallets[index], name };
+      const newList = [...wallets];
+      newList[index] = updated;
+      await this.walletStorage.save(newList);
+      return updated;
+    });
+  }
+
+  async retrieveSeed(id: string): Promise<{ mnemonic: string; passphrase?: string } | null> {
+    const key = await this.walletKeyStorage.retrieveKey(id);
+    if (!key) return null;
+    return { mnemonic: key.mnemonic, passphrase: key.passphrase };
   }
 
   async delete(id: string): Promise<void> {

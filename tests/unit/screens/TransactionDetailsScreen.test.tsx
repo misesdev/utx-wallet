@@ -36,7 +36,22 @@ const TX_IN: TransactionDetail = {
   explorerUrl: `https://mempool.space/testnet4/tx/${TXID_IN}`,
 };
 
+const TXID_OUT_PENDING = 'bbbbcccc' + '00'.repeat(28);
+const TX_OUT_PENDING: TransactionDetail = {
+  id: 'tx-out-pending',
+  txid: TXID_OUT_PENDING,
+  amountSats: 75_000,
+  feeSats: 500,
+  direction: 'outgoing',
+  status: 'pending',
+  isConfirmed: false,
+  address: 'bc1qrecipientaddress000000000000000000000',
+  createdAt: '2026-06-03T10:00:00.000Z',
+  explorerUrl: `https://mempool.space/testnet4/tx/${TXID_OUT_PENDING}`,
+};
+
 const mockRefresh = jest.fn().mockResolvedValue(undefined);
+const mockNavigate = jest.fn();
 
 const BASE_STATE: UseTransactionDetailsState = {
   transactions: [TX_OUT, TX_IN],
@@ -57,7 +72,7 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 
 jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ navigate: jest.fn(), goBack: jest.fn() }),
+  useNavigation: () => ({ navigate: mockNavigate, goBack: jest.fn() }),
   useRoute: () => ({ params: mockRouteParams }),
 }));
 
@@ -214,6 +229,37 @@ describe('TransactionDetailsScreen', () => {
       const screen = renderWithTheme(<TransactionDetailsScreen />);
       fireEvent.press(screen.getByTestId('btn-refresh'));
       expect(mockRefresh).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('accelerate button (RBF)', () => {
+    it('shows accelerate button for pending outgoing transactions', () => {
+      mockState = { ...BASE_STATE, transactions: [TX_OUT_PENDING] };
+      const screen = renderWithTheme(<TransactionDetailsScreen />);
+      expect(screen.getByTestId('tx-accelerate-tx-out-pending')).toBeTruthy();
+    });
+
+    it('does not show accelerate button for confirmed outgoing transactions', () => {
+      const screen = renderWithTheme(<TransactionDetailsScreen />);
+      expect(screen.queryByTestId('tx-accelerate-tx-out')).toBeNull();
+    });
+
+    it('does not show accelerate button for incoming transactions', () => {
+      const screen = renderWithTheme(<TransactionDetailsScreen />);
+      expect(screen.queryByTestId('tx-accelerate-tx-in')).toBeNull();
+    });
+
+    it('navigates to AccelerateTransaction when accelerate button is pressed', () => {
+      mockState = { ...BASE_STATE, transactions: [TX_OUT_PENDING] };
+      const screen = renderWithTheme(<TransactionDetailsScreen />);
+      fireEvent.press(screen.getByTestId('tx-accelerate-tx-out-pending'));
+      expect(mockNavigate).toHaveBeenCalledWith('AccelerateTransaction', {
+        txid: TXID_OUT_PENDING,
+        toAddress: TX_OUT_PENDING.address,
+        amountSats: TX_OUT_PENDING.amountSats,
+        feeSats: TX_OUT_PENDING.feeSats,
+        isConfirmed: false,
+      });
     });
   });
 });
