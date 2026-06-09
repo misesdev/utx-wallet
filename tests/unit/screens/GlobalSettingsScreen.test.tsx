@@ -61,9 +61,9 @@ describe('GlobalSettingsScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.SecuritySettings);
   });
 
-  it('navigates to node settings', () => {
+  it('navigates to manage nodes from global settings', () => {
     const screen = renderWithTheme(<GlobalSettingsScreen />);
     fireEvent.press(screen.getByTestId('global-settings-node'));
-    expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.NodeSettings);
+    expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.ManageNodes);
   });
 });

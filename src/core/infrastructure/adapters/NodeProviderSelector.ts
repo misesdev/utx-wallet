@@ -9,6 +9,7 @@ export class NodeProviderSelector implements NodeRepository, BlockchainProvider 
     private readonly configRepository: NodeRepository,
     private readonly publicProvider: BlockchainProvider,
     private readonly personalProvider: BlockchainProvider & NodeRepository & NodeConnectionTester,
+    private readonly multiNodeProvider: BlockchainProvider,
   ) {}
 
   getNetworkConfig(): Promise<NetworkConfig> {
@@ -62,6 +63,6 @@ export class NodeProviderSelector implements NodeRepository, BlockchainProvider 
 
   private async selectProvider(): Promise<BlockchainProvider> {
     const config = await this.getNetworkConfig();
-    return config.nodeMode === 'personal-node' ? this.personalProvider : this.publicProvider;
+    return config.nodeMode === 'personal-node' ? this.multiNodeProvider : this.publicProvider;
   }
 }

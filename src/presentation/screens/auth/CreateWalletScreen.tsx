@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppRoutes, AppStackParamList } from '../../../app/navigation/routes';
+import { AppRoutes } from '../../../app/navigation/routes';
+import type { AppStackParamList } from '../../../app/navigation/routes';
 import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
 import { FormInput } from '../../components/forms/FormInput';
@@ -83,7 +84,14 @@ export function CreateWalletScreen() {
           <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
         <AppText variant="subtitle" style={styles.headerTitle}>{t('createWallet.title')}</AppText>
-        <View style={styles.backBtn} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('common.info')}
+          onPress={() => navigation.navigate(AppRoutes.WalletPolicy)}
+          style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          <AppIcon name="info" size={22} color={theme.colors.textMuted} />
+        </Pressable>
       </View>
 
       {/* Network badge */}
@@ -104,10 +112,8 @@ export function CreateWalletScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: Math.max(insets.bottom, 16) + 24 },
-        ]}
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
       >
         {/* Name card */}
         <View style={[styles.card, { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border, borderRadius: theme.radii.xl }]}>
@@ -247,7 +253,19 @@ export function CreateWalletScreen() {
           </>
         )}
 
-        {/* CTA */}
+      </ScrollView>
+
+      {/* Sticky footer CTA */}
+      <View
+        style={[
+          styles.footer,
+          {
+            backgroundColor: theme.colors.background,
+            borderTopColor: theme.colors.border,
+            paddingBottom: Math.max(insets.bottom, 16),
+          },
+        ]}
+      >
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('createWallet.generateSeed')}
@@ -266,7 +284,7 @@ export function CreateWalletScreen() {
             {t('createWallet.generateSeed')}
           </AppText>
         </Pressable>
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -320,8 +338,19 @@ const styles = StyleSheet.create({
   },
 
   // Scroll
+  scroll: {
+    flex: 1,
+  },
   content: {
     gap: 16,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+
+  // Footer
+  footer: {
+    borderTopWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 20,
     paddingTop: 12,
   },
@@ -410,7 +439,6 @@ const styles = StyleSheet.create({
   // CTA
   cta: {
     alignItems: 'center',
-    marginTop: 8,
     paddingVertical: 16,
   },
   ctaText: {

@@ -4,26 +4,16 @@ import { SafeModeScreen } from '../../../src/presentation/screens/safe-mode/Safe
 import { renderWithTheme } from '../../mocks/renderWithProviders';
 import type { UseSafeModeState } from '../../../src/presentation/hooks/useSafeMode';
 
-const mockActivate = jest.fn().mockResolvedValue('connected');
+const mockActivate = jest.fn().mockResolvedValue(undefined);
 const mockDeactivate = jest.fn().mockResolvedValue(undefined);
-
-const BASE_FORM = {
-  url: '',
-  port: '',
-  authToken: '',
-  network: 'testnet4' as const,
-};
+const mockNavigate = jest.fn();
 
 const BASE_STATE: UseSafeModeState = {
-  form: BASE_FORM,
   isSafeModeEnabled: false,
+  activeNodeCount: 0,
+  activeNetworkNodeCount: 0,
   status: 'disconnected',
   statusLabel: 'desconectado',
-  setUrl: jest.fn(),
-  setPort: jest.fn(),
-  setAuthToken: jest.fn(),
-  setNetwork: jest.fn(),
-  testConnection: jest.fn().mockResolvedValue('disconnected'),
   activateSafeMode: mockActivate,
   deactivateSafeMode: mockDeactivate,
 };
@@ -38,6 +28,10 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
+jest.mock('@react-navigation/native', () => ({
+  useNavigation: () => ({ navigate: mockNavigate, goBack: jest.fn() }),
+}));
+
 describe('SafeModeScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -45,25 +39,31 @@ describe('SafeModeScreen', () => {
   });
 
   describe('Inactive state', () => {
-    it('shows "Modo seguro inativo" when safe mode is off', () => {
+    it('shows "safeMode.inactive" when safe mode is off', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
       expect(screen.getByText('safeMode.inactive')).toBeTruthy();
     });
 
     it('shows the activate button when safe mode is off', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
-      expect(screen.getByText('safeMode.enable')).toBeTruthy();
+      expect(screen.getByTestId('btn-enable-safe-mode')).toBeTruthy();
     });
 
     it('does not show the deactivate button when safe mode is off', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
-      expect(screen.queryByText('safeMode.disable')).toBeNull();
+      expect(screen.queryByTestId('btn-disable-safe-mode')).toBeNull();
     });
 
     it('calls activateSafeMode when activate button is pressed', () => {
+      mockState = { ...BASE_STATE, activeNetworkNodeCount: 1 };
       const screen = renderWithTheme(<SafeModeScreen />);
-      fireEvent.press(screen.getByText('safeMode.enable'));
+      fireEvent.press(screen.getByTestId('btn-enable-safe-mode'));
       expect(mockActivate).toHaveBeenCalledTimes(1);
+    });
+
+    it('enable button is disabled when no nodes configured for the network', () => {
+      const screen = renderWithTheme(<SafeModeScreen />);
+      expect(screen.getByTestId('btn-enable-safe-mode').props.accessibilityState?.disabled).toBe(true);
     });
   });
 
@@ -72,53 +72,63 @@ describe('SafeModeScreen', () => {
       mockState = {
         ...BASE_STATE,
         isSafeModeEnabled: true,
+        activeNetworkNodeCount: 2,
         status: 'connected',
         statusLabel: 'conectado',
-        form: { ...BASE_FORM, url: 'http://my-node.local' },
       };
     });
 
-    it('shows "Modo seguro ativo" when safe mode is on', () => {
+    it('shows "safeMode.active" when safe mode is on', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
       expect(screen.getByText('safeMode.active')).toBeTruthy();
     });
 
     it('shows the deactivate button when safe mode is on', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
-      expect(screen.getByText('safeMode.disable')).toBeTruthy();
+      expect(screen.getByTestId('btn-disable-safe-mode')).toBeTruthy();
     });
 
     it('does not show the activate button when safe mode is on', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
-      expect(screen.queryByText('safeMode.enable')).toBeNull();
+      expect(screen.queryByTestId('btn-enable-safe-mode')).toBeNull();
     });
 
     it('calls deactivateSafeMode when deactivate button is pressed', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
-      fireEvent.press(screen.getByText('safeMode.disable'));
+      fireEvent.press(screen.getByTestId('btn-disable-safe-mode'));
       expect(mockDeactivate).toHaveBeenCalledTimes(1);
-    });
-
-    it('shows the node URL when configured', () => {
-      const screen = renderWithTheme(<SafeModeScreen />);
-      expect(screen.getByText('http://my-node.local')).toBeTruthy();
     });
   });
 
   describe('Status display', () => {
     it('shows the status label', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
+      expect(screen.getByTestId('safe-mode-status-label')).toBeTruthy();
       expect(screen.getByText('desconectado')).toBeTruthy();
     });
 
-    it('shows "não configurado" when node URL is empty', () => {
+    it('shows no nodes configured when count is zero', () => {
       const screen = renderWithTheme(<SafeModeScreen />);
-      expect(screen.getByText('não configurado')).toBeTruthy();
+      expect(screen.getByText('safeMode.noNodesConfigured')).toBeTruthy();
     });
 
-    it('shows the network from the form', () => {
+    it('shows nodes configured count when nodes exist', () => {
+      mockState = { ...BASE_STATE, activeNetworkNodeCount: 3 };
       const screen = renderWithTheme(<SafeModeScreen />);
-      expect(screen.getByText('testnet4')).toBeTruthy();
+      expect(screen.getByTestId('safe-mode-node-count')).toBeTruthy();
+    });
+  });
+
+  describe('Manage nodes link', () => {
+    it('renders the manage nodes button', () => {
+      const screen = renderWithTheme(<SafeModeScreen />);
+      expect(screen.getByTestId('btn-manage-nodes')).toBeTruthy();
+    });
+
+    it('navigates to ManageNodes when manage nodes is pressed', () => {
+      const screen = renderWithTheme(<SafeModeScreen />);
+      fireEvent.press(screen.getByTestId('btn-manage-nodes'));
+      expect(mockNavigate).toHaveBeenCalledWith('ManageNodes');
     });
   });
 });

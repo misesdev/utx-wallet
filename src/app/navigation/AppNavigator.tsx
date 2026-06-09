@@ -10,6 +10,7 @@ import { SafeModeScreen } from '../../presentation/screens/safe-mode/SafeModeScr
 import { BackupSettingsScreen } from '../../presentation/screens/settings/BackupSettingsScreen';
 import { GlobalSettingsScreen } from '../../presentation/screens/settings/GlobalSettingsScreen';
 import { NodeSettingsScreen } from '../../presentation/screens/settings/NodeSettingsScreen';
+import { ManageNodesScreen } from '../../presentation/screens/settings/ManageNodesScreen';
 import { SecuritySettingsScreen } from '../../presentation/screens/settings/SecuritySettingsScreen';
 import { LanguageScreen } from '../../presentation/screens/settings/LanguageScreen';
 import { SettingsScreen } from '../../presentation/screens/settings/SettingsScreen';
@@ -32,6 +33,11 @@ import { WalletDetailsScreen } from '../../presentation/screens/wallet/WalletDet
 import { WalletListScreen } from '../../presentation/screens/wallet/WalletListScreen';
 import { ConfirmQrWalletImportScreen } from '../../presentation/screens/qr/ConfirmQrWalletImportScreen';
 import { QrWalletScannerScreen } from '../../presentation/screens/qr/QrWalletScannerScreen';
+import { ScanAddressQrScreen } from '../../presentation/screens/qr/ScanAddressQrScreen';
+import { NodeTutorialScreen } from '../../presentation/screens/info/NodeTutorialScreen';
+import { WalletPolicyScreen } from '../../presentation/screens/info/WalletPolicyScreen';
+import { AddressPolicyScreen } from '../../presentation/screens/info/AddressPolicyScreen';
+import { AccountPolicyScreen } from '../../presentation/screens/info/AccountPolicyScreen';
 import type { AppStackParamList } from './routes';
 import { AppRoutes } from './routes';
 
@@ -65,6 +71,8 @@ export function AppNavigator() {
         <Stack.Screen name={AppRoutes.ViewSeed} component={ViewSeedScreen} />
         <Stack.Screen name={AppRoutes.SecuritySettings} component={SecuritySettingsScreen} />
         <Stack.Screen name={AppRoutes.NodeSettings} component={NodeSettingsScreen} />
+        <Stack.Screen name={AppRoutes.NodeTutorial} component={NodeTutorialScreen} />
+        <Stack.Screen name={AppRoutes.ManageNodes} component={ManageNodesScreen} />
         <Stack.Screen name={AppRoutes.BackupSettings} component={BackupSettingsScreen} />
         <Stack.Screen name={AppRoutes.OfflineMode} component={OfflineModeScreen} />
         <Stack.Screen name={AppRoutes.SafeMode} component={SafeModeScreen} />
@@ -72,7 +80,11 @@ export function AppNavigator() {
         <Stack.Screen name={AppRoutes.GlobalSettings} component={GlobalSettingsScreen} />
         <Stack.Screen name={AppRoutes.Donation} component={DonationScreen} />
         <Stack.Screen name={AppRoutes.ScanWalletQr} component={QrWalletScannerScreen} />
+        <Stack.Screen name={AppRoutes.ScanAddressQr} component={ScanAddressQrScreen} />
         <Stack.Screen name={AppRoutes.ConfirmQrWalletImport} component={ConfirmQrWalletImportScreen} />
+        <Stack.Screen name={AppRoutes.WalletPolicy} component={WalletPolicyScreen} />
+        <Stack.Screen name={AppRoutes.AddressPolicy} component={AddressPolicyScreen} />
+        <Stack.Screen name={AppRoutes.AccountPolicy} component={AccountPolicyScreen} />
       </Stack.Navigator>
     </CreateWalletProvider>
   );

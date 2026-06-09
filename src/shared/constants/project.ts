@@ -1,4 +1,4 @@
 export const PROJECT_DONATION = {
-  bitcoinAddress: 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4',
+  bitcoinAddress: 'bc1q208vgegeaekmcu5225rs37zyp20fmnmc69y5av',
   githubUrl: 'https://github.com/misesdev/utx-wallet',
 } as const;

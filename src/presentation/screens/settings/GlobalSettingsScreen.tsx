@@ -14,7 +14,7 @@ type GlobalSettingsRoute = keyof Pick<
   | 'Donation'
   | 'LanguageSettings'
   | 'SecuritySettings'
-  | 'NodeSettings'
+  | 'ManageNodes'
   | 'OfflineMode'
   | 'SafeMode'
 >;
@@ -52,7 +52,7 @@ const GROUPS: NavGroup[] = [
   {
     labelKey: 'globalSettings.groupNetwork',
     items: [
-      { icon: 'node', titleKey: 'settings.node', descKey: 'settings.nodeDesc', route: 'NodeSettings', testID: 'global-settings-node' },
+      { icon: 'node', titleKey: 'settings.node', descKey: 'settings.nodeDesc', route: 'ManageNodes', testID: 'global-settings-node' },
     ],
   },
   {

@@ -1,34 +1,23 @@
 ---
 name: project-wallet-list
-description: "WalletListScreen as initial app screen; network tabs (mainnet/testnet3/testnet4/node); wallet cards with delete; 1085 tests passing"
+description: "WalletListScreen with elegant WalletCard showing balance/accounts/UTXOs; delete removed from card (settings only); 1588 tests passing"
 metadata:
   type: project
 ---
 
-WalletListScreen is now the first screen users see. Replaces the old wallet-count condition that switched between AppNavigator and AuthNavigator.
+WalletListScreen is the first screen users see. Uses redesigned WalletCard with async stat loading.
 
-**Why:** User wanted multi-wallet support from the start — list all wallets, filter by network, delete wallets, tap to open.
+**Why:** Multi-wallet UX with richer info at a glance; delete removed from card to prevent accidental deletions.
 
-**How to apply:** RootNavigator always shows AppNavigator (no AuthNavigator). WalletListScreen is the first Stack.Screen. CreateWalletProvider wraps AppNavigator so auth flow screens (CreateWallet, BackupSeed, ConfirmSeed, ImportWallet) are reachable from AppNavigator.
+**How to apply:** WalletCard shows a 3px top accent strip (orange=mainnet, purple=testnet), identity row with wallet icon + name + network badge + date, then a 3-stat footer (BALANCE / ACCOUNTS / UTXOs). Stats load asynchronously via `listUtxos` + `getOrigins` after `wallets` changes; show `—` while loading. Balance ≥1 BTC shows in BTC notation (4 decimals), otherwise sats with `toLocaleString`. Delete is accessible only from WalletSettingsScreen, not from the list.
 
-## Architecture changes
+## Architecture
 
-- `RootNavigator.tsx` — removed `wallets.length > 0` condition; always renders `<AppNavigator />`
-- `AppNavigator.tsx` — wrapped with `CreateWalletProvider`; WalletList is first screen; auth screens (CreateWallet, ImportWallet, BackupSeed, ConfirmSeed) added to AppNavigator
-- `routes.ts` — `AppStackParamList` and `AppRoutes` include WalletList, CreateWallet, ImportWallet, BackupSeed, ConfirmSeed
-- `BackupSeedScreen.tsx` — uses `AppRoutes.ConfirmSeed` (was `AuthRoutes.ConfirmSeed`)
-- `CreateWalletScreen.tsx` — uses `AppRoutes.BackupSeed` (was `AuthRoutes.BackupSeed`)
-- `ConfirmSeedScreen.tsx` — after save, `useEffect` detects `step==='saving' && !isLoading && !error`, calls `reset()` then navigates to `AppRoutes.WalletList`
-
-## WalletListScreen design
-
-- Network tabs: Mainnet | Testnet3 | Testnet4 | Node (filter wallets by network)
-- "Node" tab = wallets whose `network` is not mainnet/testnet3/testnet4 (catch-all)
-- Each wallet card: colored strip + icon + name + date + network badge + status badge + chevron
-- Delete: ✕ button on card → AppConfirmModal confirmation
-- Empty state: "No wallets yet" + "Create wallet" + "Import wallet" CTAs
-- Header: AppLogo + "Wallets" title + Import (↓) + Create (+) header buttons
+- `RootNavigator.tsx` — always renders `<AppNavigator />` (no auth gate)
+- `AppNavigator.tsx` — WalletList is first screen; wrapped with `CreateWalletProvider`
+- `WalletListScreen.tsx` — `WalletCard` + `StatCol` + `NetworkTabChip` + `EmptyState` subcomponents; summaries loaded in `useEffect([wallets])`
+- Tabs: Mainnet | Testnet (testnet/testnet3/testnet4 all mapped to Testnet tab)
 
 ## Test result
 
-1085 tests passing across 95 suites. Zero lint warnings.
+1588 tests passing, 126 suites. Zero lint/TypeScript warnings.

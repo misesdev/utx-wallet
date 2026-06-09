@@ -9,9 +9,10 @@ type AppScreenProps = PropsWithChildren<{
   subtitle?: string;
   scrollable?: boolean;
   testID?: string;
+  rightAction?: React.ReactNode;
 }>;
 
-export function AppScreen({ title, subtitle, scrollable = true, testID, children }: AppScreenProps) {
+export function AppScreen({ title, subtitle, scrollable = true, testID, rightAction, children }: AppScreenProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -29,7 +30,7 @@ export function AppScreen({ title, subtitle, scrollable = true, testID, children
         { backgroundColor: theme.colors.background, paddingTop: insets.top },
       ]}
     >
-      <AppHeader title={title} subtitle={subtitle} />
+      <AppHeader title={title} subtitle={subtitle} rightAction={rightAction} />
       {scrollable ? (
         <ScrollView
           showsVerticalScrollIndicator={false}

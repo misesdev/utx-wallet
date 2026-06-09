@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NoopScreenCaptureAdapter } from '../../../core/infrastructure/adapters/ScreenCaptureAdapter';
 import { AppIcon } from '../../components/base/AppIcon';
 import { AppText } from '../../components/base/AppText';
+import { SeedWordGrid } from '../../components/wallet/SeedWordGrid';
 import { PinInputModal } from '../../components/security/PinInputModal';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
@@ -151,24 +152,7 @@ export function ViewSeedScreen() {
               <AppText variant="caption" color="muted">{t('backupSeed.noCamera')}</AppText>
             </Pressable>
           ) : (
-            <View style={styles.seedGrid} testID="seed-grid">
-              {words.map((word, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.seedWord,
-                    {
-                      backgroundColor: theme.colors.surfaceMuted,
-                      borderColor: theme.colors.border,
-                      borderRadius: theme.radii.md,
-                    },
-                  ]}
-                >
-                  <AppText variant="caption" color="muted" style={styles.seedIndex}>{i + 1}</AppText>
-                  <AppText variant="body" style={styles.seedWordText}>{word}</AppText>
-                </View>
-              ))}
-            </View>
+            <SeedWordGrid words={words} testID="seed-grid" />
           )}
         </View>
 
@@ -265,30 +249,6 @@ const styles = StyleSheet.create({
   },
   revealTitle: {
     fontWeight: '700',
-  },
-  seedGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    padding: 16,
-  },
-  seedWord: {
-    alignItems: 'center',
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 6,
-    minWidth: '28%',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  seedIndex: {
-    fontWeight: '700',
-    minWidth: 18,
-    textAlign: 'right',
-  },
-  seedWordText: {
-    fontWeight: '600',
-    letterSpacing: 0.2,
   },
   tipsCard: {
     borderWidth: 1,

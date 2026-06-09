@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { AppCard } from '../../components/base/AppCard';
 import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,10 +9,11 @@ import { AppButton } from '../../components/base/AppButton';
 import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
 import { FeeSelector } from '../../components/wallet/FeeSelector';
+import { PinInputModal } from '../../components/security/PinInputModal';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
+import { useReauthenticate } from '../../hooks/useReauthenticate';
 import { useSendBitcoin } from '../../hooks/useSendBitcoin';
 import { useTheme } from '../../hooks/useTheme';
-import { TransactionReviewModal } from './TransactionReviewModal';
 import type { AppStackParamList } from '../../../app/navigation/routes';
 import { AppRoutes } from '../../../app/navigation/routes';
 
@@ -58,7 +59,6 @@ export function SendFeesScreen() {
     preview,
     isPreviewing,
     previewError,
-    isReviewVisible,
     isSending,
     sendError,
     sentResult,
@@ -69,12 +69,18 @@ export function SendFeesScreen() {
     setFeeTier,
     setCustomFeeRate,
     reviewTransaction,
-    openReview,
-    closeReview,
     sendTransaction,
     resetSend,
     setPayFee,
   } = useSendBitcoin({ originId, initialAddress, initialAmount });
+
+  const { requireAuth, pinModalVisible, pinError, submitPin, cancelAuth } = useReauthenticate();
+
+  const handleConfirmSend = useCallback(async () => {
+    const ok = await requireAuth();
+    if (!ok) return;
+    await sendTransaction();
+  }, [requireAuth, sendTransaction]);
 
   // Sync params into hook state if hook initialized before params resolved
   useEffect(() => {
@@ -271,20 +277,26 @@ export function SendFeesScreen() {
             <AppButton
               title={t('fees.confirmSend')}
               size="md"
-              onPress={openReview}
-              testID="btn-open-review"
+              onPress={handleConfirmSend}
+              loading={isSending}
+              disabled={isSending}
+              testID="btn-confirm-send"
             />
+            {sendError && (
+              <AppText variant="caption" color="danger" style={styles.center} testID="send-error">
+                {sendError}
+              </AppText>
+            )}
           </AppCard>
         )}
       </ScrollView>
 
-      <TransactionReviewModal
-        visible={isReviewVisible}
-        preview={preview}
-        isSending={isSending}
-        sendError={sendError}
-        onConfirm={sendTransaction}
-        onCancel={closeReview}
+      <PinInputModal
+        visible={pinModalVisible}
+        step="verify"
+        error={pinError}
+        onSubmit={submitPin}
+        onCancel={cancelAuth}
       />
     </View>
   );

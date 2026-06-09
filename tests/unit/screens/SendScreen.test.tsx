@@ -1,5 +1,6 @@
 import React from 'react';
-import { fireEvent } from '@testing-library/react-native';
+import { DeviceEventEmitter } from 'react-native';
+import { fireEvent, act } from '@testing-library/react-native';
 import { SendScreen } from '../../../src/presentation/screens/wallet/SendScreen';
 import { renderWithTheme } from '../../mocks/renderWithProviders';
 import type { SendBitcoinState } from '../../../src/presentation/hooks/useSendBitcoin';
@@ -158,6 +159,30 @@ describe('SendScreen', () => {
     });
   });
 
+  describe('QR scan', () => {
+    it('navigates to ScanAddressQr when QR button is pressed', () => {
+      const screen = renderWithTheme(<SendScreen />);
+      fireEvent.press(screen.getByTestId('btn-qr-scan'));
+      expect(mockNavigate).toHaveBeenCalledWith('ScanAddressQr');
+    });
+
+    it('sets address when bitcoinAddressScanned event is received', async () => {
+      renderWithTheme(<SendScreen />);
+      await act(async () => {
+        DeviceEventEmitter.emit('bitcoinAddressScanned', 'bc1qtest456');
+      });
+      expect(mockSetToAddress).toHaveBeenCalledWith('bc1qtest456');
+    });
+
+    it('trims whitespace from scanned address', async () => {
+      renderWithTheme(<SendScreen />);
+      await act(async () => {
+        DeviceEventEmitter.emit('bitcoinAddressScanned', '  bc1qtest456  ');
+      });
+      expect(mockSetToAddress).toHaveBeenCalledWith('bc1qtest456');
+    });
+  });
+
   describe('Next button', () => {
     it('is disabled when address is empty', () => {
       const screen = renderWithTheme(<SendScreen />);
@@ -186,6 +211,25 @@ describe('SendScreen', () => {
       mockState = { ...BASE_STATE, toAddress: VALID_ADDRESS, amountSats: '100000' };
       const screen = renderWithTheme(<SendScreen />);
       expect(screen.getByTestId('btn-next').props.accessibilityState?.disabled).toBeFalsy();
+    });
+
+    it('is disabled when amount exceeds available balance', () => {
+      mockState = { ...BASE_STATE, toAddress: VALID_ADDRESS, amountSats: '2000000', availableBalanceSats: 1_000_000 };
+      const screen = renderWithTheme(<SendScreen />);
+      expect(screen.getByTestId('btn-next').props.accessibilityState?.disabled).toBe(true);
+    });
+
+    it('shows insufficient balance error when amount exceeds balance', () => {
+      mockState = { ...BASE_STATE, toAddress: VALID_ADDRESS, amountSats: '2000000', availableBalanceSats: 1_000_000 };
+      const screen = renderWithTheme(<SendScreen />);
+      expect(screen.getByTestId('balance-error')).toBeTruthy();
+      expect(screen.getByText('send.errorInsufficientBalance')).toBeTruthy();
+    });
+
+    it('does not show balance error when amount equals available balance', () => {
+      mockState = { ...BASE_STATE, toAddress: VALID_ADDRESS, amountSats: '1000000', availableBalanceSats: 1_000_000 };
+      const screen = renderWithTheme(<SendScreen />);
+      expect(screen.queryByTestId('balance-error')).toBeNull();
     });
 
     it('navigates to SendFees when pressed with valid inputs', () => {

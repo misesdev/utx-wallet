@@ -126,4 +126,15 @@ describe('CreateWalletScreen', () => {
     expect(mockInitiate).toHaveBeenCalledWith('My Wallet', 'mysecret', 'testnet');
     expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.BackupSeed);
   });
+
+  it('renders the info button', () => {
+    const screen = renderWithTheme(<CreateWalletScreen />);
+    expect(screen.getByLabelText('common.info')).toBeTruthy();
+  });
+
+  it('navigates to WalletPolicy when info button is pressed', () => {
+    const screen = renderWithTheme(<CreateWalletScreen />);
+    fireEvent.press(screen.getByLabelText('common.info'));
+    expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.WalletPolicy);
+  });
 });

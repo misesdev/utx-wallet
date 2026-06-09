@@ -78,7 +78,9 @@ export class FetchHttpClient implements HttpClient {
         signal,
       });
       if (!response.ok) {
-        throw new AppError(`HTTP ${response.status}: ${response.statusText}`, 'HTTP_ERROR');
+        const errBody = await response.text().catch(() => '');
+        const detail = errBody.trim() ? ` — ${errBody.trim()}` : '';
+        throw new AppError(`HTTP ${response.status}${detail}`, 'HTTP_ERROR');
       }
       return response.text();
     } catch (err) {

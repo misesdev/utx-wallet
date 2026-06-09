@@ -1,35 +1,126 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRoute } from '@react-navigation/native';
 import { SUPPORTED_NETWORKS } from '../../../shared/constants/networks';
-import type { BitcoinNetwork } from '../../../core/domain/entities/Network';
+import type { BitcoinNetwork, NodeConnectionStatus } from '../../../core/domain/entities/Network';
+import type { PersonalNode } from '../../../core/domain/entities/PersonalNode';
 import { AppButton } from '../../components/base/AppButton';
 import { AppInput } from '../../components/base/AppInput';
 import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
+import { usePersonalNodes } from '../../hooks/usePersonalNodes';
+import { useNetwork } from '../../hooks/useNetwork';
 import { useTheme } from '../../hooks/useTheme';
-import { useSafeMode } from '../../hooks/useSafeMode';
+import type { AppStackParamList } from '../../../app/navigation/routes';
+import type { RouteProp } from '@react-navigation/native';
+import { DEFAULT_NETWORK } from '../../../shared/constants/networks';
+
+type NodeSettingsRoute = RouteProp<AppStackParamList, 'NodeSettings'>;
 
 export function NodeSettingsScreen() {
   const { theme } = useTheme();
   const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
+  const route = useRoute<NodeSettingsRoute>();
 
-  const {
-    form,
-    statusLabel,
-    setUrl,
-    setPort,
-    setAuthToken,
-    setNetwork,
-    testConnection,
-    activateSafeMode,
-  } = useSafeMode();
+  const { networkConfig } = useNetwork();
+  const { nodes, addNode, updateNode, testNode } = usePersonalNodes();
 
-  const statusColor = statusLabel === 'conectado' ? theme.colors.success : theme.colors.textMuted;
+  const editingNode = route.params?.nodeId
+    ? nodes.find(n => n.id === route.params!.nodeId)
+    : undefined;
+
+  const [label, setLabel] = useState(editingNode?.label ?? '');
+  const [url, setUrl] = useState(editingNode?.url ?? '');
+  const [port, setPort] = useState(editingNode?.port ? String(editingNode.port) : '');
+  const [authToken, setAuthToken] = useState(editingNode?.authToken ?? '');
+  const [network, setNetwork] = useState<BitcoinNetwork>(
+    editingNode?.network ?? networkConfig.network ?? DEFAULT_NETWORK,
+  );
+  const [status, setStatus] = useState<NodeConnectionStatus | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  function handleUrlChange(v: string) { setUrl(v); setStatus(null); }
+  function handlePortChange(v: string) { setPort(v); setStatus(null); }
+  function handleAuthTokenChange(v: string) { setAuthToken(v); setStatus(null); }
+  function handleNetworkChange(v: BitcoinNetwork) { setNetwork(v); setStatus(null); }
+
+  const isEditing = !!editingNode;
+  const connectionFieldsFilled = label.trim().length > 0 && url.trim().length > 0;
+  const canSave = connectionFieldsFilled && status === 'connected';
+
+  function buildNode(): Omit<PersonalNode, 'id'> {
+    const parsedPort = parseInt(port, 10);
+    return {
+      label: label.trim(),
+      url: url.trim(),
+      port: Number.isFinite(parsedPort) && parsedPort > 0 ? parsedPort : undefined,
+      authToken: authToken.trim() || undefined,
+      network,
+      priority: editingNode?.priority ?? (nodes.length + 1),
+    };
+  }
+
+  async function handleTestConnection() {
+    setIsTesting(true);
+    setStatus(null);
+    try {
+      const parsedPort = parseInt(port, 10);
+      const testableNode: PersonalNode = {
+        id: editingNode?.id ?? '__test__',
+        label: label.trim(),
+        url: url.trim(),
+        port: Number.isFinite(parsedPort) && parsedPort > 0 ? parsedPort : undefined,
+        authToken: authToken.trim() || undefined,
+        network,
+        priority: 1,
+      };
+      const result = await testNode(testableNode);
+      setStatus(result);
+    } finally {
+      setIsTesting(false);
+    }
+  }
+
+  async function handleSave() {
+    if (!canSave) return;
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      if (isEditing && editingNode) {
+        await updateNode({ ...editingNode, ...buildNode() });
+      } else {
+        await addNode(buildNode());
+      }
+      navigation.goBack();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : t('nodeSettings.saveError'));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  const statusColor = status === 'connected'
+    ? theme.colors.success
+    : status !== null
+      ? theme.colors.danger
+      : theme.colors.textMuted;
+
+  const statusBorderColor = status === 'connected'
+    ? theme.colors.success + '55'
+    : status !== null
+      ? theme.colors.danger + '55'
+      : theme.colors.border;
+
+  const statusText = status
+    ? t(`nodeSettings.status_${status}`)
+    : t('nodeSettings.statusNotTested');
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
@@ -44,15 +135,25 @@ export function NodeSettingsScreen() {
           <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
         <View style={styles.headerCenter}>
-          <AppText variant="subtitle" style={styles.headerTitle}>{t('nodeSettings.title')}</AppText>
+          <AppText variant="subtitle" style={styles.headerTitle}>
+            {isEditing ? t('nodeSettings.titleEdit') : t('nodeSettings.title')}
+          </AppText>
           <AppText variant="caption" color="muted">{t('nodeSettings.subtitle')}</AppText>
         </View>
-        <View style={styles.backBtn} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('nodeTutorial.title')}
+          onPress={() => navigation.navigate('NodeTutorial')}
+          style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+          testID="btn-node-tutorial"
+        >
+          <AppIcon name="info" size={22} color={theme.colors.accent} />
+        </Pressable>
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, { paddingBottom: Math.max(insets.bottom, 16) + 24 }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: Math.max(insets.bottom, 16) + 80 }]}
       >
         {/* Connection inputs */}
         <View style={styles.section}>
@@ -68,6 +169,18 @@ export function NodeSettingsScreen() {
             ]}
           >
             <View style={styles.inputGroup}>
+              <AppText variant="caption" color="muted" style={styles.inputLabel}>{t('nodeSettings.label')}</AppText>
+              <AppInput
+                accessibilityLabel={t('nodeSettings.label')}
+                autoCapitalize="words"
+                placeholder={t('nodeSettings.labelPlaceholder')}
+                value={label}
+                onChangeText={setLabel}
+                testID="input-label"
+              />
+            </View>
+            <View style={[styles.inputDivider, { backgroundColor: theme.colors.border }]} />
+            <View style={styles.inputGroup}>
               <AppText variant="caption" color="muted" style={styles.inputLabel}>{t('nodeSettings.nodeUrl')}</AppText>
               <AppInput
                 accessibilityLabel={t('nodeSettings.nodeUrl')}
@@ -75,8 +188,9 @@ export function NodeSettingsScreen() {
                 autoCorrect={false}
                 keyboardType="url"
                 placeholder={t('nodeSettings.nodeUrlPlaceholder')}
-                value={form.url}
-                onChangeText={setUrl}
+                value={url}
+                onChangeText={handleUrlChange}
+                testID="input-url"
               />
             </View>
             <View style={[styles.inputDivider, { backgroundColor: theme.colors.border }]} />
@@ -85,9 +199,10 @@ export function NodeSettingsScreen() {
               <AppInput
                 accessibilityLabel={t('nodeSettings.port')}
                 keyboardType="number-pad"
-                placeholder={t('nodeSettings.port')}
-                value={form.port}
-                onChangeText={setPort}
+                placeholder={t('nodeSettings.portPlaceholder')}
+                value={port}
+                onChangeText={handlePortChange}
+                testID="input-port"
               />
             </View>
             <View style={[styles.inputDivider, { backgroundColor: theme.colors.border }]} />
@@ -97,10 +212,11 @@ export function NodeSettingsScreen() {
                 accessibilityLabel={t('nodeSettings.authToken')}
                 autoCapitalize="none"
                 autoCorrect={false}
-                placeholder={t('nodeSettings.authToken')}
+                placeholder={t('nodeSettings.authTokenPlaceholder')}
                 secureTextEntry
-                value={form.authToken}
-                onChangeText={setAuthToken}
+                value={authToken}
+                onChangeText={handleAuthTokenChange}
+                testID="input-auth-token"
               />
             </View>
           </View>
@@ -110,12 +226,12 @@ export function NodeSettingsScreen() {
         <View style={styles.section}>
           <AppText variant="label" color="muted" style={styles.sectionLabel}>{t('common.network')}</AppText>
           <View style={styles.networkGrid}>
-            {SUPPORTED_NETWORKS.map(network => {
-              const isSelected = form.network === network;
+            {SUPPORTED_NETWORKS.map(n => {
+              const isSelected = network === n;
               return (
                 <Pressable
-                  key={network}
-                  onPress={() => setNetwork(network as BitcoinNetwork)}
+                  key={n}
+                  onPress={() => handleNetworkChange(n as BitcoinNetwork)}
                   style={({ pressed }) => [
                     styles.networkChip,
                     {
@@ -125,12 +241,13 @@ export function NodeSettingsScreen() {
                       opacity: pressed ? 0.72 : 1,
                     },
                   ]}
+                  testID={`network-chip-${n}`}
                 >
                   <AppText
                     variant="body"
                     style={isSelected ? [styles.chipSelected, { color: theme.colors.accent }] : undefined}
                   >
-                    {network}
+                    {n}
                   </AppText>
                 </Pressable>
               );
@@ -138,27 +255,50 @@ export function NodeSettingsScreen() {
           </View>
         </View>
 
-        {/* Connection status */}
+        {/* Connection status — always visible */}
         <View
           style={[
             styles.statusCard,
             {
               backgroundColor: theme.colors.surfaceRaised,
-              borderColor: theme.colors.border,
+              borderColor: statusBorderColor,
               borderRadius: theme.radii.lg,
             },
           ]}
+          testID="status-card"
         >
           <AppText variant="label" color="muted">{t('nodeSettings.status')}</AppText>
           <View style={styles.statusRow}>
             <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-            <AppText variant="body" style={{ color: statusColor }}>{statusLabel}</AppText>
+            <AppText variant="body" style={{ color: statusColor }} testID="status-text">{statusText}</AppText>
           </View>
+          {connectionFieldsFilled && status !== 'connected' && !isTesting && (
+            <AppText variant="caption" color="muted" testID="test-required-hint">
+              {t('nodeSettings.testRequired')}
+            </AppText>
+          )}
         </View>
 
+        {saveError && (
+          <AppText variant="caption" color="danger" testID="save-error">{saveError}</AppText>
+        )}
+
         {/* Actions */}
-        <AppButton title={t('nodeSettings.testConnection')} variant="secondary" onPress={testConnection} />
-        <AppButton title={t('nodeSettings.saveAndActivate')} onPress={activateSafeMode} />
+        <AppButton
+          title={isTesting ? t('nodeSettings.testing') : t('nodeSettings.testConnection')}
+          variant="secondary"
+          onPress={handleTestConnection}
+          loading={isTesting}
+          disabled={!url.trim() || isTesting}
+          testID="btn-test-connection"
+        />
+        <AppButton
+          title={isEditing ? t('nodeSettings.saveChanges') : t('nodeSettings.saveAndAdd')}
+          onPress={handleSave}
+          loading={isSaving}
+          disabled={!canSave || isSaving}
+          testID="btn-save"
+        />
       </ScrollView>
     </View>
   );
@@ -209,9 +349,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 0,
     overflow: 'hidden',
+    paddingBottom: 8,
     paddingHorizontal: 16,
     paddingTop: 4,
-    paddingBottom: 8,
   },
   inputGroup: {
     gap: 4,
@@ -237,7 +377,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-
   chipSelected: {
     fontWeight: '700',
   },

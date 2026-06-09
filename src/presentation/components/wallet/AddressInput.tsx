@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { AppText } from '../base/AppText';
 import { AppIcon } from '../base/AppIcon';
 import { useTheme } from '../../hooks/useTheme';
@@ -8,18 +8,15 @@ import { useAppTranslation } from '../../hooks/useAppTranslation';
 type AddressInputProps = {
   value: string;
   onChangeText: (text: string) => void;
+  onQrScan?: () => void;
   placeholder?: string;
   testID?: string;
   error?: string | null;
 };
 
-export function AddressInput({ value, onChangeText, placeholder, testID, error }: AddressInputProps) {
+export function AddressInput({ value, onChangeText, onQrScan, placeholder, testID, error }: AddressInputProps) {
   const { theme } = useTheme();
   const { t } = useAppTranslation();
-
-  function handleQrScan() {
-    Alert.alert(t('qrScan.title'), t('qrScan.unavailableMessage'));
-  }
 
   return (
     <View style={styles.wrapper}>
@@ -46,7 +43,7 @@ export function AddressInput({ value, onChangeText, placeholder, testID, error }
           testID={testID}
         />
         <Pressable
-          onPress={handleQrScan}
+          onPress={onQrScan}
           accessibilityRole="button"
           accessibilityLabel={t('qrScan.accessibilityLabel')}
           testID="btn-qr-scan"
@@ -61,7 +58,6 @@ export function AddressInput({ value, onChangeText, placeholder, testID, error }
           ]}
         >
           <AppIcon name="qrCode" size={22} color={theme.colors.textMuted} />
-          <AppText variant="label" color="muted">{t('common.qrCode')}</AppText>
         </Pressable>
       </View>
 
@@ -95,13 +91,9 @@ const styles = StyleSheet.create({
   qrBtn: {
     alignItems: 'center',
     borderWidth: 1,
-    gap: 3,
     justifyContent: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 8,
-    width: 52,
-  },
-  qrIcon: {
-    fontSize: 18,
+    paddingVertical: 10,
+    width: 46,
   },
 });

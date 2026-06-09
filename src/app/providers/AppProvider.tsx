@@ -54,10 +54,13 @@ import { AuthenticateWithBiometricUseCase } from '../../core/domain/usecases/sec
 import { ReauthenticateUseCase } from '../../core/domain/usecases/security/ReauthenticateUseCase';
 import { FetchHttpClient } from '../../core/infrastructure/api/HttpClient';
 import { MempoolApiAdapter } from '../../core/infrastructure/adapters/MempoolApiAdapter';
+import { MempoolAddressActivityChecker } from '../../core/infrastructure/adapters/MempoolAddressActivityChecker';
+import { WalletDiscoveryUseCase } from '../../core/domain/usecases/wallet/WalletDiscoveryUseCase';
 import { ChangeNetworkUseCase } from '../../core/domain/usecases/network/ChangeNetworkUseCase';
 import { NodeConnectionTestUseCase } from '../../core/domain/usecases/network/NodeConnectionTestUseCase';
 import { NodeProviderSelector } from '../../core/infrastructure/adapters/NodeProviderSelector';
 import { PersonalNodeAdapter } from '../../core/infrastructure/adapters/PersonalNodeAdapter';
+import { MultiNodeBlockchainProvider } from '../../core/infrastructure/adapters/MultiNodeBlockchainProvider';
 import { WalletKeyAddressProvider } from '../../core/infrastructure/adapters/WalletKeyAddressProvider';
 import { WalletTransactionSigner } from '../../core/infrastructure/adapters/WalletTransactionSigner';
 import { MempoolExplorerAdapter } from '../../core/infrastructure/adapters/MempoolExplorerAdapter';
@@ -146,7 +149,8 @@ export function AppProvider({ children }: PropsWithChildren) {
     };
     const publicNodeAdapter = new MempoolApiAdapter(httpClient, networkConfigStorage, defaultNetworkConfig);
     const personalNodeAdapter = new PersonalNodeAdapter(httpClient, networkConfigStorage, defaultNetworkConfig);
-    const nodeRepository = new NodeProviderSelector(publicNodeAdapter, publicNodeAdapter, personalNodeAdapter);
+    const multiNodeProvider = new MultiNodeBlockchainProvider(httpClient, networkConfigStorage, publicNodeAdapter);
+    const nodeRepository = new NodeProviderSelector(publicNodeAdapter, publicNodeAdapter, personalNodeAdapter, multiNodeProvider);
 
     const syncStateStorage = new SyncStateStorage(secureStorage);
     const walletAddressProvider = new WalletKeyAddressProvider(walletKeyStorage);
@@ -174,14 +178,29 @@ export function AppProvider({ children }: PropsWithChildren) {
       publicNodeAdapter,
       ensureAddressPool,
     );
+    const createAddressOriginUseCase = new CreateAddressOriginUseCase(
+      addressOriginRepository,
+      walletAddressRepository,
+      walletAddressProvider,
+    );
+    const activityChecker = new MempoolAddressActivityChecker(httpClient);
+    const walletDiscoveryUseCase = new WalletDiscoveryUseCase(
+      walletAddressProvider,
+      activityChecker,
+      createAddressOriginUseCase,
+      addressOriginRepository,
+    );
+
     const addressManagerService = new AddressManagerService(
-      new CreateAddressOriginUseCase(addressOriginRepository, walletAddressRepository, walletAddressProvider),
+      createAddressOriginUseCase,
       new ListAddressOriginsUseCase(addressOriginRepository),
       getNextReceiveAddress,
       getNextChangeAddress,
       ensureAddressPool,
       addressOriginRepository,
       walletAddressRepository,
+      null,
+      walletDiscoveryUseCase,
     );
 
     const addressStorage = new AddressStorage(db);
@@ -238,10 +257,12 @@ export function AppProvider({ children }: PropsWithChildren) {
       addressManagerService,
     );
 
+    const nodeConnectionTestUseCase = new NodeConnectionTestUseCase(personalNodeAdapter);
     const networkService = new NetworkService(
       nodeRepository,
-      new NodeConnectionTestUseCase(personalNodeAdapter),
+      nodeConnectionTestUseCase,
       new ChangeNetworkUseCase(nodeRepository),
+      personalNodeAdapter,
     );
 
     const feeEstimation = new FeeEstimationService();

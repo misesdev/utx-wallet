@@ -1,5 +1,5 @@
-import React from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { DeviceEventEmitter, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
@@ -51,16 +51,27 @@ export function SendScreen() {
     setAmountSats,
   } = useSendBitcoin({ originId });
 
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('bitcoinAddressScanned', (addr: string) => {
+      if (typeof addr === 'string' && addr.trim()) setToAddress(addr.trim());
+    });
+    return () => sub.remove();
+  }, [setToAddress]);
+
+  const parsedAmount = parseInt(amountSats.trim(), 10);
+  const isOverBalance = !isNaN(parsedAmount) && parsedAmount > 0 && parsedAmount > availableBalanceSats;
+
   const btcAmount =
-    amountSats.trim() && !isNaN(parseInt(amountSats, 10))
-      ? (parseInt(amountSats, 10) / 1e8).toFixed(8).replace(/\.?0+$/, '')
+    amountSats.trim() && !isNaN(parsedAmount)
+      ? (parsedAmount / 1e8).toFixed(8).replace(/\.?0+$/, '')
       : null;
 
   const canNext =
     toAddress.trim().length > 0 &&
     addressError === null &&
     amountSats.trim().length > 0 &&
-    parseInt(amountSats.trim(), 10) > 0 &&
+    parsedAmount > 0 &&
+    !isOverBalance &&
     !isWatchOnly;
 
   const handleNext = () => {
@@ -75,6 +86,10 @@ export function SendScreen() {
 
   const handleMax = () => {
     setAmountSats(String(availableBalanceSats));
+  };
+
+  const handleQrScan = () => {
+    navigation.navigate(AppRoutes.ScanAddressQr);
   };
 
   return (
@@ -151,6 +166,11 @@ export function SendScreen() {
             ≈ {btcAmount} BTC
           </AppText>
         )}
+        {isOverBalance && (
+          <AppText variant="caption" color="danger" testID="balance-error">
+            {t('send.errorInsufficientBalance')}
+          </AppText>
+        )}
         {amountError && (
           <AppText variant="caption" color="danger" testID="amount-error">{amountError}</AppText>
         )}
@@ -182,6 +202,7 @@ export function SendScreen() {
         <AddressInput
           value={toAddress}
           onChangeText={setToAddress}
+          onQrScan={handleQrScan}
           testID="input-address"
           error={addressError}
         />
@@ -280,12 +301,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   bigAmount: {
+    alignSelf: 'center',
     fontFamily: 'System',
     fontSize: 56,
     fontWeight: '800',
     letterSpacing: -2,
+    minWidth: 60,
     textAlign: 'center',
-    width: '100%',
   },
   unitLabel: {
     letterSpacing: 2,

@@ -16,6 +16,8 @@ export const ICON_NAMES = {
   home: 'home-outline',
   back: 'arrow-back-outline',
   chevronRight: 'chevron-forward-outline',
+  chevronUp: 'chevron-up-outline',
+  chevronDown: 'chevron-down-outline',
   close: 'close-outline',
   add: 'add-outline',
   create: 'add-circle-outline',

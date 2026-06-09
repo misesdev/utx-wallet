@@ -23,7 +23,8 @@ export class TransactionStorage {
       [walletId],
     );
     return rows.map(row => ({
-      id: row.id,
+      // Return txid as the canonical id; fall back to original id for drafts with no txid
+      id: row.txid ?? row.id,
       txid: row.txid ?? undefined,
       amountSats: row.amount_sats,
       feeSats: row.fee_sats ?? undefined,
@@ -37,11 +38,14 @@ export class TransactionStorage {
   }
 
   async save(walletId: string, transaction: Transaction): Promise<void> {
+    // Wallet-scoped row id: prevents PRIMARY KEY collisions when two wallets
+    // share the same private key (and thus the same Bitcoin txids).
+    const rowId = `${walletId}:${transaction.txid ?? transaction.id}`;
     await this.db.execute(
       `INSERT OR REPLACE INTO transactions (id, wallet_id, txid, amount_sats, fee_sats, direction, status, created_at, address, origin_id, origin_name)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        transaction.id,
+        rowId,
         walletId,
         transaction.txid ?? null,
         transaction.amountSats,

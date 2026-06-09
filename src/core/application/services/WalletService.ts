@@ -35,16 +35,12 @@ export class WalletService {
     private readonly addressManagerService: AddressManagerService | null = null,
   ) {}
 
-  async createWallet(name: string): Promise<Wallet> {
-    const wallet = await this.createWalletUseCase.execute(name);
-    await this.addressManagerService?.ensureDefaultOrigin(wallet.id, wallet.network);
-    return wallet;
+  createWallet(name: string): Promise<Wallet> {
+    return this.createWalletUseCase.execute(name);
   }
 
-  async importWallet(name: string, secret: string, network?: BitcoinNetwork, passphrase?: string): Promise<Wallet> {
-    const wallet = await this.importWalletUseCase.execute(name, secret, network, passphrase);
-    await this.addressManagerService?.ensureDefaultOrigin(wallet.id, wallet.network);
-    return wallet;
+  importWallet(name: string, secret: string, network?: BitcoinNetwork, passphrase?: string): Promise<Wallet> {
+    return this.importWalletUseCase.execute(name, secret, network, passphrase);
   }
 
   loadWallets(): Promise<Wallet[]> {

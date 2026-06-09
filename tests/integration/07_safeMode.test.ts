@@ -52,6 +52,11 @@ function makeConnectionTester(status: 'connected' | 'disconnected' = 'connected'
       expectedNetwork: 'testnet4',
       actualNetwork: status === 'connected' ? 'testnet4' : undefined,
     }),
+    testNode: jest.fn().mockResolvedValue({
+      status,
+      expectedNetwork: 'testnet4',
+      actualNetwork: status === 'connected' ? 'testnet4' : undefined,
+    }),
   };
 }
 
@@ -64,7 +69,7 @@ function makeNetworkService() {
   const changeNetworkUseCase = new ChangeNetworkUseCase(nodeRepository);
   const nodeConnectionTestUseCase = new NodeConnectionTestUseCase(tester);
 
-  const service = new NetworkService(nodeRepository, nodeConnectionTestUseCase, changeNetworkUseCase);
+  const service = new NetworkService(nodeRepository, nodeConnectionTestUseCase, changeNetworkUseCase, tester);
   return { service, networkConfigStorage, tester };
 }
 
@@ -83,8 +88,10 @@ describe('Integration: Safe Mode (Network Config)', () => {
 
     const config = await service.getConfig();
     expect(config.nodeMode).toBe('personal-node');
-    expect(config.personalNodeUrl).toBe('http://localhost');
-    expect(config.personalNodePort).toBe(8332);
+    // Legacy fields are migrated to personalNodes on load
+    const node = config.personalNodes?.[0];
+    expect(node?.url).toBe('http://localhost');
+    expect(node?.port).toBe(8332);
   });
 
   it('isSafeModeEnabled = nodeMode === personal-node', async () => {
@@ -115,14 +122,16 @@ describe('Integration: Safe Mode (Network Config)', () => {
     const secureStorage = createSecureStorageMock();
     const storage1 = new NetworkConfigStorage(secureStorage);
     const repo1 = makeNodeRepository(storage1);
-    const svc1 = new NetworkService(repo1, new NodeConnectionTestUseCase(makeConnectionTester()), new ChangeNetworkUseCase(repo1));
+    const t1 = makeConnectionTester();
+    const svc1 = new NetworkService(repo1, new NodeConnectionTestUseCase(t1), new ChangeNetworkUseCase(repo1), t1);
 
     await svc1.setConfig(PERSONAL_NODE_CONFIG);
 
     // Create a new service backed by the same storage
     const storage2 = new NetworkConfigStorage(secureStorage);
     const repo2 = makeNodeRepository(storage2);
-    const svc2 = new NetworkService(repo2, new NodeConnectionTestUseCase(makeConnectionTester()), new ChangeNetworkUseCase(repo2));
+    const t2 = makeConnectionTester();
+    const svc2 = new NetworkService(repo2, new NodeConnectionTestUseCase(t2), new ChangeNetworkUseCase(repo2), t2);
 
     const config = await svc2.getConfig();
     expect(config.nodeMode).toBe('personal-node');
@@ -145,6 +154,7 @@ describe('Integration: Safe Mode (Network Config)', () => {
       repo,
       new NodeConnectionTestUseCase(tester),
       new ChangeNetworkUseCase(repo),
+      tester,
     );
 
     const result = await service.testNodeConnection(PERSONAL_NODE_CONFIG);

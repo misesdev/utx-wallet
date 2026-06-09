@@ -1,4 +1,5 @@
 import type { NetworkConfig } from '../../domain/entities/Network';
+import type { PersonalNode } from '../../domain/entities/PersonalNode';
 import type { SecureStorage } from './SecureStorage';
 import { TESTNET_NETWORKS } from '../../../shared/constants/networks';
 
@@ -16,6 +17,25 @@ function isValidNetworkConfig(obj: unknown): obj is NetworkConfig {
   );
 }
 
+function migratePersonalNodes(config: NetworkConfig): NetworkConfig {
+  if (config.personalNodes && config.personalNodes.length > 0) return config;
+  if (!config.personalNodeUrl?.trim()) return config;
+
+  const migratedNode: PersonalNode = {
+    id: `node_migrated_${Date.now()}`,
+    label: 'My Node',
+    url: config.personalNodeUrl.trim(),
+    port: config.personalNodePort,
+    authToken: config.personalNodeAuthToken,
+    network: config.network,
+    priority: 1,
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { personalNodeUrl, personalNodePort, personalNodeAuthToken, ...rest } = config;
+  return { ...rest, personalNodes: [migratedNode] };
+}
+
 export class NetworkConfigStorage {
   constructor(private readonly secureStorage: SecureStorage) {}
 
@@ -24,7 +44,12 @@ export class NetworkConfigStorage {
     if (!value) return null;
     try {
       const parsed: unknown = JSON.parse(value);
-      return isValidNetworkConfig(parsed) ? parsed : null;
+      if (!isValidNetworkConfig(parsed)) return null;
+      const migrated = migratePersonalNodes(parsed);
+      if (migrated !== parsed) {
+        await this.save(migrated);
+      }
+      return migrated;
     } catch {
       return null;
     }

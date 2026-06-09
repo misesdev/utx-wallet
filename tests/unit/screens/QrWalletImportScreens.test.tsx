@@ -1,6 +1,6 @@
 import React from 'react';
 import { DeviceEventEmitter } from 'react-native';
-import { fireEvent, waitFor, act } from '@testing-library/react-native';
+import { fireEvent, waitFor } from '@testing-library/react-native';
 import { HDWallet } from 'bitcoin-tx-lib';
 import { QrWalletScannerScreen } from '../../../src/presentation/screens/qr/QrWalletScannerScreen';
 import { ConfirmQrWalletImportScreen } from '../../../src/presentation/screens/qr/ConfirmQrWalletImportScreen';

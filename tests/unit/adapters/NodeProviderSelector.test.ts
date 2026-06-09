@@ -31,6 +31,7 @@ function createPersonalProvider(): jest.Mocked<BlockchainProvider & NodeReposito
     setNetworkConfig: jest.fn().mockResolvedValue(undefined),
     ping: jest.fn().mockResolvedValue(true),
     testConnection: jest.fn(),
+    testNode: jest.fn(),
   };
 }
 
@@ -47,6 +48,7 @@ describe('NodeProviderSelector', () => {
     const configRepository = createNodeRepository(PUBLIC_CONFIG);
     const publicProvider = createProvider();
     const personalProvider = createPersonalProvider();
+    const multiNodeProvider = createProvider();
     publicProvider.getFeeRates.mockResolvedValue({
       fastSatsPerVByte: 10,
       halfHourSatsPerVByte: 8,
@@ -54,37 +56,39 @@ describe('NodeProviderSelector', () => {
       economySatsPerVByte: 4,
       minimumSatsPerVByte: 1,
     });
-    const selector = new NodeProviderSelector(configRepository, publicProvider, personalProvider);
+    const selector = new NodeProviderSelector(configRepository, publicProvider, personalProvider, multiNodeProvider);
 
     await selector.getFeeRates();
 
     expect(publicProvider.getFeeRates).toHaveBeenCalledTimes(1);
-    expect(personalProvider.getFeeRates).not.toHaveBeenCalled();
+    expect(multiNodeProvider.getFeeRates).not.toHaveBeenCalled();
   });
 
-  it('selects the personal provider when safe mode is enabled', async () => {
+  it('selects the multi-node provider when safe mode is enabled', async () => {
     const configRepository = createNodeRepository(SAFE_CONFIG);
     const publicProvider = createProvider();
     const personalProvider = createPersonalProvider();
-    personalProvider.getCurrentBlockHeight.mockResolvedValue(840_000);
-    const selector = new NodeProviderSelector(configRepository, publicProvider, personalProvider);
+    const multiNodeProvider = createProvider();
+    multiNodeProvider.getCurrentBlockHeight.mockResolvedValue(840_000);
+    const selector = new NodeProviderSelector(configRepository, publicProvider, personalProvider, multiNodeProvider);
 
     await selector.getCurrentBlockHeight();
 
-    expect(personalProvider.getCurrentBlockHeight).toHaveBeenCalledTimes(1);
+    expect(multiNodeProvider.getCurrentBlockHeight).toHaveBeenCalledTimes(1);
     expect(publicProvider.getCurrentBlockHeight).not.toHaveBeenCalled();
   });
 
-  it('blocks public fallback when the personal provider fails in safe mode', async () => {
+  it('errors propagate from the multi-node provider in safe mode', async () => {
     const configRepository = createNodeRepository(SAFE_CONFIG);
     const publicProvider = createProvider();
     const personalProvider = createPersonalProvider();
-    personalProvider.getUtxos.mockRejectedValue(new Error('personal node offline'));
-    const selector = new NodeProviderSelector(configRepository, publicProvider, personalProvider);
+    const multiNodeProvider = createProvider();
+    multiNodeProvider.getUtxos.mockRejectedValue(new Error('all nodes offline'));
+    const selector = new NodeProviderSelector(configRepository, publicProvider, personalProvider, multiNodeProvider);
 
-    await expect(selector.getUtxos('tb1qaddress', 'testnet4')).rejects.toThrow('personal node offline');
+    await expect(selector.getUtxos('tb1qaddress', 'testnet4')).rejects.toThrow('all nodes offline');
 
-    expect(personalProvider.getUtxos).toHaveBeenCalledTimes(1);
+    expect(multiNodeProvider.getUtxos).toHaveBeenCalledTimes(1);
     expect(publicProvider.getUtxos).not.toHaveBeenCalled();
   });
 
@@ -92,7 +96,8 @@ describe('NodeProviderSelector', () => {
     const configRepository = createNodeRepository(PUBLIC_CONFIG);
     const publicProvider = createProvider();
     const personalProvider = createPersonalProvider();
-    const selector = new NodeProviderSelector(configRepository, publicProvider, personalProvider);
+    const multiNodeProvider = createProvider();
+    const selector = new NodeProviderSelector(configRepository, publicProvider, personalProvider, multiNodeProvider);
 
     await selector.setNetworkConfig(SAFE_CONFIG);
 

@@ -5,7 +5,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   TextInput,
   View,
@@ -146,7 +145,6 @@ function ManualInputSheet({ onSubmit, onClose, error }: ManualInputSheetProps) {
 }
 
 export function QrWalletScannerScreen() {
-  const { theme } = useTheme();
   const { t } = useAppTranslation();
   const navigation = useAppNavigation();
   const insets = useSafeAreaInsets();

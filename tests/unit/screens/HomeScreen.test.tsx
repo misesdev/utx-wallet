@@ -145,9 +145,9 @@ describe('HomeScreen', () => {
       expect(screen.getByText('testnet4')).toBeTruthy();
     });
 
-    it('renders online status in network badge', () => {
+    it('does not show connectivity mode when online', () => {
       const screen = renderWithTheme(<HomeScreen />);
-      expect(screen.getByText('online')).toBeTruthy();
+      expect(screen.queryByText('online')).toBeNull();
     });
 
     it('does not show safe mode badge when isSafeMode is false', () => {

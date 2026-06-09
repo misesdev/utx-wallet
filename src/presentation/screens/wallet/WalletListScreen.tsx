@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -8,8 +8,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Wallet } from '../../../core/domain/entities/Wallet';
 import { TESTNET_NETWORKS } from '../../../shared/constants/networks';
+import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
 import { AppBottomDock } from '../../components/base/AppBottomDock';
-import { AppConfirmModal } from '../../components/base/AppConfirmModal';
 import { AppLoading } from '../../components/base/AppLoading';
 import { AppLogo } from '../../components/base/AppLogo';
 import { AppText } from '../../components/base/AppText';
@@ -26,6 +26,13 @@ import { AppRoutes } from '../../../app/navigation/routes';
 
 type NetworkTab = 'mainnet' | 'testnet';
 
+type WalletSummary = {
+  balanceSats: number;
+  utxoCount: number;
+  accountCount: number;
+  isLoaded: boolean;
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -37,7 +44,7 @@ function matchesTab(wallet: Wallet, tab: NetworkTab): boolean {
 
 const NETWORK_ACCENT: Record<NetworkTab, string> = {
   mainnet: '#F7931A',
-  testnet: '#38965c',
+  testnet: '#8E6FE8',
 };
 
 function walletAccent(wallet: Wallet): string {
@@ -56,8 +63,140 @@ function formatDate(iso: string): string {
   }
 }
 
+function formatBalance(sats: number): string {
+  if (sats >= 100_000_000) return `${(sats / 100_000_000).toFixed(4)} BTC`;
+  return `${sats.toLocaleString()} sats`;
+}
+
 // ---------------------------------------------------------------------------
-// Sub-components
+// StatCol
+// ---------------------------------------------------------------------------
+
+type StatColProps = {
+  label: string;
+  value: string;
+  accent?: string;
+  testID?: string;
+};
+
+function StatCol({ label, value, accent, testID }: StatColProps) {
+  const { theme } = useTheme();
+  return (
+    <View style={styles.statCol} testID={testID}>
+      <AppText variant="caption" color="muted" style={styles.statLabel}>{label}</AppText>
+      <AppText
+        variant="body"
+        style={[styles.statValue, { color: accent ?? theme.colors.text }]}
+        numberOfLines={1}
+      >
+        {value}
+      </AppText>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// WalletCard
+// ---------------------------------------------------------------------------
+
+type WalletCardProps = {
+  wallet: Wallet;
+  summary: WalletSummary | undefined;
+  onOpen: () => void;
+};
+
+function WalletCard({ wallet, summary, onOpen }: WalletCardProps) {
+  const { theme } = useTheme();
+  const { t } = useAppTranslation();
+  const accent = walletAccent(wallet);
+
+  const balanceLabel = summary?.isLoaded ? formatBalance(summary.balanceSats) : '—';
+  const accountLabel = summary?.isLoaded ? String(summary.accountCount) : '—';
+  const utxoLabel = summary?.isLoaded ? String(summary.utxoCount) : '—';
+  const hasBalance = summary?.isLoaded && summary.balanceSats > 0;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Open wallet ${wallet.name}`}
+      onPress={onOpen}
+      style={({ pressed }) => [
+        styles.card,
+        {
+          backgroundColor: theme.colors.surfaceRaised,
+          borderColor: theme.colors.border,
+          borderRadius: theme.radii.xl,
+          opacity: pressed ? 0.88 : 1,
+        },
+      ]}
+    >
+      {/* Accent top strip */}
+      <View style={[styles.topStrip, { backgroundColor: accent }]} />
+
+      <View style={styles.cardBody}>
+        {/* Identity row */}
+        <View style={styles.identityRow}>
+          <View
+            style={[
+              styles.walletIconWrap,
+              { backgroundColor: accent + '18', borderRadius: theme.radii.md },
+            ]}
+          >
+            <AppIcon name="wallet" size={20} color={accent} />
+          </View>
+
+          <View style={styles.identityText}>
+            <AppText variant="subtitle" style={styles.walletName} numberOfLines={1}>
+              {wallet.name}
+            </AppText>
+            <View style={styles.metaRow}>
+              <View style={[styles.networkDot, { backgroundColor: accent }]} />
+              <AppText variant="caption" style={[styles.networkLabel, { color: accent }]}>
+                {wallet.network === 'mainnet' ? 'Mainnet' : 'Testnet'}
+              </AppText>
+              {wallet.createdAt ? (
+                <>
+                  <AppText variant="caption" color="faint"> · </AppText>
+                  <AppText variant="caption" color="muted">{formatDate(wallet.createdAt)}</AppText>
+                </>
+              ) : null}
+            </View>
+          </View>
+
+          <AppIcon name="chevronRight" size={18} color={theme.colors.textMuted} />
+        </View>
+
+        {/* Divider */}
+        <View style={[styles.statsDivider, { backgroundColor: theme.colors.border }]} />
+
+        {/* Stats row */}
+        <View style={styles.statsRow}>
+          <StatCol
+            label={t('walletList.statBalance')}
+            value={balanceLabel}
+            accent={hasBalance ? accent : undefined}
+            testID={`wallet-stat-balance-${wallet.id}`}
+          />
+          <View style={[styles.statSeparator, { backgroundColor: theme.colors.border }]} />
+          <StatCol
+            label={t('walletList.statAccounts')}
+            value={accountLabel}
+            testID={`wallet-stat-accounts-${wallet.id}`}
+          />
+          <View style={[styles.statSeparator, { backgroundColor: theme.colors.border }]} />
+          <StatCol
+            label={t('walletList.statUtxos')}
+            value={utxoLabel}
+            testID={`wallet-stat-utxos-${wallet.id}`}
+          />
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// NetworkTabChip
 // ---------------------------------------------------------------------------
 
 type NetworkTabChipProps = {
@@ -93,83 +232,8 @@ function NetworkTabChip({ label, active, onPress }: NetworkTabChipProps) {
   );
 }
 
-type WalletCardProps = {
-  wallet: Wallet;
-  onOpen: () => void;
-  onDeleteRequest: () => void;
-};
-
-function WalletCard({ wallet, onOpen, onDeleteRequest }: WalletCardProps) {
-  const { theme } = useTheme();
-  const accent = walletAccent(wallet);
-  const accentBg = accent + '18';
-  const accentBorder = accent + '44';
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Open wallet ${wallet.name}`}
-      onPress={onOpen}
-      style={({ pressed }) => [
-        styles.card,
-        {
-          backgroundColor: theme.colors.surfaceRaised,
-          borderColor: pressed ? accent + '80' : accentBorder,
-          borderRadius: theme.radii.xl,
-          opacity: pressed ? 0.88 : 1,
-        },
-      ]}
-    >
-      {/* Colour strip */}
-      <View style={[styles.cardStrip, { backgroundColor: accent }]} />
-
-      <View style={styles.cardBody}>
-        {/* Top row: icon + name + delete */}
-        <View style={styles.cardTopRow}>
-          <View style={[styles.cardIcon, { backgroundColor: accentBg, borderRadius: theme.radii.md }]}>
-            <AppIcon name="wallet" size={22} color={accent} />
-          </View>
-          <View style={styles.cardNameBlock}>
-            <AppText variant="subtitle" style={styles.cardName} numberOfLines={1}>
-              {wallet.name}
-            </AppText>
-            {wallet.createdAt ? (
-              <AppText variant="caption" color="muted">
-                {formatDate(wallet.createdAt)}
-              </AppText>
-            ) : null}
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Delete wallet ${wallet.name}`}
-            hitSlop={12}
-            onPress={onDeleteRequest}
-            style={({ pressed }) => [styles.deleteBtn, { opacity: pressed ? 0.5 : 0.65 }]}
-          >
-            <AppIcon name="close" size={20} color={theme.colors.textMuted} />
-          </Pressable>
-        </View>
-
-        {/* Bottom row: network badge + status + chevron */}
-        <View style={styles.cardBottomRow}>
-          <View style={[styles.networkBadge, { backgroundColor: accentBg, borderColor: accentBorder, borderRadius: theme.radii.sm }]}>
-            <View style={[styles.networkDot, { backgroundColor: accent }]} />
-            <AppText variant="label" style={[styles.networkBadgeText, { color: accent }]}>
-              {wallet.network === 'mainnet' ? 'mainnet' : 'testnet'}
-            </AppText>
-          </View>
-          <View style={[styles.statusBadge, { backgroundColor: theme.colors.surfaceMuted, borderRadius: theme.radii.sm }]}>
-            <AppText variant="label" color="muted">{wallet.status}</AppText>
-          </View>
-          <AppIcon name="chevronRight" size={22} color={theme.colors.textMuted} />
-        </View>
-      </View>
-    </Pressable>
-  );
-}
-
 // ---------------------------------------------------------------------------
-// Empty state
+// EmptyState
 // ---------------------------------------------------------------------------
 
 type EmptyStateProps = {
@@ -225,7 +289,7 @@ function EmptyState({ network, onCreateWallet, onImportWallet }: EmptyStateProps
 }
 
 // ---------------------------------------------------------------------------
-// Main screen
+// WalletListScreen
 // ---------------------------------------------------------------------------
 
 export function WalletListScreen() {
@@ -233,7 +297,8 @@ export function WalletListScreen() {
   const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
-  const { wallets, isLoading, selectWallet, deleteWallet } = useWallet();
+  const { wallets, isLoading, selectWallet, listUtxos } = useWallet();
+  const { getOrigins } = useAddressManager();
 
   const NETWORK_TABS: { key: NetworkTab; label: string }[] = [
     { key: 'mainnet', label: t('walletList.mainnet') },
@@ -241,10 +306,38 @@ export function WalletListScreen() {
   ];
 
   const [activeTab, setActiveTab] = useState<NetworkTab>('mainnet');
-  const [pendingDelete, setPendingDelete] = useState<Wallet | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [summaries, setSummaries] = useState<Record<string, WalletSummary>>({});
 
   const filtered = wallets.filter(w => matchesTab(w, activeTab));
+
+  const loadSummaries = useCallback(async (walletList: Wallet[]) => {
+    if (walletList.length === 0) return;
+    const entries = await Promise.all(
+      walletList.map(async (w) => {
+        try {
+          const [utxos, origins] = await Promise.all([
+            listUtxos(w.id),
+            getOrigins(w.id),
+          ]);
+          const balanceSats = utxos.reduce((sum, u) => sum + u.valueSats, 0);
+          return [w.id, {
+            balanceSats,
+            utxoCount: utxos.length,
+            accountCount: origins.filter(o => !o.archivedAt).length,
+            isLoaded: true,
+          }] as const;
+        } catch {
+          return [w.id, { balanceSats: 0, utxoCount: 0, accountCount: 0, isLoaded: true }] as const;
+        }
+      }),
+    );
+    setSummaries(Object.fromEntries(entries));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    loadSummaries(wallets).catch(() => undefined);
+  }, [wallets, loadSummaries]);
 
   function handleOpenWallet(wallet: Wallet) {
     selectWallet(wallet.id);
@@ -265,17 +358,6 @@ export function WalletListScreen() {
 
   function handleScanImportQr() {
     navigation.navigate(AppRoutes.ScanWalletQr, { network: activeTab });
-  }
-
-  async function handleConfirmDelete() {
-    if (!pendingDelete) return;
-    setIsDeleting(true);
-    try {
-      await deleteWallet(pendingDelete.id);
-    } finally {
-      setIsDeleting(false);
-      setPendingDelete(null);
-    }
   }
 
   return (
@@ -344,14 +426,13 @@ export function WalletListScreen() {
               <WalletCard
                 key={wallet.id}
                 wallet={wallet}
+                summary={summaries[wallet.id]}
                 onOpen={() => handleOpenWallet(wallet)}
-                onDeleteRequest={() => setPendingDelete(wallet)}
               />
             ))
           )}
         </ScrollView>
       )}
-
 
       {/* Floating bottom dock */}
       <AppBottomDock
@@ -371,21 +452,13 @@ export function WalletListScreen() {
           testID: 'wallet-list-scan-import',
         }}
       />
-
-      {/* Delete confirmation */}
-      <AppConfirmModal
-        visible={!!pendingDelete}
-        title={t('walletList.deleteTitle')}
-        message={t('walletList.deleteMessage', { name: pendingDelete?.name ?? '' })}
-        confirmLabel={t('common.delete')}
-        variant="danger"
-        isLoading={isDeleting}
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setPendingDelete(null)}
-      />
     </View>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   root: {
@@ -421,7 +494,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
 
-  // Tabs — horizontal pills in a row (not scrollable since only 2)
+  // Tabs
   tabsRow: {
     flexDirection: 'row',
     gap: 10,
@@ -429,9 +502,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   tabChip: {
+    alignItems: 'center',
     borderWidth: 1,
     flex: 1,
-    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
@@ -460,69 +533,75 @@ const styles = StyleSheet.create({
   // Wallet card
   card: {
     borderWidth: 1,
-    flexDirection: 'row',
     overflow: 'hidden',
   },
-  cardStrip: {
-    width: 4,
+  topStrip: {
+    height: 3,
+    width: '100%',
   },
   cardBody: {
-    flex: 1,
     gap: 14,
     padding: 16,
   },
-  cardTopRow: {
+
+  // Identity row
+  identityRow: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 12,
   },
-  cardIcon: {
+  walletIconWrap: {
     alignItems: 'center',
-    height: 40,
+    height: 38,
     justifyContent: 'center',
-    width: 40,
+    width: 38,
   },
-  cardNameBlock: {
+  identityText: {
     flex: 1,
-    gap: 2,
+    gap: 3,
+    minWidth: 0,
   },
-  cardName: {
+  walletName: {
     fontWeight: '700',
   },
-  deleteBtn: {
+  metaRow: {
     alignItems: 'center',
-    height: 32,
-    justifyContent: 'center',
-    width: 32,
-  },
-  cardBottomRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  networkBadge: {
-    alignItems: 'center',
-    borderWidth: 1,
     flexDirection: 'row',
     gap: 5,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
   },
   networkDot: {
     borderRadius: 3,
     height: 6,
     width: 6,
   },
-  networkBadgeText: {
+  networkLabel: {
     fontSize: 11,
     fontWeight: '600',
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+
+  // Stats
+  statsDivider: {
+    height: StyleSheet.hairlineWidth,
   },
-  cardArrow: {
-    marginLeft: 'auto',
+  statsRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+  },
+  statCol: {
+    flex: 1,
+    gap: 3,
+  },
+  statLabel: {
+    fontSize: 10,
+    letterSpacing: 0.5,
+  },
+  statValue: {
+    fontWeight: '600',
+  },
+  statSeparator: {
+    alignSelf: 'stretch',
+    marginHorizontal: 12,
+    width: StyleSheet.hairlineWidth,
   },
 
   // Empty state
@@ -560,4 +639,3 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
-

@@ -1,12 +1,13 @@
 import React from 'react';
-import { fireEvent } from '@testing-library/react-native';
+import { fireEvent, waitFor } from '@testing-library/react-native';
 import { WalletListScreen } from '../../../src/presentation/screens/wallet/WalletListScreen';
 import { renderWithTheme } from '../../mocks/renderWithProviders';
 import type { Wallet } from '../../../src/core/domain/entities/Wallet';
 
 const mockNavigate = jest.fn();
 const mockSelectWallet = jest.fn();
-const mockDeleteWallet = jest.fn().mockResolvedValue(undefined);
+const mockListUtxos = jest.fn().mockResolvedValue([]);
+const mockGetOrigins = jest.fn().mockResolvedValue([]);
 
 function makeWallet(overrides: Partial<Wallet> = {}): Wallet {
   return {
@@ -27,8 +28,22 @@ jest.mock('../../../src/presentation/hooks/useWallet', () => ({
     isLoading: false,
     selectedWallet: null,
     selectWallet: mockSelectWallet,
-    deleteWallet: mockDeleteWallet,
+    deleteWallet: jest.fn().mockResolvedValue(undefined),
     reloadWallets: jest.fn(),
+    listUtxos: mockListUtxos,
+  }),
+}));
+
+jest.mock('../../../src/app/providers/AddressManagerProvider', () => ({
+  useAddressManager: () => ({
+    getOrigins: mockGetOrigins,
+    createAddressOrigin: jest.fn(),
+    renameAddressOrigin: jest.fn(),
+    getReceiveAddress: jest.fn(),
+    getChangeAddress: jest.fn(),
+    ensureAddressPool: jest.fn(),
+    listAddresses: jest.fn().mockResolvedValue([]),
+    discoverWalletAccounts: jest.fn().mockResolvedValue([]),
   }),
 }));
 
@@ -48,6 +63,8 @@ describe('WalletListScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockWallets = [];
+    mockListUtxos.mockResolvedValue([]);
+    mockGetOrigins.mockResolvedValue([]);
   });
 
   describe('Header', () => {
@@ -186,13 +203,92 @@ describe('WalletListScreen', () => {
       expect(mockNavigate).toHaveBeenCalledWith('Home');
     });
 
-    it('shows network badge on wallet card', () => {
+    it('shows network label on wallet card', () => {
       mockWallets = [makeWallet({ network: 'mainnet' })];
       const screen = renderWithTheme(<WalletListScreen />);
-      expect(screen.getByText('mainnet')).toBeTruthy();
+      expect(screen.getByText('Mainnet')).toBeTruthy();
+    });
+
+    it('does not show a delete button on wallet card', () => {
+      mockWallets = [makeWallet({ name: 'My Wallet', network: 'mainnet' })];
+      const screen = renderWithTheme(<WalletListScreen />);
+      expect(screen.queryByLabelText('Delete wallet My Wallet')).toBeNull();
     });
   });
 
+  describe('Wallet stats', () => {
+    it('shows stat placeholders while summary is loading', () => {
+      mockWallets = [makeWallet({ id: 'w1', name: 'Test Wallet', network: 'mainnet' })];
+      mockListUtxos.mockReturnValue(new Promise(() => undefined));
+      mockGetOrigins.mockReturnValue(new Promise(() => undefined));
+      const screen = renderWithTheme(<WalletListScreen />);
+      expect(screen.getByTestId('wallet-stat-balance-w1')).toBeTruthy();
+      expect(screen.getByTestId('wallet-stat-accounts-w1')).toBeTruthy();
+      expect(screen.getByTestId('wallet-stat-utxos-w1')).toBeTruthy();
+    });
+
+    it('shows balance once summary is loaded', async () => {
+      mockWallets = [makeWallet({ id: 'w1', name: 'Test Wallet', network: 'mainnet' })];
+      mockListUtxos.mockResolvedValue([
+        { txid: 'abc', vout: 0, valueSats: 100_000, address: 'addr1', isConfirmed: true },
+      ]);
+      mockGetOrigins.mockResolvedValue([]);
+      const screen = renderWithTheme(<WalletListScreen />);
+      await waitFor(() =>
+        expect(screen.getByText('100,000 sats')).toBeTruthy(),
+      );
+    });
+
+    it('shows BTC denomination for amounts >= 1 BTC', async () => {
+      mockWallets = [makeWallet({ id: 'w1', name: 'Test Wallet', network: 'mainnet' })];
+      mockListUtxos.mockResolvedValue([
+        { txid: 'abc', vout: 0, valueSats: 150_000_000, address: 'addr1', isConfirmed: true },
+      ]);
+      mockGetOrigins.mockResolvedValue([]);
+      const screen = renderWithTheme(<WalletListScreen />);
+      await waitFor(() =>
+        expect(screen.getByText('1.5000 BTC')).toBeTruthy(),
+      );
+    });
+
+    it('shows account count once summary is loaded', async () => {
+      mockWallets = [makeWallet({ id: 'w1', name: 'Test Wallet', network: 'mainnet' })];
+      mockListUtxos.mockResolvedValue([]);
+      mockGetOrigins.mockResolvedValue([
+        { id: 'o1', walletId: 'w1', name: 'Default', type: 'default', accountIndex: 0, createdAt: '2024-01-01T00:00:00.000Z', archivedAt: undefined },
+        { id: 'o2', walletId: 'w1', name: 'Savings', type: 'custom', accountIndex: 1, createdAt: '2024-01-01T00:00:00.000Z', archivedAt: undefined },
+      ]);
+      const screen = renderWithTheme(<WalletListScreen />);
+      await waitFor(() =>
+        expect(screen.getByTestId('wallet-stat-accounts-w1')).toBeTruthy(),
+      );
+      expect(screen.getByTestId('wallet-stat-accounts-w1').findByProps({ children: '2' })).toBeTruthy();
+    });
+
+    it('excludes archived origins from account count', async () => {
+      mockWallets = [makeWallet({ id: 'w1', name: 'Test Wallet', network: 'mainnet' })];
+      mockListUtxos.mockResolvedValue([]);
+      mockGetOrigins.mockResolvedValue([
+        { id: 'o1', walletId: 'w1', name: 'Default', type: 'default', accountIndex: 0, createdAt: '2024-01-01T00:00:00.000Z', archivedAt: undefined },
+        { id: 'o2', walletId: 'w1', name: 'Archived', type: 'custom', accountIndex: 1, createdAt: '2024-01-01T00:00:00.000Z', archivedAt: '2024-06-01T00:00:00.000Z' },
+      ]);
+      const screen = renderWithTheme(<WalletListScreen />);
+      await waitFor(() =>
+        expect(screen.getByTestId('wallet-stat-accounts-w1')).toBeTruthy(),
+      );
+      expect(screen.getByTestId('wallet-stat-accounts-w1').findByProps({ children: '1' })).toBeTruthy();
+    });
+
+    it('shows 0 sats when wallet has no UTXOs', async () => {
+      mockWallets = [makeWallet({ id: 'w1', name: 'Test Wallet', network: 'mainnet' })];
+      mockListUtxos.mockResolvedValue([]);
+      mockGetOrigins.mockResolvedValue([]);
+      const screen = renderWithTheme(<WalletListScreen />);
+      await waitFor(() =>
+        expect(screen.getByText('0 sats')).toBeTruthy(),
+      );
+    });
+  });
 
   describe('Bottom menu', () => {
     it('renders fixed bottom actions for global settings and QR import', () => {
@@ -211,31 +307,6 @@ describe('WalletListScreen', () => {
       const screen = renderWithTheme(<WalletListScreen />);
       fireEvent.press(screen.getByTestId('wallet-list-scan-import'));
       expect(mockNavigate).toHaveBeenCalledWith('ScanWalletQr', { network: 'mainnet' });
-    });
-  });
-
-  describe('Delete wallet', () => {
-    it('shows confirm modal when delete button is pressed', () => {
-      mockWallets = [makeWallet({ name: 'My Wallet', network: 'mainnet' })];
-      const screen = renderWithTheme(<WalletListScreen />);
-      fireEvent.press(screen.getByLabelText('Delete wallet My Wallet'));
-      expect(screen.getByTestId('confirm-modal-title')).toBeTruthy();
-    });
-
-    it('calls deleteWallet when confirm is pressed', async () => {
-      mockWallets = [makeWallet({ id: 'w1', name: 'My Wallet', network: 'mainnet' })];
-      const screen = renderWithTheme(<WalletListScreen />);
-      fireEvent.press(screen.getByLabelText('Delete wallet My Wallet'));
-      fireEvent.press(screen.getByTestId('confirm-modal-confirm'));
-      expect(mockDeleteWallet).toHaveBeenCalledWith('w1');
-    });
-
-    it('dismisses modal on cancel', () => {
-      mockWallets = [makeWallet({ name: 'My Wallet', network: 'mainnet' })];
-      const screen = renderWithTheme(<WalletListScreen />);
-      fireEvent.press(screen.getByLabelText('Delete wallet My Wallet'));
-      fireEvent.press(screen.getByTestId('confirm-modal-cancel'));
-      expect(screen.queryByTestId('confirm-modal-title')).toBeNull();
     });
   });
 });

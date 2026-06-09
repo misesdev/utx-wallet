@@ -89,6 +89,7 @@ yarn-error.log
 *.mobileprovision
 android/app/release.keystore
 android/app/upload.keystore
+android/keystore.properties
 
 # Firebase / Google services (contain API keys)
 google-services.json
@@ -105,3 +106,5 @@ sentry.properties
 # OS
 Thumbs.db
 .claude/
+
+memory/

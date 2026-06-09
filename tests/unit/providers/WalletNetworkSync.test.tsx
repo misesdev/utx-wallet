@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
+import { render, act, waitFor } from '@testing-library/react-native';
 import { WalletNetworkSync } from '../../../src/app/providers/WalletNetworkSync';
 
 const mockSyncNetworkToWallet = jest.fn().mockResolvedValue(undefined);
@@ -48,6 +48,19 @@ describe('WalletNetworkSync', () => {
     mockNetworkConfigNetwork = 'mainnet';
     render(<WalletNetworkSync />);
     await waitFor(() => expect(mockSyncNetworkToWallet).toHaveBeenCalledWith('testnet'));
+  });
+
+  it('syncs when networkConfig.network changes externally while wallet stays the same', async () => {
+    mockSelectedWallet = { id: 'w3', network: 'testnet4' };
+    mockNetworkConfigNetwork = 'testnet4';
+    const { rerender } = render(<WalletNetworkSync />);
+    expect(mockSyncNetworkToWallet).not.toHaveBeenCalled();
+
+    // External change: network switches to mainnet (e.g., from settings)
+    mockNetworkConfigNetwork = 'mainnet';
+    await act(async () => { rerender(<WalletNetworkSync />); });
+
+    await waitFor(() => expect(mockSyncNetworkToWallet).toHaveBeenCalledWith('testnet4'));
   });
 
   it('renders null — no visible output', () => {

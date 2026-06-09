@@ -14,6 +14,7 @@ describe('NodeConnectionTestUseCase', () => {
   it('returns connected for a valid personal node connection', async () => {
     const tester: jest.Mocked<NodeConnectionTester> = {
       testConnection: jest.fn().mockResolvedValue({ status: 'connected', expectedNetwork: 'testnet4', actualNetwork: 'testnet4' }),
+      testNode: jest.fn(),
     };
     const useCase = new NodeConnectionTestUseCase(tester);
 
@@ -28,6 +29,7 @@ describe('NodeConnectionTestUseCase', () => {
   it('returns disconnected for an invalid personal node connection', async () => {
     const tester: jest.Mocked<NodeConnectionTester> = {
       testConnection: jest.fn().mockResolvedValue({ status: 'disconnected', expectedNetwork: 'testnet4' }),
+      testNode: jest.fn(),
     };
     const useCase = new NodeConnectionTestUseCase(tester);
 

@@ -13,10 +13,12 @@ import { AppScreen } from '../../components/base/AppScreen';
 import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
 import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
+import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
 import { useAccountSummaries } from '../../hooks/useAccountSummaries';
 import { useWallet } from '../../hooks/useWallet';
+import { AppRoutes } from '../../../app/navigation/routes';
 import type { AddressOrigin } from '../../../core/domain/entities/AddressOrigin';
 import type { AccountSummary } from '../../../core/domain/services/AccountSummaryService';
 
@@ -178,6 +180,7 @@ export function SegregationScreen() {
   const { selectedWallet } = useWallet();
   const { theme } = useTheme();
   const { t } = useAppTranslation();
+  const navigation = useAppNavigation();
 
   const [origins, setOrigins] = useState<AddressOrigin[]>([]);
   const { summaries: accountSummaries, reload: reloadAccountSummaries } = useAccountSummaries();
@@ -223,8 +226,20 @@ export function SegregationScreen() {
     }
   }, [selectedWallet, createAddressOrigin, loadOrigins, reloadAccountSummaries, t]);
 
+  const infoButton = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t('common.info')}
+      onPress={() => navigation.navigate(AppRoutes.AccountPolicy)}
+      style={({ pressed }) => [styles.infoBtn, { opacity: pressed ? 0.6 : 1 }]}
+      testID="btn-account-policy"
+    >
+      <AppIcon name="info" size={22} color={theme.colors.textMuted} />
+    </Pressable>
+  );
+
   return (
-    <AppScreen title={t('segregation.title')} subtitle={t('segregation.subtitle')}>
+    <AppScreen title={t('segregation.title')} subtitle={t('segregation.subtitle')} rightAction={infoButton}>
       <View style={styles.infoCard}>
         <View
           style={[
@@ -275,6 +290,12 @@ export function SegregationScreen() {
 }
 
 const styles = StyleSheet.create({
+  infoBtn: {
+    alignItems: 'center',
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
   infoCard: {
     marginBottom: 4,
   },

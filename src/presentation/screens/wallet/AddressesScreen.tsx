@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppEmptyState } from '../../components/base/AppEmptyState';
+import { AppIcon } from '../../components/base/AppIcon';
 import { AppLoading } from '../../components/base/AppLoading';
 import { AppText } from '../../components/base/AppText';
-import { AppHeader } from '../../components/base/AppHeader';
+import { AppRoutes } from '../../../app/navigation/routes';
 import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
+import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
 import { useWallet } from '../../hooks/useWallet';
@@ -155,6 +157,7 @@ export function AddressesScreen() {
   const { theme } = useTheme();
   const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
+  const navigation = useAppNavigation();
   const { listAddresses } = useAddressManager();
   const { selectedWallet } = useWallet();
 
@@ -182,7 +185,20 @@ export function AddressesScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
-      <AppHeader title={t('addresses.title')} subtitle={t('addresses.total', { count: addresses.length })} />
+      <View style={styles.addrHeader}>
+        <View style={styles.addrHeaderText}>
+          <AppText variant="title">{t('addresses.title')}</AppText>
+          <AppText variant="caption" color="muted">{t('addresses.total', { count: addresses.length })}</AppText>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('common.info')}
+          onPress={() => navigation.navigate(AppRoutes.AddressPolicy)}
+          style={({ pressed }) => [styles.infoBtn, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          <AppIcon name="info" size={22} color={theme.colors.textMuted} />
+        </Pressable>
+      </View>
       {isLoading ? (
         <View style={styles.center}>
           <AppLoading label={t('addresses.loading')} />
@@ -210,6 +226,24 @@ export function AddressesScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+  },
+  addrHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+  },
+  addrHeaderText: {
+    flex: 1,
+    gap: 2,
+  },
+  infoBtn: {
+    alignItems: 'center',
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
   },
   center: {
     flex: 1,

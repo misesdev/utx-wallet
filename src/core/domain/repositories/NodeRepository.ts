@@ -1,4 +1,5 @@
 import type { NetworkConfig, NodeConnectionTestResult } from '../entities/Network';
+import type { PersonalNode } from '../entities/PersonalNode';
 
 export interface NodeRepository {
   getNetworkConfig(): Promise<NetworkConfig>;
@@ -8,4 +9,5 @@ export interface NodeRepository {
 
 export interface NodeConnectionTester {
   testConnection(config: NetworkConfig): Promise<NodeConnectionTestResult>;
+  testNode(node: PersonalNode): Promise<NodeConnectionTestResult>;
 }

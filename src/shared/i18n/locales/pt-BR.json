@@ -22,7 +22,8 @@
     "default": "Padrão",
     "account": "Conta {{accountIndex}}",
     "loadingAccounts": "Carregando contas…",
-    "qrCode": "QR"
+    "qrCode": "QR",
+    "info": "Info"
   },
   "welcome": {
     "tagline": "Suas chaves. Seu Bitcoin.",
@@ -57,14 +58,17 @@
     "title": "Carteiras",
     "noWallets": "Sem carteiras {{network}}",
     "noWalletsDesc": "Crie uma nova carteira ou importe uma existente para começar.",
-    "createWallet": "+ Criar carteira",
-    "importWallet": "↓ Importar carteira",
+    "createWallet": "Criar carteira",
+    "importWallet": "Importar carteira",
     "deleteTitle": "Excluir carteira",
     "deleteMessage": "Excluir \"{{name}}\"? Isso não pode ser desfeito. Certifique-se de ter feito o backup da sua seed phrase.",
     "mainnet": "Mainnet",
     "testnet": "Testnet",
     "globalSettings": "Configurações",
-    "scanImport": "Escanear QR"
+    "scanImport": "Escanear QR",
+    "statBalance": "SALDO",
+    "statAccounts": "CONTAS",
+    "statUtxos": "UTXOs"
   },
   "createWallet": {
     "title": "Nova carteira",
@@ -82,7 +86,7 @@
     "confirmPassphrasePlaceholder": "Repita sua passphrase",
     "hidePassphrase": "Ocultar passphrase",
     "showPassphrase": "Mostrar passphrase",
-    "generateSeed": "Gerar seed phrase de 12 palavras →",
+    "generateSeed": "Gerar seed phrase",
     "errorNameRequired": "Nome da carteira é obrigatório",
     "errorNameTooLong": "Nome deve ter no máximo 48 caracteres",
     "errorPassphraseEmpty": "Passphrase não pode estar vazia quando ativada",
@@ -98,7 +102,7 @@
     "neverShare": "Nunca compartilhe sua seed phrase com ninguém",
     "noDigital": "Nunca a armazene digitalmente ou tire screenshot",
     "noRecovery": "Sem esta frase, os fundos perdidos não podem ser recuperados",
-    "written": "Já anotei →"
+    "written": "Já anotei"
   },
   "confirmSeed": {
     "title": "Confirmar seed",
@@ -125,19 +129,34 @@
     "hidePassphrase": "Ocultar passphrase",
     "showPassphrase": "Mostrar passphrase",
     "importing": "Importando carteira…",
-    "importAction": "Importar carteira →",
+    "importAction": "Importar carteira",
     "errorSeedRequired": "Seed phrase é obrigatória",
     "errorInvalidSeed": "Seed phrase inválida. Revise as palavras e tente novamente.",
     "errorWalletExists": "Uma carteira chamada \"{{name}}\" já existe.",
     "errorImportFailed": "Falha ao importar carteira. Tente novamente."
   },
+  "walletSetup": {
+    "step1Label": "Importando chaves",
+    "step2Label": "Sincronizando endereços",
+    "step3Label": "Sincronizando contas",
+    "done": "Tudo pronto!",
+    "doneDesc": "Sua carteira está pronta para uso",
+    "errorTitle": "Falha na configuração",
+    "errorDesc": "Ocorreu um erro. Tente novamente.",
+    "retry": "Tentar novamente",
+    "settingUpTitle": "Configurando carteira",
+    "checkingAddress": "Conta {{account}}: verificando endereço {{index}}...",
+    "foundActivity": "Conta {{account}}: transações encontradas",
+    "generatingKeys": "Gerando chaves HD da carteira...",
+    "syncingChain": "Buscando dados do blockchain..."
+  },
   "receive": {
     "title": "Receber",
     "receivingAddress": "Endereço de recebimento",
-    "copy": "⎘ Copiar",
-    "share": "↑ Compartilhar",
+    "copy": "Copiar",
+    "share": "Compartilhar",
     "amountOptional": "Valor (opcional)",
-    "newAddress": "↺ Novo endereço",
+    "newAddress": "Novo endereço",
     "selectAccount": "Selecionar conta",
     "selectAccountDesc": "Escolha qual conta deve receber o bitcoin.",
     "errorLoadAddress": "Falha ao carregar endereço",
@@ -149,7 +168,7 @@
     "available": "Disponível",
     "recipientAddress": "Endereço do destinatário",
     "max": "MÁX",
-    "next": "Próximo →",
+    "next": "Próximo",
     "selectAccount": "Selecionar conta",
     "selectAccountDesc": "Escolha qual conta você quer enviar.",
     "noBalance": "Conta sem saldo",
@@ -157,7 +176,8 @@
     "errorInvalidAmount": "Informe um valor em sats válido",
     "errorPreviewFailed": "Falha ao criar prévia",
     "errorSendFailed": "Falha ao enviar transação",
-    "errorWatchOnly": "Carteiras somente-leitura não podem enviar transações"
+    "errorWatchOnly": "Carteiras somente-leitura não podem enviar transações",
+    "errorInsufficientBalance": "Valor excede o saldo disponível"
   },
   "fees": {
     "title": "Taxa de transação",
@@ -182,7 +202,11 @@
     "speedNormal": "~30min",
     "speedFast": "~10min",
     "speedCustom": "manual",
-    "customFeePlaceholder": "sats por vByte"
+    "customFeePlaceholder": "sats por vByte",
+    "payFee": "Deduzir taxa do valor",
+    "payFeeHint": "A taxa é deduzida do valor enviado",
+    "noPayFeeHint": "A taxa é somada ao valor enviado",
+    "recipientReceives": "Destinatário recebe"
   },
   "txReview": {
     "title": "Confirmar envio",
@@ -202,6 +226,7 @@
     "feePaid": "Taxa paga",
     "txid": "ID da transação (txid)",
     "copyTxid": "Copiar txid",
+    "copied": "Copiado!",
     "goHome": "Ir para início"
   },
   "transactions": {
@@ -276,7 +301,7 @@
     "info": "Cada segregação é uma conta BIP84 independente (accountIndex). Fundos em diferentes segregações permanecem separados e nunca se misturam automaticamente.",
     "empty": "Sem segregações ainda",
     "emptyDesc": "Sua conta padrão é criada automaticamente quando você sincroniza pela primeira vez.",
-    "newButton": "+ Nova Segregação",
+    "newButton": "Nova Segregação",
     "modalTitle": "Nova Segregação",
     "modalDesc": "Cada segregação é uma conta BIP84 independente com seu próprio pool de endereços de recebimento e troco.",
     "modalPlaceholder": "Nome (ex: Poupança, Corretora)",
@@ -284,6 +309,18 @@
     "create": "Criar",
     "default": "Padrão",
     "errorCreate": "Falha ao criar segregação"
+  },
+  "accountDetails": {
+    "title": "Conta",
+    "rename": "Renomear",
+    "renameTitle": "Renomear Conta",
+    "renamePlaceholder": "Nome da conta",
+    "renameError": "Falha ao renomear conta",
+    "balance": "Saldo",
+    "pending": "+{{sats}} sats pendentes",
+    "transactions": "Transações",
+    "noTransactions": "Sem transações",
+    "noTransactionsDesc": "As transações desta conta aparecerão aqui."
   },
   "walletDetails": {
     "title": "Detalhes da carteira",
@@ -329,7 +366,9 @@
   "qrScan": {
     "title": "QR Scan",
     "unavailableMessage": "A leitura pela câmera estará disponível em uma atualização futura.",
-    "accessibilityLabel": "Escanear QR code"
+    "accessibilityLabel": "Escanear QR code",
+    "addressPlaceholder": "bc1q… ou tb1q…",
+    "emptyError": "Insira um endereço Bitcoin"
   },
   "security": {
     "title": "Segurança",
@@ -380,19 +419,62 @@
     "apply": "Aplicar rede",
     "errorNoInternet": "Sem conexão com a internet"
   },
+  "nodeTutorial": {
+    "title": "Guia de configuração",
+    "heroTitle": "Execute seu próprio node Bitcoin",
+    "heroDesc": "Um node pessoal mantém suas transações privadas — nenhum terceiro vê o que você envia ou recebe.",
+    "s1Title": "Por que um node pessoal?",
+    "s1Body": "Ao usar uma API pública, seus endereços e histórico de transações são enviados a servidores externos. Um node pessoal mantém tudo em sua infraestrutura, garantindo privacidade total e soberania financeira.",
+    "s2Title": "Mempool.space (recomendado)",
+    "s2Body": "Este app conecta à API do Mempool. Execute via Docker:\n\ngit clone https://github.com/mempool/mempool\ncd mempool/docker\ndocker compose up -d\n\nURL padrão após a configuração:\nhttp://seu-servidor:8080/api",
+    "s3Title": "Umbrel — configuração mais fácil",
+    "s3Body": "O Umbrel é um SO para servidor pessoal. Instale em qualquer computador ou Raspberry Pi e adicione o app Mempool pela loja do Umbrel. A URL de conexão aparece no painel do app.",
+    "s4Title": "RaspiBlitz & Start9",
+    "s4Body": "RaspiBlitz e Start9 são plataformas de node Bitcoin para Raspberry Pi. Ambas suportam uma instância Mempool self-hosted. Encontre a URL do Mempool no painel do seu node após instalar o app.",
+    "s5Title": "Detalhes da conexão",
+    "s5Body": "URL — endereço completo da instância Mempool, ex: https://node.example.com/api\nPorta — deixe vazio se já estiver incluída na URL\nToken — token bearer opcional se sua instância exigir autenticação",
+    "s6Title": "Testando a conexão",
+    "s6Body": "Após informar a URL, toque em 'Testar conexão'. Status verde 'Conectado' confirma que o node está acessível e a rede corresponde. 'Rede incompatível' indica que o node usa outra rede.",
+    "s7Title": "Privacidade e segurança",
+    "s7Body": "Em rede local, HTTP simples é suficiente. Para acesso remoto, sempre use HTTPS e defina um token de autenticação. Para máxima privacidade, acesse seu node via VPN ou serviço oculto Tor."
+  },
   "nodeSettings": {
-    "title": "Configurações de node",
+    "title": "Adicionar node",
+    "titleEdit": "Editar node",
     "subtitle": "Conexão ao node pessoal",
     "connection": "Conexão",
+    "label": "Nome",
+    "labelPlaceholder": "Meu node",
     "nodeUrl": "URL do node",
     "nodeUrlPlaceholder": "https://node.example.com/api",
     "port": "Porta",
+    "portPlaceholder": "8332",
     "authToken": "Token de autenticação",
+    "authTokenPlaceholder": "Token bearer opcional",
     "network": "Rede",
     "status": "Status",
-    "connected": "conectado",
+    "statusNotTested": "Não testado",
+    "status_connected": "Conectado",
+    "status_disconnected": "Desconectado",
+    "status_network-incompatible": "Rede incompatível",
+    "status_authentication-error": "Erro de autenticação",
+    "testing": "Testando…",
     "testConnection": "Testar conexão",
-    "saveAndActivate": "Salvar e ativar modo seguro"
+    "testRequired": "Um teste de conexão bem-sucedido é necessário para salvar",
+    "saveAndAdd": "Adicionar node",
+    "saveChanges": "Salvar alterações",
+    "saveError": "Falha ao salvar node"
+  },
+  "manageNodes": {
+    "title": "Nodes pessoais",
+    "subtitle": "Roteamento por prioridade",
+    "addNode": "Adicionar node",
+    "empty": "Nenhum node configurado",
+    "emptyDesc": "Adicione um node Bitcoin pessoal para rotear suas transações com privacidade.",
+    "priority": "Prioridade",
+    "publicFallback": "Usar API pública como fallback",
+    "publicFallbackDesc": "Se todos os nodes falharem, usar a API pública do Mempool",
+    "info": "Os nodes são tentados em ordem de prioridade. Número menor = maior preferência. Usando node pessoal, seus dados de transação nunca saem da sua infraestrutura."
   },
   "offline": {
     "title": "Modo offline",
@@ -421,13 +503,13 @@
     "invalidHex": "Hex inválido",
     "failedPrepare": "Falha ao preparar transação",
     "failedBroadcast": "Falha ao transmitir",
-    "prepareTxAction": "◈ Preparar transação offline",
-    "importHexAction": "↓ Importar hex assinado",
+    "prepareTxAction": "Preparar transação offline",
+    "importHexAction": "Importar hex assinado",
     "remove": "Remover",
     "removeConfirmTitle": "Remover esta transação salva?",
-    "export": "↑ Exportar",
-    "broadcast": "⇡ Transmitir",
-    "removeAction": "✕ Remover",
+    "export": "Exportar",
+    "broadcast": "Transmitir",
+    "removeAction": "Remover",
     "invalidAmount": "Valor inválido",
     "invalidFee": "Taxa inválida",
     "errorLoadLocal": "Erro ao carregar dados locais"
@@ -436,12 +518,14 @@
     "title": "Modo seguro",
     "active": "Modo seguro ativo",
     "inactive": "Modo seguro inativo",
-    "activeDesc": "Transações roteadas pelo seu node pessoal.",
-    "inactiveDesc": "Conectando via API pública. Ative para usar seu próprio node.",
+    "activeDesc": "Todas as chamadas blockchain são roteadas pelos seus nodes pessoais.",
+    "inactiveDesc": "Conectando via API pública. Ative para usar seus próprios nodes.",
     "statusLabel": "Status",
-    "nodeLabel": "Node",
-    "networkLabel": "Rede",
-    "info": "O modo seguro conecta a carteira ao seu próprio node Bitcoin, garantindo máxima privacidade e verificação independente de transações.",
+    "nodesLabel": "Nodes",
+    "nodesConfigured": "{{count}} node(s) configurado(s)",
+    "noNodesConfigured": "Nenhum node configurado",
+    "manageNodes": "Gerenciar nodes",
+    "info": "O modo seguro roteia todo o tráfego blockchain pelos seus nodes Bitcoin pessoais, garantindo máxima privacidade e verificação independente.",
     "disable": "Desativar modo seguro",
     "enable": "Ativar modo seguro"
   },
@@ -486,7 +570,7 @@
     "scannerReady": "Pronto para escanear",
     "manualLabel": "Inserir manualmente",
     "manualPlaceholder": "Cole ou digite o código aqui",
-    "continue": "Continuar →",
+    "continue": "Continuar",
     "invalidFormat": "Formato não reconhecido. Verifique o código e tente novamente.",
     "enterManually": "Digitar manualmente",
     "formats": {
@@ -503,7 +587,7 @@
     "signingDesc": "Esta carteira pode assinar e enviar transações.",
     "nameLabel": "Nome da carteira",
     "namePlaceholder": "ex: Poupança",
-    "importAction": "Importar →",
+    "importAction": "Importar",
     "importFailed": "Falha ao importar carteira"
   },
   "globalSettings": {
@@ -534,5 +618,60 @@
   },
   "viewSeed": {
     "title": "Seed Phrase"
+  },
+  "walletPolicy": {
+    "title": "Política da Carteira",
+    "heroTitle": "Como as Carteiras Funcionam",
+    "heroDesc": "Tudo que você precisa saber sobre criar e importar carteiras com segurança.",
+    "s1Title": "Configuração em 3 Etapas",
+    "s1Body": "Ao criar ou importar uma carteira, o app executa três etapas automaticamente: configuração das chaves, descoberta de contas existentes no blockchain e sincronização de todos os dados de transações.",
+    "s2Title": "Suas Chaves, Seu Bitcoin",
+    "s2Body": "Sua seed phrase de 12 palavras é a única chave da sua carteira. Ela é armazenada de forma criptografada no dispositivo e nunca é transmitida. Quem tiver acesso à sua seed tem acesso total aos seus fundos.",
+    "s3Title": "Descoberta de Contas",
+    "s3Body": "Ao importar uma carteira existente, o app varre o blockchain para encontrar todas as suas contas e histórico. Ele verifica até 3 endereços consecutivos não utilizados por conta (gap limit BIP44) antes de concluir que não há mais contas.",
+    "s4Title": "Sincronização com Blockchain",
+    "s4Body": "Após a descoberta, o app baixa seus UTXOs, transações e saldos via API do Mempool. Você pode sincronizar novamente a qualquer momento tocando no botão de sync na tela principal.",
+    "s5Title": "Múltiplas Contas",
+    "s5Body": "Você pode criar contas separadas (chamadas 'origens') para organizar seus fundos — por exemplo: Default, Poupança, Trading. Cada conta tem seus próprios endereços de recebimento e troco, derivados da mesma seed phrase.",
+    "s6Title": "Passphrase Opcional",
+    "s6Body": "Uma passphrase é um segredo extra combinado com sua seed phrase para desbloquear uma carteira completamente diferente. Se você esquecer a passphrase, seus fundos ficam permanentemente inacessíveis. Use apenas se entender completamente o risco."
+  },
+  "addressPolicy": {
+    "title": "Política de Endereços",
+    "heroTitle": "Gerenciamento de Endereços",
+    "heroDesc": "Como a carteira gera, rastreia e protege seus endereços Bitcoin.",
+    "s1Title": "Privacidade por Padrão",
+    "s1Body": "A carteira nunca reutiliza endereços de recebimento. Cada pagamento usa um endereço novo, tornando significativamente mais difícil rastrear seu histórico completo de transações no blockchain.",
+    "s2Title": "Endereços de Recebimento e Troco",
+    "s2Body": "Sua carteira gerencia dois tipos de endereços: endereços de recebimento (compartilhados com quem te envia) e endereços de troco (para o valor residual após um envio). Ambos são derivados da mesma seed, mas por caminhos separados.",
+    "s3Title": "Ciclo de Vida do Endereço",
+    "s3Body": "Um endereço começa como 'novo', fica 'reservado' quando selecionado, depois 'recebido' ao receber fundos. Após um gasto, torna-se 'usado' e nunca mais é sugerido para recebimento. Esse ciclo protege sua privacidade.",
+    "s4Title": "Pool de Endereços",
+    "s4Body": "O app mantém sempre pelo menos 3 endereços novos de recebimento e 3 de troco prontos para cada conta. Novos endereços são derivados automaticamente conforme os existentes são utilizados.",
+    "s5Title": "Regras de Gasto",
+    "s5Body": "Ao gastar qualquer UTXO de um endereço, todos os UTXOs daquele mesmo endereço são incluídos na mesma transação. Isso evita acúmulo de poeira e reduz a rastreabilidade dos seus fundos.",
+    "s6Title": "Seleção de Moedas",
+    "s6Body": "O app seleciona a combinação mais eficiente de UTXOs para cada transação. UTXOs congelados nunca são incluídos. Você pode congelar ou descongelar qualquer UTXO na tela de gerenciamento de UTXOs.",
+    "s7Title": "Segurança",
+    "s7Body": "Chaves privadas nunca são armazenadas no banco de endereços. Elas são derivadas da seed apenas no momento da assinatura de uma transação, sendo imediatamente descartadas da memória em seguida."
+  },
+  "accountPolicy": {
+    "title": "Política de Contas",
+    "heroTitle": "Gerenciamento de Contas",
+    "heroDesc": "Como as contas funcionam, como os endereços são derivados e como seus fundos permanecem isolados e privados.",
+    "s1Title": "Contas e Segregação",
+    "s1Body": "Uma conta é uma partição lógica da sua carteira — um conjunto dedicado de endereços para uma finalidade específica (poupança, trading, etc.). Todas as contas compartilham a mesma seed, mas usam índices de conta BIP44 diferentes, mantendo os fundos completamente isolados na blockchain.",
+    "s2Title": "BIP84 — Native SegWit",
+    "s2Body": "Esta carteira segue o BIP84, que produz endereços Native SegWit começando com bc1q. Eles oferecem as menores taxas de transação possíveis e ampla compatibilidade com outras carteiras.\n\nMainnet: m/84'/0'/accountIndex'/chain/index\nTestnet: m/84'/1'/accountIndex'/chain/index",
+    "s3Title": "Índice de Conta",
+    "s3Body": "Cada conta usa um accountIndex único no caminho de derivação BIP44. Sua conta padrão é o índice 0. Novas contas incrementam esse índice sequencialmente.\n\nPadrão:   m/84'/0'/0'\nConta 2: m/84'/0'/1'\nConta 3: m/84'/0'/2'",
+    "s4Title": "Chains de Recebimento e Troco",
+    "s4Body": "Dentro de cada conta, os endereços são divididos em duas chains. A carteira gerencia ambas automaticamente — você só precisa compartilhar endereços de recebimento.\n\nchain 0 (receber): m/84'/0'/accountIndex'/0/index\nchain 1 (troco):   m/84'/0'/accountIndex'/1/index",
+    "s5Title": "Pool de Endereços",
+    "s5Body": "A carteira mantém sempre pelo menos 3 endereços de recebimento e 3 de troco frescos prontos por conta. Novos endereços são derivados automaticamente conforme os existentes são usados. O gap limit é 20 — a varredura para após 20 endereços consecutivos sem uso durante a importação.",
+    "s6Title": "Sem Reutilização de Endereços",
+    "s6Body": "Uma vez que um endereço foi gasto, ele é permanentemente desativado. Nunca será sugerido para recebimento novamente. O troco sempre vai para um endereço de troco novo, nunca de volta ao endereço de origem. Isso impede que observadores da blockchain vinculem suas transações.",
+    "s7Title": "Suas Chaves Permanecem Privadas",
+    "s7Body": "Chaves privadas nunca são armazenadas no banco de endereços. Apenas dados públicos são mantidos — caminhos de derivação, saldos e referências de transações. Sua chave privada é derivada da seed somente no momento da assinatura, sendo imediatamente descartada da memória."
   }
 }

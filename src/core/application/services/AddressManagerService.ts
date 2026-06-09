@@ -10,6 +10,8 @@ import { GetNextReceiveAddressUseCase } from '../../domain/usecases/address/GetN
 import { GetNextChangeAddressUseCase } from '../../domain/usecases/address/GetNextChangeAddressUseCase';
 import { EnsureAddressPoolUseCase } from '../../domain/usecases/address/EnsureAddressPoolUseCase';
 import { RenameAddressOriginUseCase } from '../../domain/usecases/address/RenameAddressOriginUseCase';
+import type { WalletDiscoveryProgress } from '../../domain/usecases/wallet/WalletDiscoveryUseCase';
+import { WalletDiscoveryUseCase } from '../../domain/usecases/wallet/WalletDiscoveryUseCase';
 
 export class AddressManagerService {
   constructor(
@@ -21,6 +23,7 @@ export class AddressManagerService {
     private readonly originRepository: AddressOriginRepository,
     private readonly walletAddressRepository: WalletAddressRepository | null = null,
     private readonly renameOrigin: RenameAddressOriginUseCase | null = null,
+    private readonly walletDiscovery: WalletDiscoveryUseCase | null = null,
   ) {}
 
   getOrigins(walletId: string): Promise<AddressOrigin[]> {
@@ -79,5 +82,16 @@ export class AddressManagerService {
     const existing = await this.originRepository.findDefault(walletId);
     if (existing) return existing;
     return this.createOrigin.execute(walletId, DEFAULT_ORIGIN_NAME, network);
+  }
+
+  discoverWalletAccounts(
+    walletId: string,
+    network: BitcoinNetwork,
+    onProgress?: (progress: WalletDiscoveryProgress) => void,
+  ): Promise<AddressOrigin[]> {
+    if (!this.walletDiscovery) {
+      return this.ensureDefaultOrigin(walletId, network).then(o => [o]);
+    }
+    return this.walletDiscovery.execute(walletId, network, onProgress);
   }
 }

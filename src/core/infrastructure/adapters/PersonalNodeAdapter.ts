@@ -1,5 +1,6 @@
 import { AppError } from '../../application/errors/AppError';
 import type { BitcoinNetwork, NetworkConfig, NodeConnectionTestResult } from '../../domain/entities/Network';
+import type { PersonalNode } from '../../domain/entities/PersonalNode';
 import type { BlockchainProvider, AddressBalance, FeeRates, RemoteTransactionStatus, RawTransaction } from '../../domain/repositories/BlockchainProvider';
 import type { NodeConnectionTester, NodeRepository } from '../../domain/repositories/NodeRepository';
 import type { Transaction } from '../../domain/entities/Transaction';
@@ -12,19 +13,27 @@ type NodeNetworkResponse = {
   network: BitcoinNetwork;
 };
 
-function normalizeBaseUrl(config: NetworkConfig): string {
-  const rawUrl = config.personalNodeUrl?.trim();
+export function normalizeNodeUrl(url: string, port?: number): string {
+  const rawUrl = url.trim();
   if (!rawUrl) return '';
   const withProtocol = /^https?:\/\//i.test(rawUrl) ? rawUrl : `http://${rawUrl}`;
-  const url = new URL(withProtocol);
-  const port = config.personalNodePort ? `:${config.personalNodePort}` : url.port ? `:${url.port}` : '';
-  const path = url.pathname === '/' ? '' : url.pathname.replace(/\/$/, '');
-  return `${url.protocol}//${url.hostname}${port}${path}${url.search}`;
+  const parsed = new URL(withProtocol);
+  const portStr = port ? `:${port}` : parsed.port ? `:${parsed.port}` : '';
+  const path = parsed.pathname === '/' ? '' : parsed.pathname.replace(/\/$/, '');
+  return `${parsed.protocol}//${parsed.hostname}${portStr}${path}${parsed.search}`;
+}
+
+export function nodeAuthHeaders(authToken?: string): Record<string, string> | undefined {
+  const token = authToken?.trim();
+  return token ? { Authorization: `Bearer ${token}` } : undefined;
+}
+
+function normalizeBaseUrl(config: NetworkConfig): string {
+  return normalizeNodeUrl(config.personalNodeUrl ?? '', config.personalNodePort);
 }
 
 function authHeaders(config: NetworkConfig): Record<string, string> | undefined {
-  const token = config.personalNodeAuthToken?.trim();
-  return token ? { Authorization: `Bearer ${token}` } : undefined;
+  return nodeAuthHeaders(config.personalNodeAuthToken);
 }
 
 function isAuthError(err: unknown): boolean {
@@ -65,26 +74,41 @@ export class PersonalNodeAdapter implements NodeRepository, NodeConnectionTester
     if (!baseUrl) {
       return { status: 'disconnected', expectedNetwork: config.network };
     }
+    return this.probeUrl(baseUrl, authHeaders(config), config.network);
+  }
 
+  async testNode(node: PersonalNode): Promise<NodeConnectionTestResult> {
+    const baseUrl = normalizeNodeUrl(node.url, node.port);
+    if (!baseUrl) {
+      return { status: 'disconnected', expectedNetwork: node.network };
+    }
+    return this.probeUrl(baseUrl, nodeAuthHeaders(node.authToken), node.network);
+  }
+
+  private async probeUrl(
+    baseUrl: string,
+    headers: Record<string, string> | undefined,
+    expectedNetwork: BitcoinNetwork,
+  ): Promise<NodeConnectionTestResult> {
     try {
       const response = await this.httpClient.get<NodeNetworkResponse>(`${baseUrl}/v1/network`, {
-        headers: authHeaders(config),
+        headers,
         timeoutMs: 10_000,
       });
 
-      if (response.network !== config.network) {
+      if (response.network !== expectedNetwork) {
         return {
           status: 'network-incompatible',
-          expectedNetwork: config.network,
+          expectedNetwork,
           actualNetwork: response.network,
         };
       }
 
-      return { status: 'connected', expectedNetwork: config.network, actualNetwork: response.network };
+      return { status: 'connected', expectedNetwork, actualNetwork: response.network };
     } catch (err) {
       return {
         status: isAuthError(err) ? 'authentication-error' : 'disconnected',
-        expectedNetwork: config.network,
+        expectedNetwork,
       };
     }
   }

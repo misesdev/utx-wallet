@@ -8,6 +8,7 @@ import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useSafeMode } from '../../hooks/useSafeMode';
 import { useTheme } from '../../hooks/useTheme';
+import { AppRoutes } from '../../../app/navigation/routes';
 
 export function SafeModeScreen() {
   const { theme } = useTheme();
@@ -15,9 +16,8 @@ export function SafeModeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
 
-  const { form, isSafeModeEnabled, statusLabel, activateSafeMode, deactivateSafeMode } = useSafeMode();
+  const { isSafeModeEnabled, activeNetworkNodeCount, statusLabel, activateSafeMode, deactivateSafeMode } = useSafeMode();
 
-  const nodeDisplay = form.url.trim() ? form.url : 'não configurado';
   const statusColor = statusLabel === 'conectado' ? theme.colors.success : theme.colors.textMuted;
 
   return (
@@ -52,7 +52,7 @@ export function SafeModeScreen() {
           ]}
         >
           <View style={[styles.heroIcon, { backgroundColor: isSafeModeEnabled ? theme.colors.accent : theme.colors.surfaceMuted, borderRadius: theme.radii.md }]}>
-            <AppIcon name={isSafeModeEnabled ? "safeMode" : "warning"} size={36} color={isSafeModeEnabled ? theme.colors.success : theme.colors.textMuted} />
+            <AppIcon name={isSafeModeEnabled ? 'safeMode' : 'warning'} size={36} color={isSafeModeEnabled ? theme.colors.success : theme.colors.textMuted} />
           </View>
           <AppText
             variant="subtitle"
@@ -61,9 +61,7 @@ export function SafeModeScreen() {
             {isSafeModeEnabled ? t('safeMode.active') : t('safeMode.inactive')}
           </AppText>
           <AppText variant="caption" color="muted">
-            {isSafeModeEnabled
-              ? t('safeMode.activeDesc')
-              : t('safeMode.inactiveDesc')}
+            {isSafeModeEnabled ? t('safeMode.activeDesc') : t('safeMode.inactiveDesc')}
           </AppText>
         </View>
 
@@ -82,18 +80,17 @@ export function SafeModeScreen() {
             <AppText variant="caption" color="muted">{t('safeMode.statusLabel')}</AppText>
             <View style={styles.statusRow}>
               <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-              <AppText variant="body" style={{ color: statusColor }}>{statusLabel}</AppText>
+              <AppText variant="body" style={{ color: statusColor }} testID="safe-mode-status-label">{statusLabel}</AppText>
             </View>
           </View>
           <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
           <View style={styles.infoRow}>
-            <AppText variant="caption" color="muted">{t('safeMode.nodeLabel')}</AppText>
-            <AppText variant="body" numberOfLines={1} style={styles.nodeUrl}>{nodeDisplay}</AppText>
-          </View>
-          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-          <View style={styles.infoRow}>
-            <AppText variant="caption" color="muted">{t('safeMode.networkLabel')}</AppText>
-            <AppText variant="body">{form.network}</AppText>
+            <AppText variant="caption" color="muted">{t('safeMode.nodesLabel')}</AppText>
+            <AppText variant="body" testID="safe-mode-node-count">
+              {activeNetworkNodeCount > 0
+                ? t('safeMode.nodesConfigured', { count: activeNetworkNodeCount })
+                : t('safeMode.noNodesConfigured')}
+            </AppText>
           </View>
         </View>
 
@@ -113,11 +110,30 @@ export function SafeModeScreen() {
           </AppText>
         </View>
 
+        {/* Manage nodes link */}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => navigation.navigate(AppRoutes.ManageNodes)}
+          style={({ pressed }) => [
+            styles.manageRow,
+            {
+              backgroundColor: theme.colors.surfaceRaised,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.lg,
+              opacity: pressed ? 0.7 : 1,
+            },
+          ]}
+          testID="btn-manage-nodes"
+        >
+          <AppText variant="body">{t('safeMode.manageNodes')}</AppText>
+          <AppIcon name="chevronRight" size={20} color={theme.colors.textMuted} />
+        </Pressable>
+
         {/* Actions */}
         {isSafeModeEnabled ? (
-          <AppButton title={t('safeMode.disable')} variant="secondary" onPress={deactivateSafeMode} />
+          <AppButton title={t('safeMode.disable')} variant="secondary" onPress={deactivateSafeMode} testID="btn-disable-safe-mode" />
         ) : (
-          <AppButton title={t('safeMode.enable')} onPress={activateSafeMode} />
+          <AppButton title={t('safeMode.enable')} onPress={activateSafeMode} testID="btn-enable-safe-mode" disabled={activeNetworkNodeCount === 0} />
         )}
       </ScrollView>
     </View>
@@ -165,9 +181,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 52,
   },
-  heroIconText: {
-    fontSize: 24,
-  },
   heroTitle: {
     fontWeight: '700',
     textAlign: 'center',
@@ -196,11 +209,6 @@ const styles = StyleSheet.create({
     height: 8,
     width: 8,
   },
-  nodeUrl: {
-    flex: 1,
-    maxWidth: '65%',
-    textAlign: 'right',
-  },
   divider: {
     height: StyleSheet.hairlineWidth,
   },
@@ -209,5 +217,15 @@ const styles = StyleSheet.create({
   descCard: {
     borderWidth: 1,
     padding: 14,
+  },
+
+  // Manage row
+  manageRow: {
+    alignItems: 'center',
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
 });

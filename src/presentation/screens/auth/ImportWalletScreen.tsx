@@ -2,23 +2,31 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { BitcoinNetwork } from '../../../core/domain/entities/Network';
-import { AppRoutes, AppStackParamList } from '../../../app/navigation/routes';
+import { AppRoutes } from '../../../app/navigation/routes';
+import type { AppStackParamList } from '../../../app/navigation/routes';
 import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
-import { AppLoading } from '../../components/base/AppLoading';
 import { FormInput } from '../../components/forms/FormInput';
+import { WalletSetupProgressModal } from '../../components/wallet/WalletSetupProgressModal';
+import type { WalletSetupStep } from '../../components/wallet/WalletSetupProgressModal';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useImportWallet } from '../../hooks/useImportWallet';
 import { useTheme } from '../../hooks/useTheme';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
+import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
+import { useWallet } from '../../hooks/useWallet';
 
 type ImportWalletRoute = RouteProp<AppStackParamList, typeof AppRoutes.ImportWallet>;
 
-const IMPORT_NETWORKS: { key: BitcoinNetwork; label: string }[] = [
-  { key: 'mainnet', label: 'Mainnet' },
-  { key: 'testnet', label: 'Testnet' },
-];
+const NETWORK_ACCENT: Record<string, string> = {
+  mainnet: '#F7931A',
+  testnet: '#8E6FE8',
+};
+
+const NETWORK_LABEL: Record<string, string> = {
+  mainnet: 'Mainnet',
+  testnet: 'Testnet',
+};
 
 export function ImportWalletScreen() {
   const { theme } = useTheme();
@@ -26,6 +34,7 @@ export function ImportWalletScreen() {
   const navigation = useAppNavigation();
   const route = useRoute<ImportWalletRoute>();
   const routeNetwork = route.params?.network ?? 'testnet';
+  const accent = NETWORK_ACCENT[routeNetwork] ?? NETWORK_ACCENT.testnet;
   const {
     walletName,
     setWalletName,
@@ -35,27 +44,93 @@ export function ImportWalletScreen() {
     setPassphrase,
     confirmPassphrase,
     setConfirmPassphrase,
-    selectedNetwork,
-    setSelectedNetwork,
     isLoading,
     error,
     clearError,
     submit,
   } = useImportWallet(routeNetwork);
+  const { discoverWalletAccounts } = useAddressManager();
+  const { syncWallet } = useWallet();
 
   const { t } = useAppTranslation();
   const [passphraseEnabled, setPassphraseEnabled] = useState(false);
   const [showPassphrase, setShowPassphrase] = useState(false);
+  const [setupStep, setSetupStep] = useState<WalletSetupStep>('importing');
+  const [setupVisible, setSetupVisible] = useState(false);
+  const [setupError, setSetupError] = useState<string | undefined>();
+  const [subMessage, setSubMessage] = useState<string | undefined>();
 
   async function handleImport() {
+    setSetupStep('importing');
+    setSetupError(undefined);
+    setSubMessage(t('walletSetup.generatingKeys'));
+    setSetupVisible(true);
+    // Yield to the JS event loop so React flushes state and renders the modal
+    // before CPU-intensive key derivation blocks the thread.
+    await new Promise<void>(resolve => setTimeout(resolve, 32));
+
     const wallet = await submit();
-    if (wallet) {
-      navigation.goBack();
+    if (!wallet) {
+      setSetupVisible(false);
+      return;
     }
+
+    setSetupStep('discovering');
+    setSubMessage(undefined);
+    try {
+      await discoverWalletAccounts(wallet.id, wallet.network, (progress) => {
+        if (progress.txFound) {
+          setSubMessage(
+            t('walletSetup.foundActivity', {
+              account: progress.accountIndex,
+            }),
+          );
+        } else {
+          setSubMessage(
+            t('walletSetup.checkingAddress', {
+              account: progress.accountIndex,
+              index: progress.addressIndex + 1,
+            }),
+          );
+        }
+      });
+    } catch (err) {
+      setSetupError(err instanceof Error ? err.message : undefined);
+      setSetupStep('error');
+      return;
+    }
+
+    setSetupStep('syncing');
+    setSubMessage(t('walletSetup.syncingChain'));
+    try {
+      await syncWallet(wallet.id);
+    } catch {
+      // Sync errors are non-fatal: wallet is created, just no data yet
+    }
+
+    setSubMessage(undefined);
+    setSetupStep('done');
+  }
+
+  function handleSetupDone() {
+    setSetupVisible(false);
+    navigation.goBack();
+  }
+
+  function handleSetupRetry() {
+    setSetupVisible(false);
   }
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+      <WalletSetupProgressModal
+        visible={setupVisible}
+        currentStep={setupStep}
+        subMessage={subMessage}
+        error={setupError}
+        onDone={handleSetupDone}
+        onRetry={handleSetupRetry}
+      />
       {/* Header */}
       <View style={styles.header}>
         <Pressable
@@ -66,20 +141,37 @@ export function ImportWalletScreen() {
         >
           <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
-        <View style={styles.headerCenter}>
-          <AppText variant="subtitle" style={styles.headerTitle}>{t('importWallet.title')}</AppText>
-          <AppText variant="caption" color="muted">{t('importWallet.subtitle')}</AppText>
+        <AppText variant="subtitle" style={styles.headerTitle}>{t('importWallet.title')}</AppText>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('common.info')}
+          onPress={() => navigation.navigate(AppRoutes.WalletPolicy)}
+          style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          <AppIcon name="info" size={22} color={theme.colors.textMuted} />
+        </Pressable>
+      </View>
+
+      {/* Network badge */}
+      <View style={styles.networkBannerWrap}>
+        <View
+          style={[
+            styles.networkBanner,
+            { backgroundColor: accent + '18', borderColor: accent + '44', borderRadius: theme.radii.lg },
+          ]}
+        >
+          <View style={[styles.networkDot, { backgroundColor: accent }]} />
+          <AppText variant="label" style={[styles.networkBannerText, { color: accent }]}>
+            {NETWORK_LABEL[routeNetwork] ?? routeNetwork}
+          </AppText>
         </View>
-        <View style={styles.backBtn} />
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: Math.max(insets.bottom, 16) + 24 },
-        ]}
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
       >
         {/* Main form card */}
         <View
@@ -126,41 +218,6 @@ export function ImportWalletScreen() {
             accessibilityLabel={t('importWallet.seedLabel')}
           />
 
-          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-
-          {/* Network selector */}
-          <View style={styles.networkSection}>
-            <AppText variant="label" color="muted">{t('importWallet.networkLabel')}</AppText>
-            <View style={styles.networkRow}>
-              {IMPORT_NETWORKS.map(net => {
-                const active = selectedNetwork === net.key;
-                return (
-                  <Pressable
-                    key={net.key}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: active }}
-                    onPress={() => setSelectedNetwork(net.key)}
-                    style={({ pressed }) => [
-                      styles.networkChip,
-                      {
-                        backgroundColor: active ? theme.colors.accentMuted : theme.colors.surfaceMuted,
-                        borderColor: active ? theme.colors.accent : theme.colors.border,
-                        borderRadius: theme.radii.md,
-                        opacity: pressed ? 0.8 : 1,
-                      },
-                    ]}
-                  >
-                    <AppText
-                      variant="label"
-                      style={active ? [styles.networkChipText, { color: theme.colors.accent }] : styles.networkChipTextMuted}
-                    >
-                      {net.label}
-                    </AppText>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
         </View>
 
         {/* Passphrase toggle */}
@@ -274,31 +331,38 @@ export function ImportWalletScreen() {
             {error}
           </AppText>
         ) : null}
-
-        {/* CTA */}
-        {isLoading ? (
-          <AppLoading label={t('importWallet.importing')} />
-        ) : (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('importWallet.importAction')}
-            onPress={handleImport}
-            disabled={isLoading}
-            style={({ pressed }) => [
-              styles.cta,
-              {
-                backgroundColor: theme.colors.accent,
-                borderRadius: theme.radii.lg,
-                opacity: pressed || isLoading ? 0.75 : 1,
-              },
-            ]}
-          >
-            <AppText variant="subtitle" style={styles.ctaText}>
-              {t('importWallet.importAction')}
-            </AppText>
-          </Pressable>
-        )}
       </ScrollView>
+
+      {/* Sticky footer CTA */}
+      <View
+        style={[
+          styles.footer,
+          {
+            backgroundColor: theme.colors.background,
+            borderTopColor: theme.colors.border,
+            paddingBottom: Math.max(insets.bottom, 16),
+          },
+        ]}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('importWallet.importAction')}
+          onPress={handleImport}
+          disabled={isLoading}
+          style={({ pressed }) => [
+            styles.cta,
+            {
+              backgroundColor: theme.colors.accent,
+              borderRadius: theme.radii.lg,
+              opacity: pressed || isLoading ? 0.75 : 1,
+            },
+          ]}
+        >
+          <AppText variant="subtitle" style={styles.ctaText}>
+            {t('importWallet.importAction')}
+          </AppText>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -322,21 +386,51 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 40,
   },
-  headerCenter: {
-    alignItems: 'center',
-    flex: 1,
-    gap: 2,
-  },
   headerTitle: {
+    flex: 1,
     fontWeight: '700',
     textAlign: 'center',
   },
 
-  // Content
+  // Network badge
+  networkBannerWrap: {
+    alignItems: 'center',
+    paddingBottom: 4,
+    paddingHorizontal: 20,
+  },
+  networkBanner: {
+    alignItems: 'center',
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  networkDot: {
+    borderRadius: 4,
+    height: 8,
+    width: 8,
+  },
+  networkBannerText: {
+    fontWeight: '600',
+  },
+
+  // Scroll
+  scroll: {
+    flex: 1,
+  },
   content: {
     gap: 16,
+    paddingBottom: 16,
     paddingHorizontal: 20,
     paddingTop: 8,
+  },
+
+  // Footer
+  footer: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 20,
+    paddingTop: 12,
   },
 
   // Card
@@ -357,27 +451,6 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     paddingTop: 14,
     textAlignVertical: 'top',
-  },
-
-  // Network
-  networkSection: {
-    gap: 10,
-  },
-  networkRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  networkChip: {
-    alignItems: 'center',
-    borderWidth: 1,
-    flex: 1,
-    paddingVertical: 10,
-  },
-  networkChipText: {
-    fontWeight: '600',
-  },
-  networkChipTextMuted: {
-    opacity: 0.55,
   },
 
   // Toggle

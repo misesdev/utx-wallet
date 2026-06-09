@@ -5,6 +5,7 @@ import { NoopScreenCaptureAdapter } from '../../../core/infrastructure/adapters/
 import { AppRoutes } from '../../../app/navigation/routes';
 import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
+import { SeedWordGrid } from '../../components/wallet/SeedWordGrid';
 import { PinInputModal } from '../../components/security/PinInputModal';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
@@ -68,10 +69,8 @@ export function BackupSeedScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: Math.max(insets.bottom, 16) + 24 },
-        ]}
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
       >
         {/* Security warning */}
         <View
@@ -139,26 +138,7 @@ export function BackupSeedScreen() {
               <AppText variant="caption" color="muted">{t('backupSeed.noCamera')}</AppText>
             </Pressable>
           ) : (
-            <View style={styles.seedGrid}>
-              {words.map((word, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.seedWord,
-                    {
-                      backgroundColor: theme.colors.surfaceMuted,
-                      borderColor: theme.colors.border,
-                      borderRadius: theme.radii.md,
-                    },
-                  ]}
-                >
-                  <AppText variant="caption" color="muted" style={styles.seedIndex}>
-                    {i + 1}
-                  </AppText>
-                  <AppText variant="body" style={styles.seedWordText}>{word}</AppText>
-                </View>
-              ))}
-            </View>
+            <SeedWordGrid words={words} testID="seed-grid" />
           )}
         </View>
 
@@ -185,7 +165,19 @@ export function BackupSeedScreen() {
           ))}
         </View>
 
-        {/* CTA */}
+      </ScrollView>
+
+      {/* Sticky footer CTA */}
+      <View
+        style={[
+          styles.footer,
+          {
+            backgroundColor: theme.colors.background,
+            borderTopColor: theme.colors.border,
+            paddingBottom: Math.max(insets.bottom, 16),
+          },
+        ]}
+      >
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('backupSeed.written')}
@@ -207,7 +199,7 @@ export function BackupSeedScreen() {
             {t('backupSeed.written')}
           </AppText>
         </Pressable>
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -241,9 +233,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Content
+  // Scroll
+  scroll: {
+    flex: 1,
+  },
   content: {
     gap: 16,
+    paddingBottom: 16,
     paddingHorizontal: 20,
     paddingTop: 8,
   },
@@ -289,29 +285,12 @@ const styles = StyleSheet.create({
   revealTitle: {
     fontWeight: '700',
   },
-  seedGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    padding: 16,
-  },
-  seedWord: {
-    alignItems: 'center',
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 6,
-    minWidth: '28%',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  seedIndex: {
-    fontWeight: '700',
-    minWidth: 18,
-    textAlign: 'right',
-  },
-  seedWordText: {
-    fontWeight: '600',
-    letterSpacing: 0.2,
+
+  // Footer
+  footer: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 20,
+    paddingTop: 12,
   },
 
   // Tips
@@ -339,11 +318,7 @@ const styles = StyleSheet.create({
   // CTA
   cta: {
     alignItems: 'center',
-    marginTop: 4,
     paddingVertical: 16,
-  },
-  ctaText: {
-    fontWeight: '700',
   },
   ctaTextActive: {
     color: '#fff',

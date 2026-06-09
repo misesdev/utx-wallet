@@ -7,4 +7,30 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
-# Add any project specific keep options here:
+# React Native
+-keep class com.facebook.react.** { *; }
+-keep class com.facebook.hermes.** { *; }
+-keep class com.facebook.jni.** { *; }
+-dontwarn com.facebook.**
+
+# react-native-vector-icons
+-keep class com.oblador.vectoricons.** { *; }
+
+# react-native-encrypted-storage
+-keep class com.emeraldsanto.encryptedstorage.** { *; }
+
+# op-sqlite
+-keep class com.op.sqlite.** { *; }
+
+# react-native-screens
+-keep class com.swmansion.rnscreens.** { *; }
+
+# react-native-safe-area-context
+-keep class com.th3rdwave.safeareacontext.** { *; }
+
+# react-native-svg
+-keep class com.horcrux.svg.** { *; }
+
+# Kotlin
+-keep class kotlin.** { *; }
+-dontwarn kotlin.**

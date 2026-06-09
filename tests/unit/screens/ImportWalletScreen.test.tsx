@@ -4,22 +4,23 @@ import { ImportWalletScreen } from '../../../src/presentation/screens/auth/Impor
 import { renderWithTheme } from '../../mocks/renderWithProviders';
 
 const mockGoBack = jest.fn();
+const mockNavigate = jest.fn();
 const mockSubmit = jest.fn();
+const mockDiscoverWalletAccounts = jest.fn();
+const mockSyncWallet = jest.fn();
 const mockSetWalletName = jest.fn();
 const mockSetSeed = jest.fn();
 const mockSetPassphrase = jest.fn();
 const mockSetConfirmPassphrase = jest.fn();
-const mockSetSelectedNetwork = jest.fn();
 const mockClearError = jest.fn();
 
 let mockError = '';
 let mockIsLoading = false;
-let mockSelectedNetwork = 'testnet';
 let mockWalletName = '';
 let mockSeed = '';
 
 jest.mock('../../../src/presentation/hooks/useAppNavigation', () => ({
-  useAppNavigation: () => ({ navigate: jest.fn(), goBack: mockGoBack }),
+  useAppNavigation: () => ({ navigate: mockNavigate, goBack: mockGoBack }),
 }));
 
 jest.mock('../../../src/presentation/hooks/useImportWallet', () => ({
@@ -32,12 +33,29 @@ jest.mock('../../../src/presentation/hooks/useImportWallet', () => ({
     setPassphrase: mockSetPassphrase,
     confirmPassphrase: '',
     setConfirmPassphrase: mockSetConfirmPassphrase,
-    selectedNetwork: mockSelectedNetwork,
-    setSelectedNetwork: mockSetSelectedNetwork,
     isLoading: mockIsLoading,
     error: mockError,
     clearError: mockClearError,
     submit: mockSubmit,
+  }),
+}));
+
+jest.mock('../../../src/presentation/hooks/useWallet', () => ({
+  useWallet: () => ({
+    syncWallet: mockSyncWallet,
+  }),
+}));
+
+jest.mock('../../../src/app/providers/AddressManagerProvider', () => ({
+  useAddressManager: () => ({
+    discoverWalletAccounts: mockDiscoverWalletAccounts,
+    getOrigins: jest.fn(),
+    createAddressOrigin: jest.fn(),
+    renameAddressOrigin: jest.fn(),
+    getReceiveAddress: jest.fn(),
+    getChangeAddress: jest.fn(),
+    ensureAddressPool: jest.fn(),
+    listAddresses: jest.fn(),
   }),
 }));
 
@@ -56,10 +74,11 @@ describe('ImportWalletScreen', () => {
     jest.clearAllMocks();
     mockError = '';
     mockIsLoading = false;
-    mockSelectedNetwork = 'testnet';
     mockWalletName = '';
     mockSeed = '';
     mockRouteParams = undefined;
+    mockDiscoverWalletAccounts.mockResolvedValue([]);
+    mockSyncWallet.mockResolvedValue({ newUtxos: 0, spentUtxos: 0, newTransactions: 0, syncedAt: new Date().toISOString() });
   });
 
   it('renders the screen title', () => {
@@ -77,12 +96,21 @@ describe('ImportWalletScreen', () => {
     expect(screen.getByPlaceholderText('importWallet.seedPlaceholder')).toBeTruthy();
   });
 
-  it('renders Mainnet and Testnet network options only', () => {
+  it('shows Testnet network badge when no route params provided', () => {
+    const screen = renderWithTheme(<ImportWalletScreen />);
+    expect(screen.getByText('Testnet')).toBeTruthy();
+  });
+
+  it('shows Mainnet network badge when route params specify mainnet', () => {
+    mockRouteParams = { network: 'mainnet' };
     const screen = renderWithTheme(<ImportWalletScreen />);
     expect(screen.getByText('Mainnet')).toBeTruthy();
-    expect(screen.getByText('Testnet')).toBeTruthy();
-    expect(screen.queryByText('Testnet3')).toBeNull();
-    expect(screen.queryByText('Testnet4')).toBeNull();
+  });
+
+  it('does not show interactive network selector chips', () => {
+    const screen = renderWithTheme(<ImportWalletScreen />);
+    // The badge is purely informational — no radio buttons
+    expect(screen.queryAllByRole('radio')).toHaveLength(0);
   });
 
   it('renders the import button', () => {
@@ -106,18 +134,6 @@ describe('ImportWalletScreen', () => {
     expect(mockSetSeed).toHaveBeenCalledWith(mnemonic);
   });
 
-  it('calls setSelectedNetwork with mainnet when Mainnet chip is pressed', () => {
-    const screen = renderWithTheme(<ImportWalletScreen />);
-    fireEvent.press(screen.getByText('Mainnet'));
-    expect(mockSetSelectedNetwork).toHaveBeenCalledWith('mainnet');
-  });
-
-  it('calls setSelectedNetwork with testnet when Testnet chip is pressed', () => {
-    const screen = renderWithTheme(<ImportWalletScreen />);
-    fireEvent.press(screen.getByText('Testnet'));
-    expect(mockSetSelectedNetwork).toHaveBeenCalledWith('testnet');
-  });
-
   it('calls submit when import button is pressed', async () => {
     mockSubmit.mockResolvedValue(null);
     const screen = renderWithTheme(<ImportWalletScreen />);
@@ -125,17 +141,39 @@ describe('ImportWalletScreen', () => {
     await waitFor(() => expect(mockSubmit).toHaveBeenCalledTimes(1));
   });
 
-  it('navigates back when submit returns a wallet', async () => {
-    mockSubmit.mockResolvedValue({
-      id: '1',
-      name: 'Savings',
-      network: 'testnet',
-      status: 'locked',
-      createdAt: new Date().toISOString(),
-    });
+  it('shows progress modal then navigates back when import, discovery and sync succeed', async () => {
+    const wallet = { id: '1', name: 'Savings', network: 'testnet', status: 'locked', createdAt: new Date().toISOString() };
+    mockSubmit.mockResolvedValue(wallet);
+    mockDiscoverWalletAccounts.mockResolvedValue([]);
+
     const screen = renderWithTheme(<ImportWalletScreen />);
     fireEvent.press(screen.getByLabelText('importWallet.importAction'));
+
+    await waitFor(() => expect(screen.getByText('walletSetup.done')).toBeTruthy());
+    fireEvent.press(screen.getByTestId('wallet-setup-done-btn'));
     await waitFor(() => expect(mockGoBack).toHaveBeenCalledTimes(1));
+  });
+
+  it('calls discoverWalletAccounts with wallet id and network after successful import', async () => {
+    const wallet = { id: 'wid-1', name: 'Test', network: 'mainnet', status: 'locked', createdAt: new Date().toISOString() };
+    mockSubmit.mockResolvedValue(wallet);
+    mockDiscoverWalletAccounts.mockResolvedValue([]);
+
+    const screen = renderWithTheme(<ImportWalletScreen />);
+    fireEvent.press(screen.getByLabelText('importWallet.importAction'));
+
+    await waitFor(() => expect(mockDiscoverWalletAccounts).toHaveBeenCalledWith('wid-1', 'mainnet', expect.any(Function)));
+  });
+
+  it('calls syncWallet with wallet id after discovery completes', async () => {
+    const wallet = { id: 'wid-1', name: 'Test', network: 'testnet', status: 'locked', createdAt: new Date().toISOString() };
+    mockSubmit.mockResolvedValue(wallet);
+    mockDiscoverWalletAccounts.mockResolvedValue([]);
+
+    const screen = renderWithTheme(<ImportWalletScreen />);
+    fireEvent.press(screen.getByLabelText('importWallet.importAction'));
+
+    await waitFor(() => expect(mockSyncWallet).toHaveBeenCalledWith('wid-1'));
   });
 
   it('does not navigate back when submit returns null', async () => {
@@ -182,5 +220,16 @@ describe('ImportWalletScreen', () => {
     fireEvent.press(screen.getByLabelText('importWallet.passphraseSection'));
     expect(screen.getByLabelText('importWallet.passphraseLabel')).toBeTruthy();
     expect(screen.getByLabelText('importWallet.confirmPassphraseLabel')).toBeTruthy();
+  });
+
+  it('renders the info button', () => {
+    const screen = renderWithTheme(<ImportWalletScreen />);
+    expect(screen.getByLabelText('common.info')).toBeTruthy();
+  });
+
+  it('navigates to WalletPolicy when info button is pressed', () => {
+    const screen = renderWithTheme(<ImportWalletScreen />);
+    fireEvent.press(screen.getByLabelText('common.info'));
+    expect(mockNavigate).toHaveBeenCalledWith('WalletPolicy');
   });
 });

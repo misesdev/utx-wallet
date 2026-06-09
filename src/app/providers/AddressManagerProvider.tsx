@@ -3,6 +3,7 @@ import type { AddressOrigin } from '../../core/domain/entities/AddressOrigin';
 import type { WalletAddress } from '../../core/domain/entities/WalletAddress';
 import type { BitcoinNetwork } from '../../core/domain/entities/Network';
 import { AddressManagerService } from '../../core/application/services/AddressManagerService';
+import type { WalletDiscoveryProgress } from '../../core/domain/usecases/wallet/WalletDiscoveryUseCase';
 
 type AddressManagerContextValue = {
   getOrigins: (walletId: string) => Promise<AddressOrigin[]>;
@@ -12,6 +13,7 @@ type AddressManagerContextValue = {
   getChangeAddress: (walletId: string, network: BitcoinNetwork, originId?: string, reserve?: boolean) => Promise<WalletAddress>;
   ensureAddressPool: (walletId: string, network: BitcoinNetwork) => Promise<void>;
   listAddresses: (walletId: string) => Promise<WalletAddress[]>;
+  discoverWalletAccounts: (walletId: string, network: BitcoinNetwork, onProgress?: (progress: WalletDiscoveryProgress) => void) => Promise<AddressOrigin[]>;
 };
 
 export const AddressManagerContext = createContext<AddressManagerContextValue | null>(null);
@@ -29,6 +31,8 @@ export function AddressManagerProvider({ children, service }: Props) {
       service.getChangeAddress(walletId, network, originId, reserve),
     ensureAddressPool: (walletId, network) => service.ensureAddressPool(walletId, network),
     listAddresses: (walletId) => service.listAddresses(walletId),
+    discoverWalletAccounts: (walletId, network, onProgress) =>
+      service.discoverWalletAccounts(walletId, network, onProgress),
   };
 
   return (

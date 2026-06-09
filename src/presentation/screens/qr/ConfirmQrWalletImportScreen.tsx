@@ -98,7 +98,8 @@ export function ConfirmQrWalletImportScreen() {
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 16) + 24 }]}
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
       >
         <View
           style={[
@@ -149,15 +150,28 @@ export function ConfirmQrWalletImportScreen() {
             testID="qr-wallet-name-input"
             error={error}
           />
-          <AppButton
-            title={t('qrImport.importAction')}
-            onPress={handleImport}
-            loading={isLoading}
-            disabled={isLoading}
-            testID="qr-import-submit"
-          />
         </View>
       </ScrollView>
+
+      {/* Sticky footer CTA */}
+      <View
+        style={[
+          styles.footer,
+          {
+            backgroundColor: theme.colors.background,
+            borderTopColor: theme.colors.border,
+            paddingBottom: Math.max(insets.bottom, 16),
+          },
+        ]}
+      >
+        <AppButton
+          title={t('qrImport.importAction')}
+          onPress={handleImport}
+          loading={isLoading}
+          disabled={isLoading}
+          testID="qr-import-submit"
+        />
+      </View>
     </View>
   );
 }
@@ -183,8 +197,17 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   headerTitle: { fontWeight: '700' },
+  scroll: {
+    flex: 1,
+  },
   content: {
     gap: 18,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  footer: {
+    borderTopWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 20,
     paddingTop: 12,
   },

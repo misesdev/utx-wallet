@@ -22,7 +22,8 @@
     "default": "Default",
     "account": "Account {{accountIndex}}",
     "loadingAccounts": "Loading accounts…",
-    "qrCode": "QR"
+    "qrCode": "QR",
+    "info": "Info"
   },
   "welcome": {
     "tagline": "Your keys. Your Bitcoin.",
@@ -57,14 +58,17 @@
     "title": "Wallets",
     "noWallets": "No {{network}} wallets",
     "noWalletsDesc": "Create a new wallet or import an existing one to get started.",
-    "createWallet": "+ Create wallet",
-    "importWallet": "↓ Import wallet",
+    "createWallet": "Create wallet",
+    "importWallet": "Import wallet",
     "deleteTitle": "Delete wallet",
     "deleteMessage": "Delete \"{{name}}\"? This cannot be undone. Make sure you have backed up your seed phrase.",
     "mainnet": "Mainnet",
     "testnet": "Testnet",
     "globalSettings": "Settings",
-    "scanImport": "Scan QR"
+    "scanImport": "Scan QR",
+    "statBalance": "BALANCE",
+    "statAccounts": "ACCOUNTS",
+    "statUtxos": "UTXOs"
   },
   "createWallet": {
     "title": "New wallet",
@@ -82,7 +86,7 @@
     "confirmPassphrasePlaceholder": "Repeat your passphrase",
     "hidePassphrase": "Hide passphrase",
     "showPassphrase": "Show passphrase",
-    "generateSeed": "Generate 12-word seed phrase →",
+    "generateSeed": "Generate seed phrase",
     "errorNameRequired": "Wallet name is required",
     "errorNameTooLong": "Name must be 48 characters or fewer",
     "errorPassphraseEmpty": "Passphrase cannot be empty when enabled",
@@ -98,7 +102,7 @@
     "neverShare": "Never share your seed phrase with anyone",
     "noDigital": "Never store it digitally or take a screenshot",
     "noRecovery": "Without this phrase, lost funds cannot be recovered",
-    "written": "I've written it down →"
+    "written": "I've written it down"
   },
   "confirmSeed": {
     "title": "Confirm seed",
@@ -125,19 +129,34 @@
     "hidePassphrase": "Hide passphrase",
     "showPassphrase": "Show passphrase",
     "importing": "Importing wallet…",
-    "importAction": "Import wallet →",
+    "importAction": "Import wallet",
     "errorSeedRequired": "Seed phrase is required",
     "errorInvalidSeed": "Invalid seed phrase. Please check your words and try again.",
     "errorWalletExists": "A wallet named \"{{name}}\" already exists.",
     "errorImportFailed": "Failed to import wallet. Please try again."
   },
+  "walletSetup": {
+    "step1Label": "Importing keys",
+    "step2Label": "Syncing addresses",
+    "step3Label": "Syncing accounts",
+    "done": "All done!",
+    "doneDesc": "Your wallet is ready to use",
+    "errorTitle": "Setup failed",
+    "errorDesc": "An error occurred. Please try again.",
+    "retry": "Try again",
+    "settingUpTitle": "Setting up wallet",
+    "checkingAddress": "Account {{account}}: checking address {{index}}...",
+    "foundActivity": "Account {{account}}: found transactions",
+    "generatingKeys": "Generating HD wallet keys...",
+    "syncingChain": "Fetching blockchain data..."
+  },
   "receive": {
     "title": "Receive",
     "receivingAddress": "Receiving address",
-    "copy": "⎘ Copy",
-    "share": "↑ Share",
+    "copy": "Copy",
+    "share": "Share",
     "amountOptional": "Amount (optional)",
-    "newAddress": "↺ New address",
+    "newAddress": "New address",
     "selectAccount": "Select account",
     "selectAccountDesc": "Choose which account should receive the bitcoin.",
     "errorLoadAddress": "Failed to load address",
@@ -149,7 +168,7 @@
     "available": "Available",
     "recipientAddress": "Recipient address",
     "max": "MAX",
-    "next": "Next →",
+    "next": "Next",
     "selectAccount": "Select account",
     "selectAccountDesc": "Choose which account you want to send from.",
     "noBalance": "Account has no balance",
@@ -157,7 +176,8 @@
     "errorInvalidAmount": "Enter a valid amount in sats",
     "errorPreviewFailed": "Failed to create preview",
     "errorSendFailed": "Failed to send transaction",
-    "errorWatchOnly": "Watch-only wallets cannot send transactions"
+    "errorWatchOnly": "Watch-only wallets cannot send transactions",
+    "errorInsufficientBalance": "Amount exceeds available balance"
   },
   "fees": {
     "title": "Transaction fee",
@@ -182,7 +202,11 @@
     "speedNormal": "~30min",
     "speedFast": "~10min",
     "speedCustom": "manual",
-    "customFeePlaceholder": "sats per vByte"
+    "customFeePlaceholder": "sats per vByte",
+    "payFee": "Deduct fee from amount",
+    "payFeeHint": "Fee is deducted from the amount you send",
+    "noPayFeeHint": "Fee is added on top of the amount",
+    "recipientReceives": "Recipient receives"
   },
   "txReview": {
     "title": "Confirm send",
@@ -202,6 +226,7 @@
     "feePaid": "Fee paid",
     "txid": "Transaction ID (txid)",
     "copyTxid": "Copy txid",
+    "copied": "Copied!",
     "goHome": "Go home"
   },
   "transactions": {
@@ -276,7 +301,7 @@
     "info": "Each segregation is an independent BIP84 account (accountIndex). Funds in different segregations remain separate and never mix automatically.",
     "empty": "No segregations yet",
     "emptyDesc": "Your Default account is created automatically when you first sync.",
-    "newButton": "+ New Segregation",
+    "newButton": "New Segregation",
     "modalTitle": "New Segregation",
     "modalDesc": "Each segregation is an independent BIP84 account with its own receive and change address pool.",
     "modalPlaceholder": "Name (e.g. Savings, Exchange)",
@@ -284,6 +309,18 @@
     "create": "Create",
     "default": "Default",
     "errorCreate": "Failed to create segregation"
+  },
+  "accountDetails": {
+    "title": "Account",
+    "rename": "Rename",
+    "renameTitle": "Rename Account",
+    "renamePlaceholder": "Account name",
+    "renameError": "Failed to rename account",
+    "balance": "Balance",
+    "pending": "+{{sats}} sats pending",
+    "transactions": "Transactions",
+    "noTransactions": "No transactions",
+    "noTransactionsDesc": "Transactions for this account will appear here."
   },
   "walletDetails": {
     "title": "Wallet details",
@@ -329,7 +366,9 @@
   "qrScan": {
     "title": "QR Scan",
     "unavailableMessage": "Camera scanning will be available in a future update.",
-    "accessibilityLabel": "Scan QR code"
+    "accessibilityLabel": "Scan QR code",
+    "addressPlaceholder": "bc1q… or tb1q…",
+    "emptyError": "Enter a Bitcoin address"
   },
   "security": {
     "title": "Security",
@@ -380,19 +419,62 @@
     "apply": "Apply network",
     "errorNoInternet": "No internet connection"
   },
+  "nodeTutorial": {
+    "title": "Node setup guide",
+    "heroTitle": "Run your own Bitcoin node",
+    "heroDesc": "A personal node keeps your transactions private — no third party sees what you send or receive.",
+    "s1Title": "Why a personal node?",
+    "s1Body": "When you use a public API, your wallet addresses and transaction history are sent to external servers. A personal node keeps all data on your own infrastructure, giving you full privacy and financial sovereignty.",
+    "s2Title": "Mempool.space (recommended)",
+    "s2Body": "This app connects to the Mempool API. Self-host it via Docker:\n\ngit clone https://github.com/mempool/mempool\ncd mempool/docker\ndocker compose up -d\n\nDefault URL after setup:\nhttp://your-server:8080/api",
+    "s3Title": "Umbrel — easiest setup",
+    "s3Body": "Umbrel is a one-click personal server OS. Install it on any computer or Raspberry Pi, then install the Mempool app from the Umbrel app store. The connection URL appears in the app dashboard.",
+    "s4Title": "RaspiBlitz & Start9",
+    "s4Body": "RaspiBlitz and Start9 are Raspberry Pi-based Bitcoin node platforms. Both support a self-hosted Mempool instance. Find the Mempool URL in your node's dashboard after installing the Mempool app.",
+    "s5Title": "Connection details",
+    "s5Body": "URL — full address of your Mempool instance, e.g. https://node.example.com/api\nPort — leave empty if already included in the URL\nAuth token — optional bearer token if your instance requires authentication",
+    "s6Title": "Testing the connection",
+    "s6Body": "After entering the URL, tap 'Test connection'. A green 'Connected' status confirms the node is reachable and the network matches your wallet. 'Network mismatch' means your node runs on a different network.",
+    "s7Title": "Privacy & security",
+    "s7Body": "On a local network, plain HTTP is fine. For remote access, always use HTTPS and set an auth token. For maximum privacy, access your node over a VPN or Tor hidden service to avoid exposing your IP address."
+  },
   "nodeSettings": {
-    "title": "Node settings",
+    "title": "Add node",
+    "titleEdit": "Edit node",
     "subtitle": "Personal node connection",
     "connection": "Connection",
+    "label": "Label",
+    "labelPlaceholder": "My node",
     "nodeUrl": "Node URL",
     "nodeUrlPlaceholder": "https://node.example.com/api",
     "port": "Port",
+    "portPlaceholder": "8332",
     "authToken": "Authentication token",
+    "authTokenPlaceholder": "Optional bearer token",
     "network": "Network",
     "status": "Status",
-    "connected": "connected",
+    "statusNotTested": "Not tested",
+    "status_connected": "Connected",
+    "status_disconnected": "Disconnected",
+    "status_network-incompatible": "Network mismatch",
+    "status_authentication-error": "Authentication error",
+    "testing": "Testing…",
     "testConnection": "Test connection",
-    "saveAndActivate": "Save and enable safe mode"
+    "testRequired": "A successful connection test is required to save",
+    "saveAndAdd": "Add node",
+    "saveChanges": "Save changes",
+    "saveError": "Failed to save node"
+  },
+  "manageNodes": {
+    "title": "Personal nodes",
+    "subtitle": "Priority-ordered node routing",
+    "addNode": "Add node",
+    "empty": "No nodes configured",
+    "emptyDesc": "Add a personal Bitcoin node to route your transactions privately.",
+    "priority": "Priority",
+    "publicFallback": "Allow public API fallback",
+    "publicFallbackDesc": "If all nodes fail, fall back to the public Mempool API",
+    "info": "Nodes are tried in priority order. Lower priority number = higher preference. When using a personal node, your transaction data never leaves your infrastructure."
   },
   "offline": {
     "title": "Offline mode",
@@ -421,13 +503,13 @@
     "invalidHex": "Invalid hex",
     "failedPrepare": "Failed to prepare transaction",
     "failedBroadcast": "Failed to broadcast",
-    "prepareTxAction": "◈ Prepare offline transaction",
-    "importHexAction": "↓ Import signed hex",
+    "prepareTxAction": "Prepare offline transaction",
+    "importHexAction": "Import signed hex",
     "remove": "Remove",
     "removeConfirmTitle": "Remove this saved transaction?",
-    "export": "↑ Export",
-    "broadcast": "⇡ Broadcast",
-    "removeAction": "✕ Remove",
+    "export": "Export",
+    "broadcast": "Broadcast",
+    "removeAction": "Remove",
     "invalidAmount": "Invalid amount",
     "invalidFee": "Invalid fee",
     "errorLoadLocal": "Failed to load local data"
@@ -436,12 +518,14 @@
     "title": "Safe mode",
     "active": "Safe mode active",
     "inactive": "Safe mode inactive",
-    "activeDesc": "Transactions routed through your personal node.",
-    "inactiveDesc": "Connecting via public API. Enable to use your own node.",
+    "activeDesc": "All blockchain calls are routed through your personal nodes.",
+    "inactiveDesc": "Connecting via public API. Enable to use your own nodes.",
     "statusLabel": "Status",
-    "nodeLabel": "Node",
-    "networkLabel": "Network",
-    "info": "Safe mode connects your wallet to your own Bitcoin node, ensuring maximum privacy and independent transaction verification.",
+    "nodesLabel": "Nodes",
+    "nodesConfigured": "{{count}} node(s) configured",
+    "noNodesConfigured": "No nodes configured",
+    "manageNodes": "Manage nodes",
+    "info": "Safe mode routes all blockchain traffic through your personal Bitcoin nodes, ensuring maximum privacy and independent verification.",
     "disable": "Disable safe mode",
     "enable": "Enable safe mode"
   },
@@ -486,7 +570,7 @@
     "scannerReady": "Ready to scan",
     "manualLabel": "Enter manually",
     "manualPlaceholder": "Paste or type the code here",
-    "continue": "Continue →",
+    "continue": "Continue",
     "invalidFormat": "Unrecognized format. Check the code and try again.",
     "enterManually": "Enter manually",
     "formats": {
@@ -503,7 +587,7 @@
     "signingDesc": "This wallet can sign and send transactions.",
     "nameLabel": "Wallet name",
     "namePlaceholder": "e.g. Savings",
-    "importAction": "Import →",
+    "importAction": "Import",
     "importFailed": "Failed to import wallet"
   },
   "globalSettings": {
@@ -534,5 +618,60 @@
   },
   "viewSeed": {
     "title": "Seed Phrase"
+  },
+  "walletPolicy": {
+    "title": "Wallet Policy",
+    "heroTitle": "How Wallets Work",
+    "heroDesc": "Everything you need to know about creating and importing wallets safely.",
+    "s1Title": "3-Step Setup",
+    "s1Body": "When creating or importing a wallet, the app runs three steps automatically: setting up your keys, discovering existing accounts on the blockchain, and syncing all your transaction data.",
+    "s2Title": "Your Keys, Your Bitcoin",
+    "s2Body": "Your 12-word seed phrase is the only key to your wallet. It is stored encrypted on your device and never transmitted anywhere. Anyone who has your seed phrase has full access to your funds.",
+    "s3Title": "Account Discovery",
+    "s3Body": "When importing an existing wallet, the app scans the blockchain to find all your accounts and history. It checks up to 3 consecutive unused addresses per account (BIP44 gap limit) before concluding that no more accounts exist.",
+    "s4Title": "Blockchain Sync",
+    "s4Body": "After discovery, the app downloads your UTXOs, transactions, and balances from the Mempool API. You can sync again at any time by tapping the sync button on the home screen.",
+    "s5Title": "Multiple Accounts",
+    "s5Body": "You can create separate accounts (called 'origins') to organise your funds — for example: Default, Savings, Trading. Each account has its own receive and change addresses derived from the same seed phrase.",
+    "s6Title": "Optional Passphrase",
+    "s6Body": "A passphrase is an extra secret combined with your seed phrase to unlock a completely different wallet. If you forget it, your funds become permanently inaccessible. Only use this feature if you fully understand the risk."
+  },
+  "addressPolicy": {
+    "title": "Address Policy",
+    "heroTitle": "Address Management",
+    "heroDesc": "How the wallet generates, tracks, and protects your Bitcoin addresses.",
+    "s1Title": "Privacy by Design",
+    "s1Body": "The wallet never reuses receive addresses. Each payment uses a fresh address, making it significantly harder for anyone to track your full transaction history on the blockchain.",
+    "s2Title": "Receive & Change Addresses",
+    "s2Body": "Your wallet manages two kinds of addresses: receive addresses (shared with senders) and change addresses (for leftover funds after a send). Both are derived from the same seed phrase but follow separate derivation paths.",
+    "s3Title": "Address Lifecycle",
+    "s3Body": "An address starts as 'fresh', becomes 'reserved' when selected, then 'received' once funds arrive. After spending, it becomes 'spent' and is never suggested for receiving again. This lifecycle protects your privacy.",
+    "s4Title": "Address Pool",
+    "s4Body": "The app always keeps at least 3 fresh receive and 3 fresh change addresses ready for each account. New addresses are derived automatically as existing ones are used, so you never run out.",
+    "s5Title": "Spending Rules",
+    "s5Body": "When spending any UTXO from an address, all UTXOs from that same address are included in the same transaction. This prevents dust accumulation and reduces traceability of your funds.",
+    "s6Title": "Coin Selection",
+    "s6Body": "The app selects the most efficient combination of UTXOs for each transaction. Frozen UTXOs are never included. You can manually freeze or unfreeze any UTXO from the UTXO management screen.",
+    "s7Title": "Security",
+    "s7Body": "Private keys are never stored in the address database. They are derived from your seed only at the moment of signing a transaction, then immediately discarded from memory."
+  },
+  "accountPolicy": {
+    "title": "Account Policy",
+    "heroTitle": "Account Management",
+    "heroDesc": "How accounts work, how addresses are derived, and how your funds stay isolated and private.",
+    "s1Title": "Accounts & Segregation",
+    "s1Body": "An account is a logical partition of your wallet — a dedicated set of addresses for a specific purpose (savings, trading, etc.). All accounts share the same seed phrase but use different BIP44 account indexes, so their funds are completely isolated on the blockchain.",
+    "s2Title": "BIP84 — Native SegWit",
+    "s2Body": "This wallet follows BIP84, which produces native SegWit addresses starting with bc1q. These offer the lowest possible transaction fees and the broadest wallet compatibility.\n\nMainnet: m/84'/0'/accountIndex'/chain/index\nTestnet: m/84'/1'/accountIndex'/chain/index",
+    "s3Title": "Account Index",
+    "s3Body": "Each account uses a unique accountIndex in the BIP44 derivation path. Your default account is index 0. New accounts increment this index sequentially.\n\nDefault:   m/84'/0'/0'\nAccount 2: m/84'/0'/1'\nAccount 3: m/84'/0'/2'",
+    "s4Title": "Receive & Change Chains",
+    "s4Body": "Within each account, addresses are split into two chains. The wallet manages both automatically — you only ever share receive addresses.\n\nchain 0 (receive): m/84'/0'/accountIndex'/0/index\nchain 1 (change):  m/84'/0'/accountIndex'/1/index",
+    "s5Title": "Address Pool",
+    "s5Body": "The wallet always keeps at least 3 fresh receive and 3 fresh change addresses ready per account. New addresses are derived automatically as existing ones are used. The gap limit is 20 — scanning stops after 20 consecutive unused addresses during wallet import.",
+    "s6Title": "No Address Reuse",
+    "s6Body": "Once an address has been spent, it is permanently retired. It will never be suggested for receiving again. Change always goes to a fresh change address, never back to the originating address. This prevents blockchain observers from linking your transactions.",
+    "s7Title": "Your Keys Stay Private",
+    "s7Body": "Private keys are never stored in the address database. Only public data is kept — derivation paths, balances, and transaction references. Your private key is derived from your seed only at the moment of signing, then immediately discarded from memory."
   }
 }

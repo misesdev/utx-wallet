@@ -1,4 +1,5 @@
 import React, { createContext, PropsWithChildren, useCallback, useMemo, useRef, useState } from 'react';
+import type { Wallet } from '../../core/domain/entities/Wallet';
 import { GenerateMnemonicUseCase } from '../../core/domain/usecases/wallet/GenerateMnemonicUseCase';
 import { DEFAULT_NETWORK } from '../../shared/constants/networks';
 import { useWallet } from '../../presentation/hooks/useWallet';
@@ -19,7 +20,7 @@ type CreateWalletFlowState = {
 export type CreateWalletContextValue = CreateWalletFlowState & {
   initiate(walletName: string, passphrase?: string, network?: WalletNetwork): void;
   proceedToConfirm(): void;
-  save(): Promise<void>;
+  save(): Promise<Wallet | null>;
   reset(): void;
 };
 
@@ -65,13 +66,14 @@ export function CreateWalletProvider({ children }: PropsWithChildren) {
     setState(prev => ({ ...prev, step: 'confirming', error: null }));
   }, []);
 
-  const save = useCallback(async () => {
+  const save = useCallback(async (): Promise<Wallet | null> => {
     const { walletName, passphrase, network } = state;
     setState(prev => ({ ...prev, step: 'saving', isLoading: true, error: null }));
     try {
-      await importWallet(walletName, mnemonicRef.current, network, passphrase || undefined);
+      const wallet = await importWallet(walletName, mnemonicRef.current, network, passphrase || undefined);
       mnemonicRef.current = '';
       setState(prev => ({ ...prev, isLoading: false }));
+      return wallet;
     } catch (err) {
       setState(prev => ({
         ...prev,
@@ -79,6 +81,7 @@ export function CreateWalletProvider({ children }: PropsWithChildren) {
         isLoading: false,
         error: err instanceof Error ? err.message : 'Failed to create wallet. Please try again.',
       }));
+      return null;
     }
   }, [importWallet, state]);
 

@@ -6,6 +6,20 @@ import type { SendBitcoinState } from '../../../src/presentation/hooks/useSendBi
 import type { TransactionPreview } from '../../../src/core/domain/entities/TransactionPreview';
 import type { FeeRates } from '../../../src/core/domain/repositories/BlockchainProvider';
 
+const mockRequireAuth = jest.fn().mockResolvedValue(true);
+const mockSubmitPin = jest.fn();
+const mockCancelAuth = jest.fn();
+
+jest.mock('../../../src/presentation/hooks/useReauthenticate', () => ({
+  useReauthenticate: () => ({
+    requireAuth: mockRequireAuth,
+    pinModalVisible: false,
+    pinError: null,
+    submitPin: mockSubmitPin,
+    cancelAuth: mockCancelAuth,
+  }),
+}));
+
 const VALID_ADDRESS = 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq';
 
 const FEE_RATES: FeeRates = {
@@ -96,6 +110,7 @@ describe('SendFeesScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockState = { ...BASE_STATE };
+    mockRequireAuth.mockResolvedValue(true);
   });
 
   describe('fee selector', () => {
@@ -195,25 +210,51 @@ describe('SendFeesScreen', () => {
       expect(screen.getByTestId('preview-error')).toBeTruthy();
       expect(screen.getByText('Saldo insuficiente')).toBeTruthy();
     });
+
+    it('shows send error inline after failed send', () => {
+      mockState = { ...BASE_STATE, preview: PREVIEW, sendError: 'Broadcast failed' };
+      const screen = renderWithTheme(<SendFeesScreen />);
+      expect(screen.getByTestId('send-error')).toBeTruthy();
+      expect(screen.getByText('Broadcast failed')).toBeTruthy();
+    });
   });
 
   describe('confirm and send button', () => {
     it('shows the confirm button when preview is available', () => {
       mockState = { ...BASE_STATE, preview: PREVIEW };
       const screen = renderWithTheme(<SendFeesScreen />);
-      expect(screen.getByTestId('btn-open-review')).toBeTruthy();
+      expect(screen.getByTestId('btn-confirm-send')).toBeTruthy();
     });
 
     it('hides the confirm button when preview is null', () => {
       const screen = renderWithTheme(<SendFeesScreen />);
-      expect(screen.queryByTestId('btn-open-review')).toBeNull();
+      expect(screen.queryByTestId('btn-confirm-send')).toBeNull();
     });
 
-    it('calls openReview when confirm button is pressed', () => {
+    it('calls requireAuth then sendTransaction when confirm button is pressed', async () => {
       mockState = { ...BASE_STATE, preview: PREVIEW };
       const screen = renderWithTheme(<SendFeesScreen />);
-      fireEvent.press(screen.getByTestId('btn-open-review'));
-      expect(mockOpenReview).toHaveBeenCalledTimes(1);
+      fireEvent.press(screen.getByTestId('btn-confirm-send'));
+      await waitFor(() => {
+        expect(mockRequireAuth).toHaveBeenCalledTimes(1);
+        expect(mockSendTransaction).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('does not call sendTransaction when requireAuth returns false', async () => {
+      mockRequireAuth.mockResolvedValue(false);
+      mockState = { ...BASE_STATE, preview: PREVIEW };
+      const screen = renderWithTheme(<SendFeesScreen />);
+      fireEvent.press(screen.getByTestId('btn-confirm-send'));
+      await waitFor(() => expect(mockRequireAuth).toHaveBeenCalledTimes(1));
+      expect(mockSendTransaction).not.toHaveBeenCalled();
+    });
+
+    it('shows loading state while sending', () => {
+      mockState = { ...BASE_STATE, preview: PREVIEW, isSending: true };
+      const screen = renderWithTheme(<SendFeesScreen />);
+      const btn = screen.getByTestId('btn-confirm-send');
+      expect(btn.props.accessibilityState?.disabled).toBe(true);
     });
   });
 

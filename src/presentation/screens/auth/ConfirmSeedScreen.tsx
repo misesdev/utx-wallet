@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { buildSeedChallenge, validateSeedChallenge, type SeedChallenge } from '../../../core/domain/utils/seedChallenge';
@@ -7,10 +7,14 @@ import { AppRoutes } from '../../../app/navigation/routes';
 import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
 import { AppLoading } from '../../components/base/AppLoading';
+import { WalletSetupProgressModal } from '../../components/wallet/WalletSetupProgressModal';
+import type { WalletSetupStep } from '../../components/wallet/WalletSetupProgressModal';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useCreateWallet } from '../../hooks/useCreateWallet';
 import { useTheme } from '../../hooks/useTheme';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
+import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
+import { useWallet } from '../../hooks/useWallet';
 
 const screenCaptureGuard = new NoopScreenCaptureAdapter();
 
@@ -18,7 +22,9 @@ export function ConfirmSeedScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
-  const { words, save, step, isLoading, error, reset } = useCreateWallet();
+  const { words, save, isLoading, error, reset } = useCreateWallet();
+  const { discoverWalletAccounts } = useAddressManager();
+  const { syncWallet } = useWallet();
   const { t } = useAppTranslation();
 
   const challenge = useMemo<SeedChallenge>(
@@ -30,21 +36,83 @@ export function ConfirmSeedScreen() {
 
   const [selected, setSelected] = useState<string[]>([]);
   const [usedOptions, setUsedOptions] = useState<Set<string>>(new Set());
-
-  // Navigate to WalletList once save completes successfully
+  const [setupStep, setSetupStep] = useState<WalletSetupStep>('importing');
+  const [setupVisible, setSetupVisible] = useState(false);
+  const [setupError, setSetupError] = useState<string | undefined>();
+  const [subMessage, setSubMessage] = useState<string | undefined>();
   const didSave = useRef(false);
-  useEffect(() => {
-    if (step === 'saving' && !isLoading && !error && !didSave.current) {
-      didSave.current = true;
-      reset();
-      navigation.navigate(AppRoutes.WalletList);
-    }
-  }, [step, isLoading, error, navigation, reset]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     screenCaptureGuard.enable();
     return () => screenCaptureGuard.disable();
   }, []);
+
+  async function handleConfirmAndCreate() {
+    if (didSave.current) return;
+    didSave.current = true;
+
+    setSetupStep('importing');
+    setSetupError(undefined);
+    setSubMessage(t('walletSetup.generatingKeys'));
+    setSetupVisible(true);
+    // Yield to the JS event loop so React flushes state and renders the modal
+    // before CPU-intensive key derivation blocks the thread.
+    await new Promise<void>(resolve => setTimeout(resolve, 32));
+
+    const wallet = await save();
+    if (!wallet) {
+      didSave.current = false;
+      setSetupVisible(false);
+      return;
+    }
+
+    setSetupStep('discovering');
+    setSubMessage(undefined);
+    try {
+      await discoverWalletAccounts(wallet.id, wallet.network, (progress) => {
+        if (progress.txFound) {
+          setSubMessage(
+            t('walletSetup.foundActivity', {
+              account: progress.accountIndex,
+            }),
+          );
+        } else {
+          setSubMessage(
+            t('walletSetup.checkingAddress', {
+              account: progress.accountIndex,
+              index: progress.addressIndex + 1,
+            }),
+          );
+        }
+      });
+    } catch (err) {
+      setSetupError(err instanceof Error ? err.message : undefined);
+      setSetupStep('error');
+      return;
+    }
+
+    setSetupStep('syncing');
+    setSubMessage(t('walletSetup.syncingChain'));
+    try {
+      await syncWallet(wallet.id);
+    } catch {
+      // Sync errors are non-fatal: wallet is created, just no data yet
+    }
+
+    setSubMessage(undefined);
+    setSetupStep('done');
+  }
+
+  function handleSetupDone() {
+    reset();
+    setSetupVisible(false);
+    navigation.navigate(AppRoutes.WalletList);
+  }
+
+  function handleSetupRetry() {
+    didSave.current = false;
+    setSetupVisible(false);
+  }
 
   function handleSelectWord(word: string) {
     if (selected.length >= challenge.positions.length) return;
@@ -67,6 +135,14 @@ export function ConfirmSeedScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+      <WalletSetupProgressModal
+        visible={setupVisible}
+        currentStep={setupStep}
+        subMessage={subMessage}
+        error={setupError}
+        onDone={handleSetupDone}
+        onRetry={handleSetupRetry}
+      />
       {/* Header */}
       <View style={styles.header}>
         <Pressable
@@ -87,10 +163,8 @@ export function ConfirmSeedScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: Math.max(insets.bottom, 16) + 24 },
-        ]}
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
       >
         {/* Slots card */}
         <View
@@ -189,15 +263,26 @@ export function ConfirmSeedScreen() {
             {error}
           </AppText>
         ) : null}
+      </ScrollView>
 
-        {/* CTA */}
-        {isLoading ? (
+      {/* Sticky footer CTA */}
+      <View
+        style={[
+          styles.footer,
+          {
+            backgroundColor: theme.colors.background,
+            borderTopColor: theme.colors.border,
+            paddingBottom: Math.max(insets.bottom, 16),
+          },
+        ]}
+      >
+        {isLoading && !setupVisible ? (
           <AppLoading label={t('confirmSeed.creating')} />
         ) : (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('confirmSeed.confirmCreate')}
-            onPress={save}
+            onPress={handleConfirmAndCreate}
             disabled={!isValid || isLoading}
             style={({ pressed }) => [
               styles.cta,
@@ -216,7 +301,7 @@ export function ConfirmSeedScreen() {
             </AppText>
           </Pressable>
         )}
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -250,11 +335,22 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Content
+  // Scroll
+  scroll: {
+    flex: 1,
+  },
   content: {
     gap: 16,
+    paddingBottom: 16,
     paddingHorizontal: 20,
     paddingTop: 8,
+  },
+
+  // Footer
+  footer: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 20,
+    paddingTop: 12,
   },
 
   // Slots
@@ -324,11 +420,7 @@ const styles = StyleSheet.create({
   // CTA
   cta: {
     alignItems: 'center',
-    marginTop: 4,
     paddingVertical: 16,
-  },
-  ctaText: {
-    fontWeight: '700',
   },
   ctaTextActive: {
     color: '#fff',

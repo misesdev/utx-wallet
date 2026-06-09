@@ -34,6 +34,8 @@ export const AppRoutes = {
   ViewSeed: 'ViewSeed',
   SecuritySettings: 'SecuritySettings',
   NodeSettings: 'NodeSettings',
+  NodeTutorial: 'NodeTutorial',
+  ManageNodes: 'ManageNodes',
   BackupSettings: 'BackupSettings',
   OfflineMode: 'OfflineMode',
   SafeMode: 'SafeMode',
@@ -41,7 +43,11 @@ export const AppRoutes = {
   GlobalSettings: 'GlobalSettings',
   Donation: 'Donation',
   ScanWalletQr: 'ScanWalletQr',
+  ScanAddressQr: 'ScanAddressQr',
   ConfirmQrWalletImport: 'ConfirmQrWalletImport',
+  WalletPolicy: 'WalletPolicy',
+  AddressPolicy: 'AddressPolicy',
+  AccountPolicy: 'AccountPolicy',
 } as const;
 
 export type AuthStackParamList = {
@@ -83,7 +89,9 @@ export type AppStackParamList = {
   ViewSeed: undefined;
   SecuritySettings: undefined;
   NetworkSettings: undefined;
-  NodeSettings: undefined;
+  NodeSettings: { nodeId?: string } | undefined;
+  NodeTutorial: undefined;
+  ManageNodes: undefined;
   BackupSettings: undefined;
   OfflineMode: undefined;
   SafeMode: undefined;
@@ -91,6 +99,10 @@ export type AppStackParamList = {
   GlobalSettings: undefined;
   Donation: undefined;
   ScanWalletQr: { network: BitcoinNetwork };
+  ScanAddressQr: undefined;
+  WalletPolicy: undefined;
+  AddressPolicy: undefined;
+  AccountPolicy: undefined;
   ConfirmQrWalletImport: {
     secret: string;
     format: WalletImportFormat;

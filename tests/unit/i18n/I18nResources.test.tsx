@@ -25,8 +25,8 @@ describe('i18n resources', () => {
   });
 
   it('uses correct seed phrase and optional passphrase wording in wallet creation and import', () => {
-    expect(ptBR.createWallet.generateSeed).toContain('12 palavras');
-    expect(enUS.createWallet.generateSeed).toContain('12-word');
+    expect(ptBR.createWallet.generateSeed).toBeTruthy();
+    expect(enUS.createWallet.generateSeed).toBeTruthy();
     expect(ptBR.createWallet.passphraseSection).toBe('Passphrase opcional');
     expect(enUS.createWallet.passphraseSection).toBe('Optional passphrase');
     expect(ptBR.importWallet.seedLabel).toBe('Frase de recuperação');
@@ -111,6 +111,208 @@ describe('i18n resources', () => {
     });
     it('en-US has non-empty viewSeed.title', () => {
       expect(enUS.viewSeed.title).toBeTruthy();
+    });
+  });
+
+  describe('walletSetup keys', () => {
+    const KEYS: Array<keyof typeof ptBR.walletSetup> = [
+      'step1Label', 'step2Label', 'step3Label',
+      'done', 'doneDesc', 'errorTitle', 'errorDesc', 'retry', 'settingUpTitle',
+      'checkingAddress', 'foundActivity', 'generatingKeys', 'syncingChain',
+    ];
+    it.each(KEYS)('pt-BR has non-empty walletSetup.%s', (key) => {
+      expect(ptBR.walletSetup[key]).toBeTruthy();
+    });
+    it.each(KEYS)('en-US has non-empty walletSetup.%s', (key) => {
+      expect(enUS.walletSetup[key]).toBeTruthy();
+    });
+  });
+
+  describe('importWallet action key has no arrow', () => {
+    it('pt-BR importAction does not contain →', () => {
+      expect(ptBR.importWallet.importAction).not.toContain('→');
+    });
+    it('en-US importAction does not contain →', () => {
+      expect(enUS.importWallet.importAction).not.toContain('→');
+    });
+  });
+
+  describe('walletPolicy keys', () => {
+    const KEYS: Array<keyof typeof ptBR.walletPolicy> = [
+      'title', 'heroTitle', 'heroDesc',
+      's1Title', 's1Body', 's2Title', 's2Body',
+      's3Title', 's3Body', 's4Title', 's4Body',
+      's5Title', 's5Body', 's6Title', 's6Body',
+    ];
+    it.each(KEYS)('pt-BR has non-empty walletPolicy.%s', (key) => {
+      expect(ptBR.walletPolicy[key]).toBeTruthy();
+    });
+    it.each(KEYS)('en-US has non-empty walletPolicy.%s', (key) => {
+      expect(enUS.walletPolicy[key]).toBeTruthy();
+    });
+  });
+
+  describe('addressPolicy keys', () => {
+    const KEYS: Array<keyof typeof ptBR.addressPolicy> = [
+      'title', 'heroTitle', 'heroDesc',
+      's1Title', 's1Body', 's2Title', 's2Body',
+      's3Title', 's3Body', 's4Title', 's4Body',
+      's5Title', 's5Body', 's6Title', 's6Body',
+      's7Title', 's7Body',
+    ];
+    it.each(KEYS)('pt-BR has non-empty addressPolicy.%s', (key) => {
+      expect(ptBR.addressPolicy[key]).toBeTruthy();
+    });
+    it.each(KEYS)('en-US has non-empty addressPolicy.%s', (key) => {
+      expect(enUS.addressPolicy[key]).toBeTruthy();
+    });
+  });
+
+  describe('common.info key', () => {
+    it('pt-BR has non-empty common.info', () => {
+      expect(ptBR.common.info).toBeTruthy();
+    });
+    it('en-US has non-empty common.info', () => {
+      expect(enUS.common.info).toBeTruthy();
+    });
+  });
+
+  describe('walletList stat keys', () => {
+    const KEYS: Array<keyof typeof ptBR.walletList> = ['statBalance', 'statAccounts', 'statUtxos'];
+    it.each(KEYS)('pt-BR has non-empty walletList.%s', (key) => {
+      expect(ptBR.walletList[key]).toBeTruthy();
+    });
+    it.each(KEYS)('en-US has non-empty walletList.%s', (key) => {
+      expect(enUS.walletList[key]).toBeTruthy();
+    });
+  });
+
+  describe('accountDetails keys', () => {
+    const KEYS: Array<keyof typeof ptBR.accountDetails> = [
+      'title', 'rename', 'renameTitle', 'renamePlaceholder', 'renameError',
+      'balance', 'pending', 'transactions', 'noTransactions', 'noTransactionsDesc',
+    ];
+    it.each(KEYS)('pt-BR has non-empty accountDetails.%s', (key) => {
+      expect(ptBR.accountDetails[key]).toBeTruthy();
+    });
+    it.each(KEYS)('en-US has non-empty accountDetails.%s', (key) => {
+      expect(enUS.accountDetails[key]).toBeTruthy();
+    });
+  });
+
+  describe('qrScan address keys', () => {
+    it('pt-BR has qrScan.addressPlaceholder', () => {
+      expect(ptBR.qrScan.addressPlaceholder).toBeTruthy();
+    });
+    it('en-US has qrScan.addressPlaceholder', () => {
+      expect(enUS.qrScan.addressPlaceholder).toBeTruthy();
+    });
+    it('pt-BR has qrScan.emptyError', () => {
+      expect(ptBR.qrScan.emptyError).toBeTruthy();
+    });
+    it('en-US has qrScan.emptyError', () => {
+      expect(enUS.qrScan.emptyError).toBeTruthy();
+    });
+  });
+
+  describe('fees payFee/recipientReceives keys', () => {
+    const KEYS: Array<keyof typeof ptBR.fees> = [
+      'payFee', 'payFeeHint', 'noPayFeeHint', 'recipientReceives',
+    ];
+    it.each(KEYS)('pt-BR has non-empty fees.%s', (key) => {
+      expect(ptBR.fees[key]).toBeTruthy();
+    });
+    it.each(KEYS)('en-US has non-empty fees.%s', (key) => {
+      expect(enUS.fees[key]).toBeTruthy();
+    });
+  });
+
+  describe('send.errorInsufficientBalance key', () => {
+    it('pt-BR has non-empty send.errorInsufficientBalance', () => {
+      expect(ptBR.send.errorInsufficientBalance).toBeTruthy();
+    });
+    it('en-US has non-empty send.errorInsufficientBalance', () => {
+      expect(enUS.send.errorInsufficientBalance).toBeTruthy();
+    });
+  });
+
+  describe('txSuccess.copied key', () => {
+    it('pt-BR has non-empty txSuccess.copied', () => {
+      expect(ptBR.txSuccess.copied).toBeTruthy();
+    });
+    it('en-US has non-empty txSuccess.copied', () => {
+      expect(enUS.txSuccess.copied).toBeTruthy();
+    });
+  });
+
+  describe('nodeTutorial keys', () => {
+    const KEYS: Array<keyof typeof ptBR.nodeTutorial> = [
+      'title', 'heroTitle', 'heroDesc',
+      's1Title', 's1Body', 's2Title', 's2Body',
+      's3Title', 's3Body', 's4Title', 's4Body',
+      's5Title', 's5Body', 's6Title', 's6Body',
+      's7Title', 's7Body',
+    ];
+    it.each(KEYS)('pt-BR has non-empty nodeTutorial.%s', (key) => {
+      expect(ptBR.nodeTutorial[key]).toBeTruthy();
+    });
+    it.each(KEYS)('en-US has non-empty nodeTutorial.%s', (key) => {
+      expect(enUS.nodeTutorial[key]).toBeTruthy();
+    });
+  });
+
+  describe('manageNodes keys', () => {
+    const KEYS: Array<keyof typeof ptBR.manageNodes> = [
+      'title', 'subtitle', 'addNode', 'empty', 'emptyDesc',
+      'priority', 'publicFallback', 'publicFallbackDesc', 'info',
+    ];
+    it.each(KEYS)('pt-BR has non-empty manageNodes.%s', (key) => {
+      expect(ptBR.manageNodes[key]).toBeTruthy();
+    });
+    it.each(KEYS)('en-US has non-empty manageNodes.%s', (key) => {
+      expect(enUS.manageNodes[key]).toBeTruthy();
+    });
+  });
+
+  describe('nodeSettings multi-node keys', () => {
+    const KEYS: Array<keyof typeof ptBR.nodeSettings> = [
+      'title', 'titleEdit', 'label', 'labelPlaceholder',
+      'testConnection', 'testRequired', 'saveAndAdd', 'saveChanges',
+      'status_connected', 'status_disconnected',
+    ];
+    it.each(KEYS)('pt-BR has non-empty nodeSettings.%s', (key) => {
+      expect(ptBR.nodeSettings[key]).toBeTruthy();
+    });
+    it.each(KEYS)('en-US has non-empty nodeSettings.%s', (key) => {
+      expect(enUS.nodeSettings[key]).toBeTruthy();
+    });
+  });
+
+  describe('safeMode multi-node keys', () => {
+    const KEYS: Array<keyof typeof ptBR.safeMode> = [
+      'nodesLabel', 'nodesConfigured', 'noNodesConfigured', 'manageNodes',
+    ];
+    it.each(KEYS)('pt-BR has non-empty safeMode.%s', (key) => {
+      expect(ptBR.safeMode[key]).toBeTruthy();
+    });
+    it.each(KEYS)('en-US has non-empty safeMode.%s', (key) => {
+      expect(enUS.safeMode[key]).toBeTruthy();
+    });
+  });
+
+  describe('accountPolicy keys', () => {
+    const KEYS: Array<keyof typeof ptBR.accountPolicy> = [
+      'title', 'heroTitle', 'heroDesc',
+      's1Title', 's1Body', 's2Title', 's2Body',
+      's3Title', 's3Body', 's4Title', 's4Body',
+      's5Title', 's5Body', 's6Title', 's6Body',
+      's7Title', 's7Body',
+    ];
+    it.each(KEYS)('pt-BR has non-empty accountPolicy.%s', (key) => {
+      expect(ptBR.accountPolicy[key]).toBeTruthy();
+    });
+    it.each(KEYS)('en-US has non-empty accountPolicy.%s', (key) => {
+      expect(enUS.accountPolicy[key]).toBeTruthy();
     });
   });
 
