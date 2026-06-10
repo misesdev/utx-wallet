@@ -4,7 +4,7 @@ export interface WalletAddressRepository {
   findByWallet(walletId: string): Promise<WalletAddress[]>;
   findByOrigin(walletId: string, originId: string): Promise<WalletAddress[]>;
   findByChain(walletId: string, originId: string, chain: AddressChain): Promise<WalletAddress[]>;
-  findFreshByChain(walletId: string, originId: string, chain: AddressChain): Promise<WalletAddress[]>;
+  findFreshByChain(walletId: string, originId: string, chain: AddressChain, additionalStatuses?: AddressStatus[]): Promise<WalletAddress[]>;
   findByAddress(address: string): Promise<WalletAddress | null>;
   save(address: WalletAddress): Promise<void>;
   saveMany(addresses: WalletAddress[]): Promise<void>;
@@ -23,7 +23,7 @@ export interface WalletAddressRepository {
       | 'lastSyncedAt'
     >>
   ): Promise<void>;
-  countFreshByChain(walletId: string, originId: string, chain: AddressChain): Promise<number>;
+  countFreshByChain(walletId: string, originId: string, chain: AddressChain, additionalStatuses?: AddressStatus[]): Promise<number>;
   getMaxIndexByChain(walletId: string, originId: string, chain: AddressChain): Promise<number>;
   deleteByWallet(walletId: string): Promise<void>;
 }

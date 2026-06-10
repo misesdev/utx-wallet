@@ -12,6 +12,9 @@ import { EnsureAddressPoolUseCase } from '../../domain/usecases/address/EnsureAd
 import { RenameAddressOriginUseCase } from '../../domain/usecases/address/RenameAddressOriginUseCase';
 import type { WalletDiscoveryProgress } from '../../domain/usecases/wallet/WalletDiscoveryUseCase';
 import { WalletDiscoveryUseCase } from '../../domain/usecases/wallet/WalletDiscoveryUseCase';
+import type { ImportSyncProgress, ImportSyncResult } from '../../domain/usecases/wallet/WalletImportSyncUseCase';
+import { WalletImportSyncUseCase } from '../../domain/usecases/wallet/WalletImportSyncUseCase';
+import { AppError } from '../errors/AppError';
 
 export class AddressManagerService {
   constructor(
@@ -24,6 +27,7 @@ export class AddressManagerService {
     private readonly walletAddressRepository: WalletAddressRepository | null = null,
     private readonly renameOrigin: RenameAddressOriginUseCase | null = null,
     private readonly walletDiscovery: WalletDiscoveryUseCase | null = null,
+    private readonly walletImportSync: WalletImportSyncUseCase | null = null,
   ) {}
 
   getOrigins(walletId: string): Promise<AddressOrigin[]> {
@@ -93,5 +97,16 @@ export class AddressManagerService {
       return this.ensureDefaultOrigin(walletId, network).then(o => [o]);
     }
     return this.walletDiscovery.execute(walletId, network, onProgress);
+  }
+
+  importSync(
+    walletId: string,
+    network: BitcoinNetwork,
+    onProgress?: (progress: ImportSyncProgress) => void,
+  ): Promise<ImportSyncResult> {
+    if (!this.walletImportSync) {
+      throw new AppError('WalletImportSyncUseCase not available', 'IMPORT_SYNC_UNAVAILABLE');
+    }
+    return this.walletImportSync.execute(walletId, network, onProgress);
   }
 }

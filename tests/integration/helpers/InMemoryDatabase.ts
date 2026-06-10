@@ -51,12 +51,30 @@ export class InMemoryDatabase implements Database {
     clause: string,
     params: (string | number | null)[],
     offset: number,
-  ): { conds: Array<{ col: string; val: string | number | null }>; consumed: number } {
-    const conds: Array<{ col: string; val: string | number | null }> = [];
+  ): {
+    conds: Array<{ col: string; val?: string | number | null; vals?: (string | number | null)[] }>;
+    consumed: number;
+  } {
+    const conds: Array<{ col: string; val?: string | number | null; vals?: (string | number | null)[] }> = [];
     let consumed = 0;
     for (const part of clause.split(/\s+AND\s+/i)) {
+      const trimmed = part.trim();
+
+      // Matches: col IN (?, ?, ...)
+      const inMatch = trimmed.match(/^(\w+)\s+IN\s*\(([^)]+)\)$/i);
+      if (inMatch) {
+        const placeholders = inMatch[2].split(',').map(p => p.trim());
+        const vals: (string | number | null)[] = placeholders.map(p => {
+          if (p === '?') return params[offset + consumed++] ?? null;
+          if (p.startsWith("'")) return p.slice(1, -1);
+          return Number(p);
+        });
+        conds.push({ col: inMatch[1].toLowerCase(), vals });
+        continue;
+      }
+
       // Matches: col = ? OR col = 0/1 OR col = 'stringliteral'
-      const m = part.trim().match(/^(\w+)\s*=\s*(\?|'([^']*)'|(-?\d+))$/i);
+      const m = trimmed.match(/^(\w+)\s*=\s*(\?|'([^']*)'|(-?\d+))$/i);
       if (!m) continue;
       const token = m[2].trim();
       let val: string | number | null;
@@ -72,8 +90,14 @@ export class InMemoryDatabase implements Database {
     return { conds, consumed };
   }
 
-  private matches(row: Row, conds: Array<{ col: string; val: string | number | null }>): boolean {
-    return conds.every(c => row[c.col] === c.val);
+  private matches(
+    row: Row,
+    conds: Array<{ col: string; val?: string | number | null; vals?: (string | number | null)[] }>,
+  ): boolean {
+    return conds.every(c => {
+      if (c.vals !== undefined) return c.vals.includes(row[c.col]);
+      return row[c.col] === c.val;
+    });
   }
 
   private doSelect<T extends QueryRow>(sql: string, params: (string | number | null)[]): T[] {

@@ -26,6 +26,7 @@ import { RenameWalletUseCase } from '../../core/domain/usecases/wallet/RenameWal
 import { GetWalletSeedUseCase } from '../../core/domain/usecases/wallet/GetWalletSeedUseCase';
 import { SelectWalletUseCase } from '../../core/domain/usecases/wallet/SelectWalletUseCase';
 import { SyncWalletUseCase } from '../../core/domain/usecases/wallet/SyncWalletUseCase';
+import { WalletImportSyncUseCase } from '../../core/domain/usecases/wallet/WalletImportSyncUseCase';
 import { SyncUtxosUseCase } from '../../core/domain/usecases/wallet/SyncUtxosUseCase';
 import { SyncTransactionsUseCase } from '../../core/domain/usecases/wallet/SyncTransactionsUseCase';
 import { SyncBalanceUseCase } from '../../core/domain/usecases/wallet/SyncBalanceUseCase';
@@ -191,6 +192,19 @@ export function AppProvider({ children }: PropsWithChildren) {
       addressOriginRepository,
     );
 
+    const syncBalance = new SyncBalanceUseCase(utxoRepository);
+    const walletImportSyncUseCase = new WalletImportSyncUseCase(
+      walletAddressProvider,
+      nodeRepository,
+      transactionRepository,
+      utxoRepository,
+      walletAddressRepository,
+      addressOriginRepository,
+      createAddressOriginUseCase,
+      syncBalance,
+      syncAddressStatus,
+    );
+
     const addressManagerService = new AddressManagerService(
       createAddressOriginUseCase,
       new ListAddressOriginsUseCase(addressOriginRepository),
@@ -201,6 +215,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       walletAddressRepository,
       null,
       walletDiscoveryUseCase,
+      walletImportSyncUseCase,
     );
 
     const addressStorage = new AddressStorage(db);
@@ -219,7 +234,6 @@ export function AppProvider({ children }: PropsWithChildren) {
     const SYNC_REQUEST_DELAY_MS = 200;
     const syncUtxos = new SyncUtxosUseCase(utxoRepository, nodeRepository, SYNC_REQUEST_DELAY_MS);
     const syncTransactions = new SyncTransactionsUseCase(transactionRepository, nodeRepository, SYNC_REQUEST_DELAY_MS);
-    const syncBalance = new SyncBalanceUseCase(utxoRepository);
     const syncWalletUseCase = new SyncWalletUseCase(
       walletRepository,
       addressRepository,

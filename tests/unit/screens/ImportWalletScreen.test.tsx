@@ -6,8 +6,7 @@ import { renderWithTheme } from '../../mocks/renderWithProviders';
 const mockGoBack = jest.fn();
 const mockNavigate = jest.fn();
 const mockSubmit = jest.fn();
-const mockDiscoverWalletAccounts = jest.fn();
-const mockSyncWallet = jest.fn();
+const mockImportSync = jest.fn();
 const mockSetWalletName = jest.fn();
 const mockSetSeed = jest.fn();
 const mockSetPassphrase = jest.fn();
@@ -40,15 +39,9 @@ jest.mock('../../../src/presentation/hooks/useImportWallet', () => ({
   }),
 }));
 
-jest.mock('../../../src/presentation/hooks/useWallet', () => ({
-  useWallet: () => ({
-    syncWallet: mockSyncWallet,
-  }),
-}));
-
 jest.mock('../../../src/app/providers/AddressManagerProvider', () => ({
   useAddressManager: () => ({
-    discoverWalletAccounts: mockDiscoverWalletAccounts,
+    importSync: mockImportSync,
     getOrigins: jest.fn(),
     createAddressOrigin: jest.fn(),
     renameAddressOrigin: jest.fn(),
@@ -56,6 +49,7 @@ jest.mock('../../../src/app/providers/AddressManagerProvider', () => ({
     getChangeAddress: jest.fn(),
     ensureAddressPool: jest.fn(),
     listAddresses: jest.fn(),
+    discoverWalletAccounts: jest.fn(),
   }),
 }));
 
@@ -77,8 +71,7 @@ describe('ImportWalletScreen', () => {
     mockWalletName = '';
     mockSeed = '';
     mockRouteParams = undefined;
-    mockDiscoverWalletAccounts.mockResolvedValue([]);
-    mockSyncWallet.mockResolvedValue({ newUtxos: 0, spentUtxos: 0, newTransactions: 0, syncedAt: new Date().toISOString() });
+    mockImportSync.mockResolvedValue({ origins: [], newTransactions: 0, newUtxos: 0 });
   });
 
   it('renders the screen title', () => {
@@ -109,7 +102,6 @@ describe('ImportWalletScreen', () => {
 
   it('does not show interactive network selector chips', () => {
     const screen = renderWithTheme(<ImportWalletScreen />);
-    // The badge is purely informational — no radio buttons
     expect(screen.queryAllByRole('radio')).toHaveLength(0);
   });
 
@@ -141,10 +133,9 @@ describe('ImportWalletScreen', () => {
     await waitFor(() => expect(mockSubmit).toHaveBeenCalledTimes(1));
   });
 
-  it('shows progress modal then navigates back when import, discovery and sync succeed', async () => {
+  it('shows progress modal then navigates back when import and sync succeed', async () => {
     const wallet = { id: '1', name: 'Savings', network: 'testnet', status: 'locked', createdAt: new Date().toISOString() };
     mockSubmit.mockResolvedValue(wallet);
-    mockDiscoverWalletAccounts.mockResolvedValue([]);
 
     const screen = renderWithTheme(<ImportWalletScreen />);
     fireEvent.press(screen.getByLabelText('importWallet.importAction'));
@@ -154,26 +145,16 @@ describe('ImportWalletScreen', () => {
     await waitFor(() => expect(mockGoBack).toHaveBeenCalledTimes(1));
   });
 
-  it('calls discoverWalletAccounts with wallet id and network after successful import', async () => {
+  it('calls importSync with wallet id and network after successful submit', async () => {
     const wallet = { id: 'wid-1', name: 'Test', network: 'mainnet', status: 'locked', createdAt: new Date().toISOString() };
     mockSubmit.mockResolvedValue(wallet);
-    mockDiscoverWalletAccounts.mockResolvedValue([]);
 
     const screen = renderWithTheme(<ImportWalletScreen />);
     fireEvent.press(screen.getByLabelText('importWallet.importAction'));
 
-    await waitFor(() => expect(mockDiscoverWalletAccounts).toHaveBeenCalledWith('wid-1', 'mainnet', expect.any(Function)));
-  });
-
-  it('calls syncWallet with wallet id after discovery completes', async () => {
-    const wallet = { id: 'wid-1', name: 'Test', network: 'testnet', status: 'locked', createdAt: new Date().toISOString() };
-    mockSubmit.mockResolvedValue(wallet);
-    mockDiscoverWalletAccounts.mockResolvedValue([]);
-
-    const screen = renderWithTheme(<ImportWalletScreen />);
-    fireEvent.press(screen.getByLabelText('importWallet.importAction'));
-
-    await waitFor(() => expect(mockSyncWallet).toHaveBeenCalledWith('wid-1'));
+    await waitFor(() =>
+      expect(mockImportSync).toHaveBeenCalledWith('wid-1', 'mainnet', expect.any(Function)),
+    );
   });
 
   it('does not navigate back when submit returns null', async () => {
@@ -182,6 +163,14 @@ describe('ImportWalletScreen', () => {
     fireEvent.press(screen.getByLabelText('importWallet.importAction'));
     await waitFor(() => expect(mockSubmit).toHaveBeenCalled());
     expect(mockGoBack).not.toHaveBeenCalled();
+  });
+
+  it('does not call importSync when submit returns null', async () => {
+    mockSubmit.mockResolvedValue(null);
+    const screen = renderWithTheme(<ImportWalletScreen />);
+    fireEvent.press(screen.getByLabelText('importWallet.importAction'));
+    await waitFor(() => expect(mockSubmit).toHaveBeenCalled());
+    expect(mockImportSync).not.toHaveBeenCalled();
   });
 
   it('displays error message when error is set', () => {

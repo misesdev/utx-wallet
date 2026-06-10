@@ -14,7 +14,6 @@ import { useImportWallet } from '../../hooks/useImportWallet';
 import { useTheme } from '../../hooks/useTheme';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
-import { useWallet } from '../../hooks/useWallet';
 
 type ImportWalletRoute = RouteProp<AppStackParamList, typeof AppRoutes.ImportWallet>;
 
@@ -49,8 +48,7 @@ export function ImportWalletScreen() {
     clearError,
     submit,
   } = useImportWallet(routeNetwork);
-  const { discoverWalletAccounts } = useAddressManager();
-  const { syncWallet } = useWallet();
+  const { importSync } = useAddressManager();
 
   const { t } = useAppTranslation();
   const [passphraseEnabled, setPassphraseEnabled] = useState(false);
@@ -78,13 +76,14 @@ export function ImportWalletScreen() {
     setSetupStep('discovering');
     setSubMessage(undefined);
     try {
-      await discoverWalletAccounts(wallet.id, wallet.network, (progress) => {
+      await importSync(wallet.id, wallet.network, (progress) => {
+        if (progress.phase === 'syncing') {
+          setSetupStep('syncing');
+          setSubMessage(t('walletSetup.syncingChain'));
+          return;
+        }
         if (progress.txFound) {
-          setSubMessage(
-            t('walletSetup.foundActivity', {
-              account: progress.accountIndex,
-            }),
-          );
+          setSubMessage(t('walletSetup.foundActivity', { account: progress.accountIndex }));
         } else {
           setSubMessage(
             t('walletSetup.checkingAddress', {
@@ -98,14 +97,6 @@ export function ImportWalletScreen() {
       setSetupError(err instanceof Error ? err.message : undefined);
       setSetupStep('error');
       return;
-    }
-
-    setSetupStep('syncing');
-    setSubMessage(t('walletSetup.syncingChain'));
-    try {
-      await syncWallet(wallet.id);
-    } catch {
-      // Sync errors are non-fatal: wallet is created, just no data yet
     }
 
     setSubMessage(undefined);

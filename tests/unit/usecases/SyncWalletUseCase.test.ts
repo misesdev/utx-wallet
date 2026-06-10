@@ -6,9 +6,11 @@ import { GenerateReceiveAddressUseCase } from '../../../src/core/domain/usecases
 import { AppError } from '../../../src/core/application/errors/AppError';
 import type { WalletRepository } from '../../../src/core/domain/repositories/WalletRepository';
 import type { AddressRepository } from '../../../src/core/domain/repositories/AddressRepository';
+import type { WalletAddressRepository } from '../../../src/core/domain/repositories/WalletAddressRepository';
 import type { SyncStateRepository } from '../../../src/core/domain/repositories/SyncStateRepository';
 import type { Wallet } from '../../../src/core/domain/entities/Wallet';
 import type { Address } from '../../../src/core/domain/entities/Address';
+import type { WalletAddress, AddressStatus } from '../../../src/core/domain/entities/WalletAddress';
 
 const WALLET_ID = 'wallet-1';
 
@@ -92,6 +94,50 @@ function makeGenerateReceiveAddress(address: Address = ADDR_0): jest.Mocked<Gene
   } as unknown as jest.Mocked<GenerateReceiveAddressUseCase>;
 }
 
+function makeWalletAddress(
+  address: string,
+  status: AddressStatus,
+  originId = 'origin-0',
+  originName = 'Default',
+): WalletAddress {
+  return {
+    id: `wa-${address}`,
+    walletId: WALLET_ID,
+    originId,
+    originName,
+    address,
+    path: "m/84'/1'/0'/0/0",
+    accountIndex: 0,
+    chain: 'receive',
+    index: 0,
+    status,
+    totalReceivedSats: 0,
+    totalSentSats: 0,
+    txCount: 0,
+    incomingTxCount: 0,
+    outgoingTxCount: 0,
+    hasUtxos: false,
+    isFrozen: false,
+    createdAt: new Date().toISOString(),
+    usedAt: null,
+    lastSyncedAt: null,
+  };
+}
+
+function makeWalletAddressRepo(
+  addresses: WalletAddress[] = [],
+): jest.Mocked<WalletAddressRepository> {
+  return {
+    findByWallet: jest.fn().mockResolvedValue(addresses),
+    saveMany: jest.fn(),
+    countFreshByChain: jest.fn(),
+    getMaxIndexByChain: jest.fn(),
+    updateSyncData: jest.fn(),
+    deleteByWallet: jest.fn(),
+    findById: jest.fn(),
+  } as unknown as jest.Mocked<WalletAddressRepository>;
+}
+
 function createUseCase(overrides: {
   walletRepo?: jest.Mocked<WalletRepository>;
   addressRepo?: jest.Mocked<AddressRepository>;
@@ -100,6 +146,7 @@ function createUseCase(overrides: {
   syncTxs?: jest.Mocked<SyncTransactionsUseCase>;
   syncBalance?: jest.Mocked<SyncBalanceUseCase>;
   syncState?: jest.Mocked<SyncStateRepository>;
+  walletAddressRepo?: jest.Mocked<WalletAddressRepository>;
 } = {}) {
   return new SyncWalletUseCase(
     overrides.walletRepo ?? makeWalletRepo(),
@@ -109,6 +156,7 @@ function createUseCase(overrides: {
     overrides.syncTxs ?? makeSyncTransactions(),
     overrides.syncBalance ?? makeSyncBalance(),
     overrides.syncState ?? makeSyncStateRepo(),
+    overrides.walletAddressRepo ?? null,
   );
 }
 
@@ -224,6 +272,77 @@ describe('SyncWalletUseCase', () => {
       const useCase = createUseCase({ syncState });
       await useCase.execute(WALLET_ID);
       expect(syncState.saveLastSyncAt).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('HD address filtering — spent_once and archived exclusion', () => {
+    const FRESH_ADDR    = 'tb1qfresh000';
+    const RECEIVED_ADDR = 'tb1qreceived';
+    const SPENT_ADDR    = 'tb1qspentonce';
+    const ARCHIVED_ADDR = 'tb1qarchived0';
+
+    function buildHdUseCase() {
+      const walletAddressRepo = makeWalletAddressRepo([
+        makeWalletAddress(FRESH_ADDR,    'fresh'),
+        makeWalletAddress(RECEIVED_ADDR, 'received'),
+        makeWalletAddress(SPENT_ADDR,    'spent_once'),
+        makeWalletAddress(ARCHIVED_ADDR, 'archived'),
+      ]);
+      const syncUtxos = makeSyncUtxos();
+      const syncTxs = makeSyncTransactions();
+      return { walletAddressRepo, syncUtxos, syncTxs };
+    }
+
+    it('excludes spent_once addresses from UTXO sync', async () => {
+      const { walletAddressRepo, syncUtxos, syncTxs } = buildHdUseCase();
+      const useCase = createUseCase({ walletAddressRepo, syncUtxos, syncTxs });
+      await useCase.execute(WALLET_ID);
+      const utxoAddresses: string[] = (syncUtxos.execute as jest.Mock).mock.calls[0][1];
+      expect(utxoAddresses).not.toContain(SPENT_ADDR);
+    });
+
+    it('excludes archived addresses from UTXO sync', async () => {
+      const { walletAddressRepo, syncUtxos, syncTxs } = buildHdUseCase();
+      const useCase = createUseCase({ walletAddressRepo, syncUtxos, syncTxs });
+      await useCase.execute(WALLET_ID);
+      const utxoAddresses: string[] = (syncUtxos.execute as jest.Mock).mock.calls[0][1];
+      expect(utxoAddresses).not.toContain(ARCHIVED_ADDR);
+    });
+
+    it('includes fresh and received addresses in UTXO sync', async () => {
+      const { walletAddressRepo, syncUtxos, syncTxs } = buildHdUseCase();
+      const useCase = createUseCase({ walletAddressRepo, syncUtxos, syncTxs });
+      await useCase.execute(WALLET_ID);
+      const utxoAddresses: string[] = (syncUtxos.execute as jest.Mock).mock.calls[0][1];
+      expect(utxoAddresses).toContain(FRESH_ADDR);
+      expect(utxoAddresses).toContain(RECEIVED_ADDR);
+    });
+
+    it('excludes spent_once addresses from transaction sync', async () => {
+      const { walletAddressRepo, syncUtxos, syncTxs } = buildHdUseCase();
+      const useCase = createUseCase({ walletAddressRepo, syncUtxos, syncTxs });
+      await useCase.execute(WALLET_ID);
+      const txAddresses: string[] = (syncTxs.execute as jest.Mock).mock.calls[0][1];
+      expect(txAddresses).not.toContain(SPENT_ADDR);
+    });
+
+    it('excludes archived addresses from transaction sync', async () => {
+      const { walletAddressRepo, syncUtxos, syncTxs } = buildHdUseCase();
+      const useCase = createUseCase({ walletAddressRepo, syncUtxos, syncTxs });
+      await useCase.execute(WALLET_ID);
+      const txAddresses: string[] = (syncTxs.execute as jest.Mock).mock.calls[0][1];
+      expect(txAddresses).not.toContain(ARCHIVED_ADDR);
+    });
+
+    it('still syncs all addresses when no walletAddressRepository is provided', async () => {
+      // Regression: the legacy path (no HD repo) must pass all legacy addresses unchanged
+      const syncUtxos = makeSyncUtxos();
+      const addressRepo = makeAddressRepo([ADDR_0, ADDR_1]);
+      const useCase = createUseCase({ addressRepo, syncUtxos });
+      await useCase.execute(WALLET_ID);
+      const utxoAddresses: string[] = (syncUtxos.execute as jest.Mock).mock.calls[0][1];
+      expect(utxoAddresses).toContain(ADDR_0.value);
+      expect(utxoAddresses).toContain(ADDR_1.value);
     });
   });
 });

@@ -17,8 +17,8 @@ export class WalletAddressRepositoryImpl implements WalletAddressRepository {
     return this.storage.findByChain(walletId, originId, chain);
   }
 
-  findFreshByChain(walletId: string, originId: string, chain: AddressChain): Promise<WalletAddress[]> {
-    return this.storage.findFreshByChain(walletId, originId, chain);
+  findFreshByChain(walletId: string, originId: string, chain: AddressChain, additionalStatuses?: AddressStatus[]): Promise<WalletAddress[]> {
+    return this.storage.findFreshByChain(walletId, originId, chain, additionalStatuses);
   }
 
   findByAddress(address: string): Promise<WalletAddress | null> {
@@ -51,8 +51,8 @@ export class WalletAddressRepositoryImpl implements WalletAddressRepository {
     return this.storage.updateSyncData(id, data);
   }
 
-  countFreshByChain(walletId: string, originId: string, chain: AddressChain): Promise<number> {
-    return this.storage.countFreshByChain(walletId, originId, chain);
+  countFreshByChain(walletId: string, originId: string, chain: AddressChain, additionalStatuses?: AddressStatus[]): Promise<number> {
+    return this.storage.countFreshByChain(walletId, originId, chain, additionalStatuses);
   }
 
   getMaxIndexByChain(walletId: string, originId: string, chain: AddressChain): Promise<number> {

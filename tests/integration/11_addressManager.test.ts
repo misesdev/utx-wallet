@@ -439,12 +439,13 @@ describe('Integration: HD Address Manager', () => {
     expect(updated?.status).toBe('change');
   });
 
-  it('SyncAddressStatus replenishes pool after sync', async () => {
+  it('SyncAddressStatus keeps pool satisfied when received addresses cover the minimum', async () => {
+    // After 2 of 3 initial receive addresses become `received`, the pool
+    // (fresh + received = 1 + 2 = 3) is still at the minimum — no new fresh addresses needed.
     const { importWallet, createOrigin, walletAddressRepository, makeSyncAddressStatus } = makeSetup();
     const wallet = await importWallet.execute('W23', TEST_MNEMONIC);
     const origin = await createOrigin.execute(wallet.id, DEFAULT_ORIGIN_NAME, 'testnet4');
 
-    // Mark 2 receive addresses as used via sync
     const addrs = await walletAddressRepository.findByOrigin(wallet.id, origin.id);
     const receiveAddrs = addrs.filter(a => a.chain === 'receive').slice(0, 2);
     const txsMap = new Map<string, Transaction[]>(
@@ -454,8 +455,96 @@ describe('Integration: HD Address Manager', () => {
     const sync = makeSyncAddressStatus(blockchain);
     await sync.execute(wallet.id, 'testnet4');
 
-    const freshCount = await walletAddressRepository.countFreshByChain(wallet.id, origin.id, 'receive');
-    expect(freshCount).toBeGreaterThanOrEqual(3); // replenished
+    // `received` addresses (key not exposed) still count toward the pool
+    const allAfterSync = await walletAddressRepository.findByOrigin(wallet.id, origin.id);
+    const receiveAvailable = allAfterSync.filter(
+      a => a.chain === 'receive' && (a.status === 'fresh' || a.status === 'received'),
+    );
+    expect(receiveAvailable.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('received address is returned by GetNextReceiveAddress when it has the lowest index', async () => {
+    // After addr0 receives payment (status=received), it still has a lower index than
+    // addr1 and addr2 (both fresh) — it must be returned as the next receive address.
+    const { importWallet, createOrigin, getNextReceive, walletAddressRepository, makeSyncAddressStatus } = makeSetup();
+    const wallet = await importWallet.execute('W26', TEST_MNEMONIC);
+    const origin = await createOrigin.execute(wallet.id, DEFAULT_ORIGIN_NAME, 'testnet4');
+
+    const addrs = await walletAddressRepository.findByOrigin(wallet.id, origin.id);
+    const addr0 = addrs.find(a => a.chain === 'receive' && a.index === 0)!;
+
+    // Simulate addr0 receiving a payment
+    const txsMap = new Map<string, Transaction[]>([
+      [addr0.address, [{ id: 'tx-0', txid: 'tx-0', amountSats: 5000, direction: 'incoming', status: 'confirmed', createdAt: new Date().toISOString() }]],
+    ]);
+    const blockchain = makeBlockchainProvider(new Map(), txsMap);
+    await makeSyncAddressStatus(blockchain).execute(wallet.id, 'testnet4');
+
+    // addr0 is now `received` — it is the oldest non-discarded address
+    const next = await getNextReceive.execute(wallet.id, 'testnet4', origin.id);
+    expect(next.index).toBe(0);
+    expect(next.status).toBe('received');
+  });
+
+  it('received addresses count toward pool — no extra addresses generated', async () => {
+    // All 3 initial receive addresses become `received`: pool (fresh+received=3) is satisfied.
+    // EnsureAddressPool must NOT generate new fresh addresses in this case.
+    const { importWallet, createOrigin, walletAddressRepository, makeSyncAddressStatus } = makeSetup();
+    const wallet = await importWallet.execute('W27', TEST_MNEMONIC);
+    const origin = await createOrigin.execute(wallet.id, DEFAULT_ORIGIN_NAME, 'testnet4');
+
+    const addrs = await walletAddressRepository.findByOrigin(wallet.id, origin.id);
+    const receiveAddrs = addrs.filter(a => a.chain === 'receive');
+    const txsMap = new Map<string, Transaction[]>(
+      receiveAddrs.map(a => [
+        a.address,
+        [{ id: 'tx-' + a.index, txid: 'tx-' + a.index, amountSats: 1000, direction: 'incoming' as const, status: 'confirmed' as const, createdAt: new Date().toISOString() }],
+      ])
+    );
+    const blockchain = makeBlockchainProvider(new Map(), txsMap);
+    await makeSyncAddressStatus(blockchain).execute(wallet.id, 'testnet4');
+
+    // Pool: all 3 are `received` → pool satisfied → no new fresh addresses
+    const allAfter = await walletAddressRepository.findByOrigin(wallet.id, origin.id);
+    const freshReceive = allAfter.filter(a => a.chain === 'receive' && a.status === 'fresh');
+    expect(freshReceive).toHaveLength(0); // no new fresh generated
+
+    const availableReceive = allAfter.filter(
+      a => a.chain === 'receive' && (a.status === 'fresh' || a.status === 'received'),
+    );
+    expect(availableReceive.length).toBeGreaterThanOrEqual(3); // pool still satisfied
+  });
+
+  it('pool replenishes when spent_once reduces available below minimum', async () => {
+    // addr0 becomes spent_once (private key exposed) → pool drops to 2 → replenished to 3
+    const { importWallet, createOrigin, walletAddressRepository, utxoRepository, makeSyncAddressStatus } = makeSetup();
+    const wallet = await importWallet.execute('W28', TEST_MNEMONIC);
+    const origin = await createOrigin.execute(wallet.id, DEFAULT_ORIGIN_NAME, 'testnet4');
+
+    const addrs = await walletAddressRepository.findByOrigin(wallet.id, origin.id);
+    const addr0 = addrs.find(a => a.chain === 'receive' && a.index === 0)!;
+
+    // addr0 sent from (outgoing tx, no UTXOs) → spent_once
+    await utxoRepository.replaceAll(wallet.id, []); // no UTXOs at addr0
+    const txsMap = new Map<string, Transaction[]>([
+      [addr0.address, [
+        { id: 'tx-in', txid: 'tx-in', amountSats: 5000, direction: 'incoming', status: 'confirmed', createdAt: new Date().toISOString() },
+        { id: 'tx-out', txid: 'tx-out', amountSats: 4000, direction: 'outgoing', status: 'confirmed', createdAt: new Date().toISOString() },
+      ]],
+    ]);
+    const blockchain = makeBlockchainProvider(new Map(), txsMap);
+    await makeSyncAddressStatus(blockchain).execute(wallet.id, 'testnet4');
+
+    // addr0 is spent_once → available = 2 (addr1, addr2 still fresh) < 3 → replenished
+    const allAfter = await walletAddressRepository.findByOrigin(wallet.id, origin.id);
+    const availableReceive = allAfter.filter(
+      a => a.chain === 'receive' && (a.status === 'fresh' || a.status === 'received'),
+    );
+    expect(availableReceive.length).toBeGreaterThanOrEqual(3);
+
+    // A new fresh address must have been generated (addr3)
+    const freshReceive = allAfter.filter(a => a.chain === 'receive' && a.status === 'fresh');
+    expect(freshReceive.length).toBeGreaterThanOrEqual(1);
   });
 
   // ── 7. CoinSelection address grouping ─────────────────────────────────────

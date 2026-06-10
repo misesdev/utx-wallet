@@ -4,6 +4,7 @@ import type { WalletAddress } from '../../core/domain/entities/WalletAddress';
 import type { BitcoinNetwork } from '../../core/domain/entities/Network';
 import { AddressManagerService } from '../../core/application/services/AddressManagerService';
 import type { WalletDiscoveryProgress } from '../../core/domain/usecases/wallet/WalletDiscoveryUseCase';
+import type { ImportSyncProgress, ImportSyncResult } from '../../core/domain/usecases/wallet/WalletImportSyncUseCase';
 
 type AddressManagerContextValue = {
   getOrigins: (walletId: string) => Promise<AddressOrigin[]>;
@@ -14,6 +15,7 @@ type AddressManagerContextValue = {
   ensureAddressPool: (walletId: string, network: BitcoinNetwork) => Promise<void>;
   listAddresses: (walletId: string) => Promise<WalletAddress[]>;
   discoverWalletAccounts: (walletId: string, network: BitcoinNetwork, onProgress?: (progress: WalletDiscoveryProgress) => void) => Promise<AddressOrigin[]>;
+  importSync: (walletId: string, network: BitcoinNetwork, onProgress?: (progress: ImportSyncProgress) => void) => Promise<ImportSyncResult>;
 };
 
 export const AddressManagerContext = createContext<AddressManagerContextValue | null>(null);
@@ -33,6 +35,8 @@ export function AddressManagerProvider({ children, service }: Props) {
     listAddresses: (walletId) => service.listAddresses(walletId),
     discoverWalletAccounts: (walletId, network, onProgress) =>
       service.discoverWalletAccounts(walletId, network, onProgress),
+    importSync: (walletId, network, onProgress) =>
+      service.importSync(walletId, network, onProgress),
   };
 
   return (

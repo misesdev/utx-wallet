@@ -55,9 +55,17 @@ export class SyncWalletUseCase {
     const hdWalletAddresses = this.walletAddressRepository
       ? await this.walletAddressRepository.findByWallet(walletId)
       : [];
-    const hdAddresses = hdWalletAddresses.map(a => a.address);
+
+    // Skip spent_once and archived addresses: per the no-reuse policy, once an address
+    // has been used as an input (spent_once) or archived it will never hold new UTXOs,
+    // and its public key has already been exposed to the network.
+    const syncableHdAddresses = hdWalletAddresses.filter(
+      a => a.status !== 'spent_once' && a.status !== 'archived',
+    );
+
+    const hdAddresses = syncableHdAddresses.map(a => a.address);
     const addressMetadata = new Map(
-      hdWalletAddresses.map(a => [a.address, { originId: a.originId, originName: a.originName }]),
+      syncableHdAddresses.map(a => [a.address, { originId: a.originId, originName: a.originName }]),
     );
 
     const legacyAddresses = storedAddresses.map(a => a.value);

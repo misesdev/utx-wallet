@@ -14,7 +14,6 @@ import { useCreateWallet } from '../../hooks/useCreateWallet';
 import { useTheme } from '../../hooks/useTheme';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
-import { useWallet } from '../../hooks/useWallet';
 
 const screenCaptureGuard = new NoopScreenCaptureAdapter();
 
@@ -23,8 +22,7 @@ export function ConfirmSeedScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
   const { words, save, isLoading, error, reset } = useCreateWallet();
-  const { discoverWalletAccounts } = useAddressManager();
-  const { syncWallet } = useWallet();
+  const { importSync } = useAddressManager();
   const { t } = useAppTranslation();
 
   const challenge = useMemo<SeedChallenge>(
@@ -69,13 +67,14 @@ export function ConfirmSeedScreen() {
     setSetupStep('discovering');
     setSubMessage(undefined);
     try {
-      await discoverWalletAccounts(wallet.id, wallet.network, (progress) => {
+      await importSync(wallet.id, wallet.network, (progress) => {
+        if (progress.phase === 'syncing') {
+          setSetupStep('syncing');
+          setSubMessage(t('walletSetup.syncingChain'));
+          return;
+        }
         if (progress.txFound) {
-          setSubMessage(
-            t('walletSetup.foundActivity', {
-              account: progress.accountIndex,
-            }),
-          );
+          setSubMessage(t('walletSetup.foundActivity', { account: progress.accountIndex }));
         } else {
           setSubMessage(
             t('walletSetup.checkingAddress', {
@@ -89,14 +88,6 @@ export function ConfirmSeedScreen() {
       setSetupError(err instanceof Error ? err.message : undefined);
       setSetupStep('error');
       return;
-    }
-
-    setSetupStep('syncing');
-    setSubMessage(t('walletSetup.syncingChain'));
-    try {
-      await syncWallet(wallet.id);
-    } catch {
-      // Sync errors are non-fatal: wallet is created, just no data yet
     }
 
     setSubMessage(undefined);

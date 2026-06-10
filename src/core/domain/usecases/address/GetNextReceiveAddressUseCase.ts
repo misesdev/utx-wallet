@@ -27,18 +27,22 @@ export class GetNextReceiveAddressUseCase {
     // Ensure pool has at least the minimum before returning
     await this.ensureAddressPool.execute(walletId, network, origin.id);
 
-    const freshAddresses = await this.walletAddressRepository.findFreshByChain(
+    // Include `received` addresses: they have received funds but the key has not
+    // been exposed as a transaction input, so they remain valid for receiving.
+    // Only `spent_once` (and `archived`) addresses are permanently discarded.
+    const availableAddresses = await this.walletAddressRepository.findFreshByChain(
       walletId,
       origin.id,
       'receive',
+      ['received'],
     );
 
-    if (freshAddresses.length === 0) {
+    if (availableAddresses.length === 0) {
       throw new AppError('No fresh receive addresses available', 'NO_FRESH_ADDRESS');
     }
 
-    // Oldest fresh (lowest index)
-    const address = freshAddresses.sort((a, b) => a.index - b.index)[0];
+    // Oldest available (lowest index) — already ordered by storage, but sort defensively
+    const address = availableAddresses.sort((a, b) => a.index - b.index)[0];
 
     if (reserve) {
       const now = new Date().toISOString();

@@ -1,5 +1,5 @@
 import type { BitcoinNetwork } from '../../entities/Network';
-import type { AddressChain } from '../../entities/WalletAddress';
+import type { AddressChain, AddressStatus } from '../../entities/WalletAddress';
 import { ADDRESS_POLICY } from '../../entities/WalletAddress';
 import type { AddressOrigin } from '../../entities/AddressOrigin';
 import type { WalletAddressRepository } from '../../repositories/WalletAddressRepository';
@@ -33,15 +33,19 @@ export class EnsureAddressPoolUseCase {
     origin: AddressOrigin,
     chain: AddressChain,
   ): Promise<void> {
-    const freshCount = await this.walletAddressRepository.countFreshByChain(
+    // For the receive chain, `received` addresses (incoming-only, key not yet exposed)
+    // count toward the pool — only `spent_once` is permanently discarded.
+    const additionalStatuses: AddressStatus[] = chain === 'receive' ? ['received'] : [];
+    const availableCount = await this.walletAddressRepository.countFreshByChain(
       walletId,
       origin.id,
       chain,
+      additionalStatuses,
     );
 
     const min =
       chain === 'receive' ? ADDRESS_POLICY.minAvailableReceive : ADDRESS_POLICY.minAvailableChange;
-    const needed = min - freshCount;
+    const needed = min - availableCount;
 
     if (needed <= 0) return;
 

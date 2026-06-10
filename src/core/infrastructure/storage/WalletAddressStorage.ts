@@ -58,10 +58,17 @@ export class WalletAddressStorage {
     return rows.map(this.mapRow);
   }
 
-  async findFreshByChain(walletId: string, originId: string, chain: AddressChain): Promise<WalletAddress[]> {
+  async findFreshByChain(
+    walletId: string,
+    originId: string,
+    chain: AddressChain,
+    additionalStatuses: string[] = [],
+  ): Promise<WalletAddress[]> {
+    const statuses = ['fresh', ...additionalStatuses];
+    const placeholders = statuses.map(() => '?').join(', ');
     const rows = await this.db.execute<WalletAddressRow>(
-      `SELECT ${COLS} FROM wallet_addresses WHERE wallet_id = ? AND origin_id = ? AND chain = ? AND status = 'fresh'`,
-      [walletId, originId, chain],
+      `SELECT ${COLS} FROM wallet_addresses WHERE wallet_id = ? AND origin_id = ? AND chain = ? AND status IN (${placeholders}) ORDER BY index_num ASC`,
+      [walletId, originId, chain, ...statuses],
     );
     return rows.map(this.mapRow);
   }
@@ -144,10 +151,17 @@ export class WalletAddressStorage {
     await this.db.execute(`UPDATE wallet_addresses SET ${sets.join(', ')} WHERE id = ?`, params);
   }
 
-  async countFreshByChain(walletId: string, originId: string, chain: AddressChain): Promise<number> {
+  async countFreshByChain(
+    walletId: string,
+    originId: string,
+    chain: AddressChain,
+    additionalStatuses: string[] = [],
+  ): Promise<number> {
+    const statuses = ['fresh', ...additionalStatuses];
+    const placeholders = statuses.map(() => '?').join(', ');
     const rows = await this.db.execute<WalletAddressRow>(
-      `SELECT id FROM wallet_addresses WHERE wallet_id = ? AND origin_id = ? AND chain = ? AND status = 'fresh'`,
-      [walletId, originId, chain],
+      `SELECT id FROM wallet_addresses WHERE wallet_id = ? AND origin_id = ? AND chain = ? AND status IN (${placeholders})`,
+      [walletId, originId, chain, ...statuses],
     );
     return rows.length;
   }

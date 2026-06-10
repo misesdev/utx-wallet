@@ -6,8 +6,7 @@ import { renderWithTheme } from '../../mocks/renderWithProviders';
 const mockSave = jest.fn();
 const mockReset = jest.fn();
 const mockNavigate = jest.fn();
-const mockDiscoverWalletAccounts = jest.fn();
-const mockSyncWallet = jest.fn();
+const mockImportSync = jest.fn();
 
 const mockWords = [
   'abandon', 'ability', 'able', 'about', 'above', 'absent',
@@ -31,7 +30,7 @@ jest.mock('../../../src/presentation/hooks/useCreateWallet', () => ({
 
 jest.mock('../../../src/app/providers/AddressManagerProvider', () => ({
   useAddressManager: () => ({
-    discoverWalletAccounts: mockDiscoverWalletAccounts,
+    importSync: mockImportSync,
     getOrigins: jest.fn(),
     createAddressOrigin: jest.fn(),
     renameAddressOrigin: jest.fn(),
@@ -39,12 +38,7 @@ jest.mock('../../../src/app/providers/AddressManagerProvider', () => ({
     getChangeAddress: jest.fn(),
     ensureAddressPool: jest.fn(),
     listAddresses: jest.fn(),
-  }),
-}));
-
-jest.mock('../../../src/presentation/hooks/useWallet', () => ({
-  useWallet: () => ({
-    syncWallet: mockSyncWallet,
+    discoverWalletAccounts: jest.fn(),
   }),
 }));
 
@@ -60,8 +54,7 @@ jest.mock('../../../src/core/domain/utils/seedChallenge', () => ({
 describe('ConfirmSeedScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockDiscoverWalletAccounts.mockResolvedValue([]);
-    mockSyncWallet.mockResolvedValue({ newUtxos: 0, spentUtxos: 0, newTransactions: 0, syncedAt: new Date().toISOString() });
+    mockImportSync.mockResolvedValue({ origins: [], newTransactions: 0, newUtxos: 0 });
     const { useCreateWallet } = require('../../../src/presentation/hooks/useCreateWallet');
     (useCreateWallet as jest.Mock).mockReturnValue({
       words: mockWords,
@@ -133,10 +126,9 @@ describe('ConfirmSeedScreen', () => {
     expect(screen.getByLabelText('confirmSeed.confirmCreate')).toBeTruthy();
   });
 
-  it('shows progress modal and navigates to WalletList after save + discovery complete', async () => {
+  it('shows progress modal and navigates to WalletList after save and sync complete', async () => {
     const wallet = { id: 'w1', name: 'My Wallet', network: 'testnet', status: 'locked', createdAt: new Date().toISOString() };
     mockSave.mockResolvedValue(wallet);
-    mockDiscoverWalletAccounts.mockResolvedValue([]);
 
     const screen = renderWithTheme(<ConfirmSeedScreen />);
     fireEvent.press(screen.getByLabelText('confirmSeed.confirmCreate'));
@@ -147,25 +139,16 @@ describe('ConfirmSeedScreen', () => {
     expect(mockReset).toHaveBeenCalled();
   });
 
-  it('calls discoverWalletAccounts with wallet id and network after save', async () => {
+  it('calls importSync with wallet id and network after save', async () => {
     const wallet = { id: 'wid-2', name: 'W', network: 'mainnet', status: 'locked', createdAt: new Date().toISOString() };
     mockSave.mockResolvedValue(wallet);
 
     const screen = renderWithTheme(<ConfirmSeedScreen />);
     fireEvent.press(screen.getByLabelText('confirmSeed.confirmCreate'));
 
-    await waitFor(() => expect(mockDiscoverWalletAccounts).toHaveBeenCalledWith('wid-2', 'mainnet', expect.any(Function)));
-  });
-
-  it('calls syncWallet with wallet id after discovery completes', async () => {
-    const wallet = { id: 'wid-3', name: 'W', network: 'testnet', status: 'locked', createdAt: new Date().toISOString() };
-    mockSave.mockResolvedValue(wallet);
-    mockDiscoverWalletAccounts.mockResolvedValue([]);
-
-    const screen = renderWithTheme(<ConfirmSeedScreen />);
-    fireEvent.press(screen.getByLabelText('confirmSeed.confirmCreate'));
-
-    await waitFor(() => expect(mockSyncWallet).toHaveBeenCalledWith('wid-3'));
+    await waitFor(() =>
+      expect(mockImportSync).toHaveBeenCalledWith('wid-2', 'mainnet', expect.any(Function)),
+    );
   });
 
   it('hides progress modal and does not navigate when save returns null', async () => {
@@ -176,6 +159,6 @@ describe('ConfirmSeedScreen', () => {
 
     await waitFor(() => expect(mockSave).toHaveBeenCalled());
     expect(mockNavigate).not.toHaveBeenCalled();
-    expect(mockDiscoverWalletAccounts).not.toHaveBeenCalled();
+    expect(mockImportSync).not.toHaveBeenCalled();
   });
 });
