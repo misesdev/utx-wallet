@@ -1,5 +1,27 @@
 # UTX Wallet
 
+<p align="center">
+  <img src="assets/icon.png" width="96" alt="UTX Wallet icon" />
+</p>
+
+<p align="center">
+  <strong>Self-custodial Bitcoin wallet · Personal node · Full UTXO control</strong>
+</p>
+
+<p align="center">
+  <img src="store/screenshots/screenshot-1.png" width="18.5%" alt="Home" />
+  <img src="store/screenshots/screenshot-2.png" width="18.5%" alt="Send" />
+  <img src="store/screenshots/screenshot-3.png" width="18.5%" alt="UTXOs" />
+  <img src="store/screenshots/screenshot-4.png" width="18.5%" alt="Nodes" />
+  <img src="store/screenshots/screenshot-5.png" width="18.5%" alt="Receive" />
+</p>
+<p align="center">
+  <img src="store/screenshots/screenshot-6.png" width="18.5%" alt="Security" />
+  <img src="store/screenshots/screenshot-7.png" width="18.5%" alt="Node guide" />
+</p>
+
+---
+
 UTX Wallet is a React Native mobile app for a Bitcoin wallet. It is built without Expo and uses TypeScript, Clean Architecture, reusable UI components, providers, hooks, services, repositories, use cases, and testable infrastructure.
 
 The project is architecture-first, but it already contains a broad wallet prototype surface: onboarding screens, wallet creation/import flows, receive/send screens, transaction details, UTXO management, offline transaction storage, network/node settings, security settings, native Android/iOS projects, and extensive unit/integration tests.

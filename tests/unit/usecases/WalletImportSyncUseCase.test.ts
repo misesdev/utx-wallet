@@ -78,8 +78,8 @@ function makeBlockchainProvider(
   utxoMap: Map<string, Utxo[]> = new Map(),
 ): jest.Mocked<BlockchainProvider> {
   return {
-    getTransactions: jest.fn(async (address: string) => txMap.get(address) ?? []),
-    getUtxos: jest.fn(async (address: string) => utxoMap.get(address) ?? []),
+    getTransactions: jest.fn(async (address: string, _network: BitcoinNetwork) => txMap.get(address) ?? []),
+    getUtxos: jest.fn(async (address: string, _network: BitcoinNetwork) => utxoMap.get(address) ?? []),
     getBalance: jest.fn(),
     getTransactionStatus: jest.fn(),
     getCurrentBlockHeight: jest.fn(),
@@ -560,7 +560,7 @@ describe('WalletImportSyncUseCase', () => {
       // toGenerate=2 → batch(9-10): 2 fresh → totalFresh=3 → STOP
       // Total: 11 change addresses
       const txMap = new Map(
-        Array.from({ length: 8 }, (_, i) => [`change-0-${i}`, [makeTx()]] as const),
+        Array.from({ length: 8 }, (_, i) => [`change-0-${i}`, [makeTx()]] as [string, Transaction[]]),
       );
       const { useCase, blockchain } = makeUseCase({
         txMap,

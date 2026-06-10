@@ -208,7 +208,9 @@ export class WalletImportSyncUseCase {
       for (let i = 0; i < addresses.length; i++) {
         const address = addresses[i];
         const txs: Transaction[] =
-          results[i].status === 'fulfilled' ? results[i].value : [];
+          results[i].status === 'fulfilled'
+            ? (results[i] as PromiseFulfilledResult<Transaction[]>).value
+            : [];
         const hasTxs = txs.length > 0;
 
         scanned.push({ address, chain, index: index + i, hasTxs });

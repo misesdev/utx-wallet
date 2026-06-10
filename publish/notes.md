@@ -1,13 +1,39 @@
-PORTUGUÊS
+UTX Wallet v1.2
 
-Primeiro lançamento do UTX Wallet.
+── WHAT'S NEW ──────────────────────────────────────────────
 
-Crie ou importe carteiras Bitcoin com seed BIP39. Envie e receba com controle total de taxas e UTXOs. Conecte ao seu próprio node Mempool.space para privacidade total, com suporte a múltiplos nodes e failover automático. Segurança com PIN, biometria e bloqueio automático.
+• Wallet import with adaptive address discovery
+  Scans the blockchain to recover your full transaction
+  history automatically on import.
 
+• Multi-account support
+  Each wallet supports multiple BIP44 accounts with
+  independent address pools and balance tracking.
 
-ENGLISH
+• Address segregation
+  Coin selection is grouped by account and address origin,
+  reducing cross-account fund traceability.
 
-First release of UTX Wallet.
+• Personal node management
+  Configure multiple Mempool.space nodes with custom
+  priority order and automatic failover.
 
-Create or import Bitcoin wallets with BIP39 seed phrases. Send and receive with full fee and UTXO control. Connect to your own Mempool.space node for full privacy, with multi-node support and automatic failover. PIN, biometrics, and auto-lock included.
+• Node setup guide
+  Built-in tutorial for self-hosting on Docker, Umbrel,
+  RaspiBlitz, and Start9.
 
+• Account policy screen
+  In-app explanation of BIP84 address derivation and
+  account isolation.
+
+• Navigation hardening
+  Back-button is blocked after terminal flows (wallet
+  created, imported, deleted, transaction sent) to prevent
+  accidental re-entry.
+
+── ABOUT UTX WALLET ────────────────────────────────────────
+
+Self-custodial Bitcoin wallet. Your keys never leave your
+device. Connect to your own node. Full UTXO control.
+
+Open source — https://github.com/misesdev/utx-wallet
