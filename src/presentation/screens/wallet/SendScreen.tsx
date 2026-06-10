@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { DeviceEventEmitter, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { DeviceEventEmitter, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
@@ -93,7 +93,10 @@ export function SendScreen() {
   };
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+    <KeyboardAvoidingView
+      style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       {/* Header */}
       <View style={styles.header}>
         <Pressable
@@ -149,66 +152,73 @@ export function SendScreen() {
         </AppText>
       </View>
 
-      {/* Big amount field (Nubank-style) */}
-      <View style={styles.amountSection}>
-        <TextInput
-          value={amountSats}
-          onChangeText={setAmountSats}
-          placeholder="0"
-          placeholderTextColor={theme.colors.textFaint}
-          keyboardType="numeric"
-          style={[styles.bigAmount, { color: amountSats ? theme.colors.text : theme.colors.textFaint }]}
-          testID="input-amount"
-        />
-        <AppText variant="body" color="muted" style={styles.unitLabel}>{t('common.sats')}</AppText>
-        {btcAmount && (
-          <AppText variant="caption" color="muted" style={styles.btcConversion} testID="btc-conversion">
-            ≈ {btcAmount} BTC
-          </AppText>
-        )}
-        {isOverBalance && (
-          <AppText variant="caption" color="danger" testID="balance-error">
-            {t('send.errorInsufficientBalance')}
-          </AppText>
-        )}
-        {amountError && (
-          <AppText variant="caption" color="danger" testID="amount-error">{amountError}</AppText>
-        )}
-      </View>
-
-      {/* Address section */}
-      <View style={styles.addressSection}>
-        <View style={styles.addressHeader}>
-          <AppText variant="label" color="muted">{t('send.recipientAddress')}</AppText>
-          <Pressable
-            onPress={handleMax}
-            accessibilityRole="button"
-            accessibilityLabel={t('send.max')}
-            testID="btn-max"
-            style={({ pressed }) => [
-              styles.maxBtn,
-              {
-                backgroundColor: theme.colors.surfaceMuted,
-                borderColor: theme.colors.border,
-                borderRadius: theme.radii.sm,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
-          >
-            <AppText variant="label" color="accent">{t('send.max')}</AppText>
-          </Pressable>
+      {/* Scrollable content — keeps amount centred and address always above keyboard */}
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Big amount field (Nubank-style) */}
+        <View style={styles.amountSection}>
+          <TextInput
+            value={amountSats}
+            onChangeText={setAmountSats}
+            placeholder="0"
+            placeholderTextColor={theme.colors.textFaint}
+            keyboardType="numeric"
+            style={[styles.bigAmount, { color: amountSats ? theme.colors.text : theme.colors.textFaint }]}
+            testID="input-amount"
+          />
+          <AppText variant="body" color="muted" style={styles.unitLabel}>{t('common.sats')}</AppText>
+          {btcAmount && (
+            <AppText variant="caption" color="muted" style={styles.btcConversion} testID="btc-conversion">
+              ≈ {btcAmount} BTC
+            </AppText>
+          )}
+          {isOverBalance && (
+            <AppText variant="caption" color="danger" testID="balance-error">
+              {t('send.errorInsufficientBalance')}
+            </AppText>
+          )}
+          {amountError && (
+            <AppText variant="caption" color="danger" testID="amount-error">{amountError}</AppText>
+          )}
         </View>
 
-        <AddressInput
-          value={toAddress}
-          onChangeText={setToAddress}
-          onQrScan={handleQrScan}
-          testID="input-address"
-          error={addressError}
-        />
-      </View>
+        {/* Address section */}
+        <View style={styles.addressSection}>
+          <View style={styles.addressHeader}>
+            <AppText variant="label" color="muted">{t('send.recipientAddress')}</AppText>
+            <Pressable
+              onPress={handleMax}
+              accessibilityRole="button"
+              accessibilityLabel={t('send.max')}
+              testID="btn-max"
+              style={({ pressed }) => [
+                styles.maxBtn,
+                {
+                  backgroundColor: theme.colors.surfaceMuted,
+                  borderColor: theme.colors.border,
+                  borderRadius: theme.radii.sm,
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}
+            >
+              <AppText variant="label" color="accent">{t('send.max')}</AppText>
+            </Pressable>
+          </View>
 
-      {/* Next button */}
+          <AddressInput
+            value={toAddress}
+            onChangeText={setToAddress}
+            onQrScan={handleQrScan}
+            testID="input-address"
+            error={addressError}
+          />
+        </View>
+      </ScrollView>
+
+      {/* Next button — stays above keyboard */}
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
         <Pressable
           onPress={handleNext}
@@ -233,7 +243,7 @@ export function SendScreen() {
           </AppText>
         </Pressable>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -292,13 +302,20 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
 
+  // Scroll container — flexGrow fills available height so amountSection can flex inside
+  scrollContent: {
+    flexGrow: 1,
+  },
+
   // Big amount
   amountSection: {
     alignItems: 'center',
     flex: 1,
     gap: 8,
     justifyContent: 'center',
+    minHeight: 180,
     paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   bigAmount: {
     alignSelf: 'center',

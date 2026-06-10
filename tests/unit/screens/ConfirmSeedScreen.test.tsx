@@ -6,6 +6,7 @@ import { renderWithTheme } from '../../mocks/renderWithProviders';
 const mockSave = jest.fn();
 const mockReset = jest.fn();
 const mockNavigate = jest.fn();
+const mockNavigationReset = jest.fn();
 const mockImportSync = jest.fn();
 
 const mockWords = [
@@ -14,7 +15,7 @@ const mockWords = [
 ];
 
 jest.mock('../../../src/presentation/hooks/useAppNavigation', () => ({
-  useAppNavigation: () => ({ navigate: mockNavigate, goBack: jest.fn() }),
+  useAppNavigation: () => ({ navigate: mockNavigate, goBack: jest.fn(), reset: mockNavigationReset }),
 }));
 
 jest.mock('../../../src/presentation/hooks/useCreateWallet', () => ({
@@ -135,7 +136,7 @@ describe('ConfirmSeedScreen', () => {
 
     await waitFor(() => expect(screen.getByText('walletSetup.done')).toBeTruthy());
     fireEvent.press(screen.getByTestId('wallet-setup-done-btn'));
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('WalletList'));
+    await waitFor(() => expect(mockNavigationReset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'WalletList' }] }));
     expect(mockReset).toHaveBeenCalled();
   });
 

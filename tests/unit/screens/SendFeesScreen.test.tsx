@@ -54,10 +54,10 @@ const mockSendTransaction = jest.fn().mockResolvedValue(undefined);
 const mockResetSend = jest.fn();
 const mockSetPayFee = jest.fn();
 const mockNavigate = jest.fn();
-const mockReplace = jest.fn();
+const mockNavigationReset = jest.fn();
 
 jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ navigate: mockNavigate, replace: mockReplace, goBack: jest.fn() }),
+  useNavigation: () => ({ navigate: mockNavigate, reset: mockNavigationReset, goBack: jest.fn() }),
   useRoute: () => ({
     params: { toAddress: VALID_ADDRESS, amountSats: '100000', originId: undefined },
   }),

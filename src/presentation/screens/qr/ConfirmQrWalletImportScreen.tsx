@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppError } from '../../../core/application/errors/AppError';
@@ -63,7 +63,7 @@ export function ConfirmQrWalletImportScreen() {
     setError('');
     try {
       await importWallet(trimmedName, route.params.secret, route.params.network);
-      navigation.navigate(AppRoutes.WalletList);
+      navigation.reset({ index: 0, routes: [{ name: AppRoutes.WalletList }] });
     } catch (err) {
       if (err instanceof AppError && err.code === 'WALLET_EXISTS') {
         setError(t('importWallet.errorWalletExists', { name: trimmedName }));
@@ -78,7 +78,10 @@ export function ConfirmQrWalletImportScreen() {
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}> 
+    <KeyboardAvoidingView
+      style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
@@ -172,7 +175,7 @@ export function ConfirmQrWalletImportScreen() {
           testID="qr-import-submit"
         />
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

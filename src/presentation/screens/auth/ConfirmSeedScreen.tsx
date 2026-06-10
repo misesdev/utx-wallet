@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { buildSeedChallenge, validateSeedChallenge, type SeedChallenge } from '../../../core/domain/utils/seedChallenge';
 import { NoopScreenCaptureAdapter } from '../../../core/infrastructure/adapters/ScreenCaptureAdapter';
@@ -97,7 +97,7 @@ export function ConfirmSeedScreen() {
   function handleSetupDone() {
     reset();
     setSetupVisible(false);
-    navigation.navigate(AppRoutes.WalletList);
+    navigation.reset({ index: 0, routes: [{ name: AppRoutes.WalletList }] });
   }
 
   function handleSetupRetry() {
@@ -125,7 +125,10 @@ export function ConfirmSeedScreen() {
   const isValid = allFilled && validateSeedChallenge(words, challenge, selected);
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+    <KeyboardAvoidingView
+      style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <WalletSetupProgressModal
         visible={setupVisible}
         currentStep={setupStep}
@@ -278,7 +281,7 @@ export function ConfirmSeedScreen() {
             style={({ pressed }) => [
               styles.cta,
               {
-                backgroundColor: isValid ? theme.colors.accent : theme.colors.surfaceMuted,
+                backgroundColor: isValid ? theme.colors.primary : theme.colors.surfaceMuted,
                 borderRadius: theme.radii.lg,
                 opacity: pressed || !isValid ? (isValid ? 0.8 : 0.5) : 1,
               },
@@ -286,14 +289,17 @@ export function ConfirmSeedScreen() {
           >
             <AppText
               variant="subtitle"
-              style={isValid ? styles.ctaTextActive : styles.ctaTextInactive}
+              style={[
+                isValid ? styles.ctaTextActive : styles.ctaTextInactive,
+                isValid ? { color: theme.colors.primaryText } : undefined,
+              ]}
             >
               {t('confirmSeed.confirmCreate')}
             </AppText>
           </Pressable>
         )}
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

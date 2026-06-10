@@ -316,4 +316,17 @@ describe('i18n resources', () => {
     });
   });
 
+  describe('pinModal keys', () => {
+    const KEYS: Array<keyof typeof ptBR.pinModal> = [
+      'setNewTitle', 'confirmNewTitle', 'verifyToRemoveTitle', 'verifyTitle',
+      'setNewSubtitle', 'confirmNewSubtitle', 'verifyToRemoveSubtitle', 'verifySubtitle',
+    ];
+    it.each(KEYS)('pt-BR has non-empty pinModal.%s', (key) => {
+      expect(ptBR.pinModal[key]).toBeTruthy();
+    });
+    it.each(KEYS)('en-US has non-empty pinModal.%s', (key) => {
+      expect(enUS.pinModal[key]).toBeTruthy();
+    });
+  });
+
 });

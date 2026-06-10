@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppRoutes } from '../../../app/navigation/routes';
@@ -72,7 +72,10 @@ export function CreateWalletScreen() {
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+    <KeyboardAvoidingView
+      style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       {/* Header */}
       <View style={styles.header}>
         <Pressable
@@ -274,18 +277,18 @@ export function CreateWalletScreen() {
           style={({ pressed }) => [
             styles.cta,
             {
-              backgroundColor: theme.colors.accent,
+              backgroundColor: theme.colors.primary,
               borderRadius: theme.radii.lg,
               opacity: pressed || isLoading ? 0.75 : 1,
             },
           ]}
         >
-          <AppText variant="subtitle" style={styles.ctaText}>
+          <AppText variant="subtitle" style={[styles.ctaText, { color: theme.colors.primaryText }]}>
             {t('createWallet.generateSeed')}
           </AppText>
         </Pressable>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -442,7 +445,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   ctaText: {
-    color: '#fff',
     fontWeight: '700',
   },
 });

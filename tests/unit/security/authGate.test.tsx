@@ -1,6 +1,6 @@
 /**
  * Tests for authentication gates:
- * - BackupSeedScreen requires auth before showing seed
+ * - BackupSeedScreen does NOT require auth (wallet creation flow — seed must always be visible)
  * - SendFeesScreen requires auth before broadcasting transaction
  * - PinInputModal redesign works correctly
  */
@@ -13,9 +13,6 @@ import { PinInputModal } from '../../../src/presentation/components/security/Pin
 const mockNavigate = jest.fn();
 const mockGoBack = jest.fn();
 const mockProceedToConfirm = jest.fn();
-const mockRequireAuth = jest.fn();
-const mockSubmitPin = jest.fn().mockResolvedValue(undefined);
-
 jest.mock('../../../src/presentation/hooks/useAppNavigation', () => ({
   useAppNavigation: () => ({ navigate: mockNavigate, goBack: mockGoBack }),
 }));
@@ -34,54 +31,22 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
-jest.mock('../../../src/presentation/hooks/useReauthenticate', () => ({
-  useReauthenticate: () => ({
-    requireAuth: mockRequireAuth,
-    submitPin: mockSubmitPin,
-    cancelAuth: jest.fn(),
-    pinModalVisible: false,
-    pinError: null,
-  }),
-}));
+// ─── BackupSeedScreen — no auth gate (wallet creation flow) ───────────────────
 
-// ─── BackupSeedScreen auth gate ───────────────────────────────────────────────
-
-describe('BackupSeedScreen — auth gate', () => {
+describe('BackupSeedScreen — no auth gate during wallet creation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('calls requireAuth on mount', async () => {
-    mockRequireAuth.mockResolvedValue(true);
-    renderWithTheme(<BackupSeedScreen />);
-    await waitFor(() => expect(mockRequireAuth).toHaveBeenCalledTimes(1));
-  });
-
-  it('shows the screen when auth succeeds', async () => {
-    mockRequireAuth.mockResolvedValue(true);
+  it('shows the screen immediately without requiring authentication', () => {
     const screen = renderWithTheme(<BackupSeedScreen />);
-    await waitFor(() => expect(mockRequireAuth).toHaveBeenCalledTimes(1));
     expect(screen.getByText('backupSeed.title')).toBeTruthy();
+    expect(mockGoBack).not.toHaveBeenCalled();
   });
 
-  it('navigates back when auth fails', async () => {
-    mockRequireAuth.mockResolvedValue(false);
-    renderWithTheme(<BackupSeedScreen />);
-    await waitFor(() => expect(mockGoBack).toHaveBeenCalledTimes(1));
-  });
-
-  it('shows PinInputModal when pinModalVisible is true', () => {
-    mockRequireAuth.mockResolvedValue(true);
-    jest.mock('../../../src/presentation/hooks/useReauthenticate', () => ({
-      useReauthenticate: () => ({
-        requireAuth: mockRequireAuth,
-        submitPin: mockSubmitPin,
-        cancelAuth: jest.fn(),
-        pinModalVisible: true,
-        pinError: 'PIN incorreto',
-      }),
-    }));
-    // Re-rendered through fresh module — just test PinInputModal directly below
+  it('does not render a PinInputModal', () => {
+    const screen = renderWithTheme(<BackupSeedScreen />);
+    expect(screen.queryByTestId('pin-dots')).toBeNull();
   });
 });
 

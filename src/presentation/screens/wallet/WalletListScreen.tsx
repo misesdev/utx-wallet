@@ -70,28 +70,31 @@ function formatBalance(sats: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// StatCol
+// StatPill — centered stat with value above label
 // ---------------------------------------------------------------------------
 
-type StatColProps = {
+type StatPillProps = {
   label: string;
   value: string;
   accent?: string;
   testID?: string;
+  wide?: boolean;
 };
 
-function StatCol({ label, value, accent, testID }: StatColProps) {
+function StatPill({ label, value, accent, testID, wide }: StatPillProps) {
   const { theme } = useTheme();
   return (
-    <View style={styles.statCol} testID={testID}>
-      <AppText variant="caption" color="muted" style={styles.statLabel}>{label}</AppText>
+    <View style={[styles.statPillBase, wide ? styles.statPillWide : styles.statPillNarrow]} testID={testID}>
       <AppText
-        variant="body"
+        variant="subtitle"
         style={[styles.statValue, { color: accent ?? theme.colors.text }]}
         numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.72}
       >
         {value}
       </AppText>
+      <AppText variant="caption" color="muted" style={styles.statLabel}>{label}</AppText>
     </View>
   );
 }
@@ -131,9 +134,6 @@ function WalletCard({ wallet, summary, onOpen }: WalletCardProps) {
         },
       ]}
     >
-      {/* Accent top strip */}
-      <View style={[styles.topStrip, { backgroundColor: accent }]} />
-
       <View style={styles.cardBody}>
         {/* Identity row */}
         <View style={styles.identityRow}>
@@ -167,29 +167,29 @@ function WalletCard({ wallet, summary, onOpen }: WalletCardProps) {
           <AppIcon name="chevronRight" size={18} color={theme.colors.textMuted} />
         </View>
 
-        {/* Divider */}
-        <View style={[styles.statsDivider, { backgroundColor: theme.colors.border }]} />
-
-        {/* Stats row */}
-        <View style={styles.statsRow}>
-          <StatCol
-            label={t('walletList.statBalance')}
-            value={balanceLabel}
-            accent={hasBalance ? accent : undefined}
-            testID={`wallet-stat-balance-${wallet.id}`}
-          />
-          <View style={[styles.statSeparator, { backgroundColor: theme.colors.border }]} />
-          <StatCol
-            label={t('walletList.statAccounts')}
-            value={accountLabel}
-            testID={`wallet-stat-accounts-${wallet.id}`}
-          />
-          <View style={[styles.statSeparator, { backgroundColor: theme.colors.border }]} />
-          <StatCol
-            label={t('walletList.statUtxos')}
-            value={utxoLabel}
-            testID={`wallet-stat-utxos-${wallet.id}`}
-          />
+        {/* Stats box — muted background, centered columns */}
+        <View style={[styles.statsBox, { backgroundColor: theme.colors.surfaceMuted, borderRadius: theme.radii.md }]}>
+          <View style={styles.statsRow}>
+            <StatPill
+              wide
+              label={t('walletList.statBalance')}
+              value={balanceLabel}
+              accent={hasBalance ? accent : undefined}
+              testID={`wallet-stat-balance-${wallet.id}`}
+            />
+            <View style={[styles.statDivider, { backgroundColor: theme.colors.border }]} />
+            <StatPill
+              label={t('walletList.statAccounts')}
+              value={accountLabel}
+              testID={`wallet-stat-accounts-${wallet.id}`}
+            />
+            <View style={[styles.statDivider, { backgroundColor: theme.colors.border }]} />
+            <StatPill
+              label={t('walletList.statUtxos')}
+              value={utxoLabel}
+              testID={`wallet-stat-utxos-${wallet.id}`}
+            />
+          </View>
         </View>
       </View>
     </Pressable>
@@ -216,16 +216,19 @@ function NetworkTabChip({ label, active, onPress }: NetworkTabChipProps) {
       style={({ pressed }) => [
         styles.tabChip,
         {
-          backgroundColor: active ? theme.colors.accent : theme.colors.surfaceRaised,
-          borderColor: active ? theme.colors.accent : theme.colors.border,
-          borderRadius: theme.radii.xl,
+          backgroundColor: active ? theme.colors.primary : theme.colors.surfaceRaised,
+          borderColor: active ? theme.colors.primary : theme.colors.border,
+          borderRadius: theme.radii.md,
           opacity: pressed ? 0.75 : 1,
         },
       ]}
     >
       <AppText
         variant="label"
-        style={active ? styles.tabChipTextActive : styles.tabChipTextInactive}
+        style={[
+          active ? styles.tabChipTextActive : styles.tabChipTextInactive,
+          active ? { color: theme.colors.primaryText } : undefined,
+        ]}
       >
         {label}
       </AppText>
@@ -262,11 +265,12 @@ function EmptyState({ network, onCreateWallet, onImportWallet }: EmptyStateProps
           onPress={onCreateWallet}
           style={({ pressed }) => [
             styles.emptyBtn,
-            styles.emptyBtnPrimary,
-            { backgroundColor: theme.colors.accent, borderRadius: theme.radii.lg, opacity: pressed ? 0.8 : 1 },
+            { backgroundColor: theme.colors.primary, borderRadius: theme.radii.lg, opacity: pressed ? 0.8 : 1 },
           ]}
         >
-          <AppText variant="label" style={styles.emptyBtnPrimaryText}>{t('walletList.createWallet')}</AppText>
+          <AppText variant="label" style={[styles.emptyBtnPrimaryText, { color: theme.colors.primaryText }]}>
+            {t('walletList.createWallet')}
+          </AppText>
         </Pressable>
         <Pressable
           accessibilityRole="button"
@@ -393,11 +397,11 @@ export function WalletListScreen() {
             onPress={handleNavigateCreate}
             style={({ pressed }) => [
               styles.headerBtn,
-              styles.headerBtnAccent,
-              { backgroundColor: theme.colors.accent, borderRadius: theme.radii.md, opacity: pressed ? 0.8 : 1 },
+              styles.headerBtnPrimary,
+              { backgroundColor: theme.colors.primary, borderRadius: theme.radii.md, opacity: pressed ? 0.8 : 1 },
             ]}
           >
-            <AppText variant="label" style={styles.headerBtnAccentText}>+</AppText>
+            <AppText variant="label" style={[styles.headerBtnPrimaryText, { color: theme.colors.primaryText }]}>+</AppText>
           </Pressable>
         </View>
       </View>
@@ -500,10 +504,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 36,
   },
-  headerBtnAccent: {},
-  headerBtnAccentText: {
-    color: '#fff',
+  headerBtnPrimary: {},
+  headerBtnPrimaryText: {
     fontSize: 18,
+    fontWeight: '700',
   },
 
   // Tabs
@@ -521,11 +525,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   tabChipTextActive: {
-    color: '#fff',
     fontWeight: '700',
   },
   tabChipTextInactive: {
-    opacity: 0.65,
+    opacity: 0.55,
   },
 
   // Center state
@@ -545,14 +548,9 @@ const styles = StyleSheet.create({
   // Wallet card
   card: {
     borderWidth: 1,
-    overflow: 'hidden',
-  },
-  topStrip: {
-    height: 3,
-    width: '100%',
   },
   cardBody: {
-    gap: 14,
+    gap: 12,
     padding: 16,
   },
 
@@ -564,9 +562,9 @@ const styles = StyleSheet.create({
   },
   walletIconWrap: {
     alignItems: 'center',
-    height: 38,
+    height: 40,
     justifyContent: 'center',
-    width: 38,
+    width: 40,
   },
   identityText: {
     flex: 1,
@@ -591,28 +589,36 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Stats
-  statsDivider: {
-    height: StyleSheet.hairlineWidth,
-  },
+  // Stats box
+  statsBox: {},
   statsRow: {
-    alignItems: 'flex-start',
+    alignItems: 'center',
     flexDirection: 'row',
   },
-  statCol: {
-    flex: 1,
+  // Base shared between all stat pills; flex is added via statPillWide / statPillNarrow
+  statPillBase: {
+    alignItems: 'center',
     gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+  },
+  // Balance column — double width so long values (e.g. "99,999,999 sats") never crowd the edges
+  statPillWide: {
+    flex: 2,
+  },
+  // Accounts / UTXOs — single-digit or small numbers always fit
+  statPillNarrow: {
+    flex: 1,
+  },
+  statValue: {
+    fontWeight: '700',
   },
   statLabel: {
     fontSize: 10,
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
-  statValue: {
-    fontWeight: '600',
-  },
-  statSeparator: {
+  statDivider: {
     alignSelf: 'stretch',
-    marginHorizontal: 12,
     width: StyleSheet.hairlineWidth,
   },
 
@@ -645,9 +651,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 14,
   },
-  emptyBtnPrimary: {},
   emptyBtnPrimaryText: {
-    color: '#fff',
     fontWeight: '700',
   },
 });

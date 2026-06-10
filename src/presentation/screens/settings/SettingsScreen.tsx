@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppConfirmModal } from '../../components/base/AppConfirmModal';
 import { AppText } from '../../components/base/AppText';
@@ -111,7 +111,7 @@ export function SettingsScreen() {
     setIsDeleting(true);
     try {
       await deleteWallet(selectedWallet.id);
-      navigation.navigate(AppRoutes.WalletList);
+      navigation.reset({ index: 0, routes: [{ name: AppRoutes.WalletList }] });
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);
@@ -119,7 +119,10 @@ export function SettingsScreen() {
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+    <KeyboardAvoidingView
+      style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       {/* Header */}
       <View style={styles.header}>
         <Pressable
@@ -314,7 +317,7 @@ export function SettingsScreen() {
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteModal(false)}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

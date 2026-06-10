@@ -9,6 +9,7 @@ import {
   StyleSheet,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Camera, useCameraDevice, useCameraPermission, useCodeScanner } from 'react-native-vision-camera';
@@ -18,23 +19,18 @@ import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
 
-const CORNER_SIZE = 26;
-const CORNER_THICKNESS = 3;
-const FRAME_SIZE = 240;
+const CORNER_LEN = 32;
+const CORNER_THICK = 3.5;
+const MASK_OPACITY = 0.76;
+const MASK_COLOR = `rgba(0,0,0,${MASK_OPACITY})`;
 
 function ViewfinderCorners() {
-  const cornerBase: object = {
-    position: 'absolute',
-    width: CORNER_SIZE,
-    height: CORNER_SIZE,
-    borderColor: 'rgba(255,255,255,0.95)',
-  };
   return (
     <>
-      <View style={[cornerBase, styles.cornerTL]} />
-      <View style={[cornerBase, styles.cornerTR]} />
-      <View style={[cornerBase, styles.cornerBL]} />
-      <View style={[cornerBase, styles.cornerBR]} />
+      <View style={[styles.cornerBase, styles.cornerTL]} />
+      <View style={[styles.cornerBase, styles.cornerTR]} />
+      <View style={[styles.cornerBase, styles.cornerBL]} />
+      <View style={[styles.cornerBase, styles.cornerBR]} />
     </>
   );
 }
@@ -152,6 +148,7 @@ export function ScanAddressQrScreen() {
   const navigation = useAppNavigation();
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
+  const { width: W, height: H } = useWindowDimensions();
 
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice('back');
@@ -159,6 +156,12 @@ export function ScanAddressQrScreen() {
   const [error, setError] = useState('');
   const [showManual, setShowManual] = useState(false);
   const isHandling = useRef(false);
+
+  // Responsive frame — 70% of screen width, clamped 220–280px
+  const FRAME = Math.min(Math.max(Math.floor(W * 0.70), 220), 280);
+  // Position at ~38% from top so viewfinder sits above center (bottom area has controls)
+  const FRAME_TOP = Math.max(Math.floor((H - FRAME) * 0.38), 80);
+  const FRAME_LEFT = Math.max(Math.floor((W - FRAME) / 2), 0);
 
   useEffect(() => {
     if (!hasPermission) {
@@ -209,7 +212,7 @@ export function ScanAddressQrScreen() {
 
   return (
     <View style={styles.root}>
-      {/* Live camera feed */}
+      {/* Live camera feed — fills entire screen */}
       <Camera
         style={StyleSheet.absoluteFill}
         device={device}
@@ -218,17 +221,23 @@ export function ScanAddressQrScreen() {
         testID="camera-view"
       />
 
-      {/* Dimmed mask overlay */}
-      <View style={styles.cameraBackground} pointerEvents="none">
-        <View style={styles.maskTop} />
-        <View style={styles.maskMiddleRow}>
-          <View style={styles.maskSide} />
-          <View style={styles.viewfinder} testID="address-qr-scanner-frame">
+      {/* Dimmed overlay with transparent viewfinder cutout.
+          Uses explicit pixel heights derived from useWindowDimensions so the
+          viewfinder is always centred correctly, regardless of navigator
+          container height or safe-area adjustments. */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        {/* top mask */}
+        <View style={{ height: FRAME_TOP, backgroundColor: MASK_COLOR }} />
+        {/* middle row */}
+        <View style={[styles.maskRow, { height: FRAME }]}>
+          <View style={{ width: FRAME_LEFT, backgroundColor: MASK_COLOR }} />
+          <View style={{ width: FRAME, height: FRAME }} testID="address-qr-scanner-frame">
             <ViewfinderCorners />
           </View>
-          <View style={styles.maskSide} />
+          <View style={[styles.maskFlex, { backgroundColor: MASK_COLOR }]} />
         </View>
-        <View style={styles.maskBottom} />
+        {/* bottom mask */}
+        <View style={[styles.maskFlex, { backgroundColor: MASK_COLOR }]} />
       </View>
 
       {/* Top bar */}
@@ -246,9 +255,11 @@ export function ScanAddressQrScreen() {
         <View style={styles.topBtn} />
       </View>
 
-      {/* Hint */}
-      <View style={styles.hintRow}>
-        <AppText style={styles.hintText}>{t('qrImport.scannerHint')}</AppText>
+      {/* Hint — positioned just below the viewfinder frame */}
+      <View style={[styles.hintContainer, { top: FRAME_TOP + FRAME + 20 }]}>
+        <View style={styles.hintPill}>
+          <AppText style={styles.hintText}>{t('qrImport.scannerHint')}</AppText>
+        </View>
       </View>
 
       {/* Bottom bar */}
@@ -259,7 +270,7 @@ export function ScanAddressQrScreen() {
           testID="address-enter-manually-btn"
           style={({ pressed }) => [styles.manualBtn, { opacity: pressed ? 0.7 : 1 }]}
         >
-          <AppIcon name="edit" size={16} color="rgba(255,255,255,0.85)" />
+          <AppIcon name="edit" size={16} color="rgba(255,255,255,0.9)" />
           <AppText style={styles.manualBtnText}>{t('qrImport.enterManually')}</AppText>
         </Pressable>
       </View>
@@ -274,8 +285,6 @@ export function ScanAddressQrScreen() {
     </View>
   );
 }
-
-const MASK_OPACITY = 0.72;
 
 const styles = StyleSheet.create({
   root: {
@@ -316,36 +325,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
   },
-  cameraBackground: {
-    ...StyleSheet.absoluteFillObject,
-    flexDirection: 'column',
-  },
-  maskTop: {
-    backgroundColor: `rgba(0,0,0,${MASK_OPACITY})`,
-    flex: 1,
-  },
-  maskMiddleRow: {
-    flexDirection: 'row',
-    height: FRAME_SIZE,
-  },
-  maskSide: {
-    backgroundColor: `rgba(0,0,0,${MASK_OPACITY})`,
-    flex: 1,
-  },
-  maskBottom: {
-    backgroundColor: `rgba(0,0,0,${MASK_OPACITY})`,
-    flex: 1,
-  },
-  viewfinder: {
-    alignItems: 'center',
-    height: FRAME_SIZE,
-    justifyContent: 'center',
-    width: FRAME_SIZE,
-  },
-  cornerTL: { borderTopWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS, top: 0, left: 0 },
-  cornerTR: { borderTopWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS, top: 0, right: 0 },
-  cornerBL: { borderBottomWidth: CORNER_THICKNESS, borderLeftWidth: CORNER_THICKNESS, bottom: 0, left: 0 },
-  cornerBR: { borderBottomWidth: CORNER_THICKNESS, borderRightWidth: CORNER_THICKNESS, bottom: 0, right: 0 },
   topBar: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -370,15 +349,21 @@ const styles = StyleSheet.create({
     fontSize: 17,
     textAlign: 'center',
   },
-  hintRow: {
+  hintContainer: {
     alignItems: 'center',
-    bottom: '35%',
     left: 0,
+    paddingHorizontal: 32,
     position: 'absolute',
     right: 0,
   },
+  hintPill: {
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
   hintText: {
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.9)',
     fontSize: 13,
     textAlign: 'center',
   },
@@ -392,16 +377,19 @@ const styles = StyleSheet.create({
   },
   manualBtn: {
     alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 24,
+    borderWidth: 1,
     flexDirection: 'row',
     gap: 8,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingVertical: 12,
   },
   manualBtnText: {
-    color: 'rgba(255,255,255,0.85)',
+    color: 'rgba(255,255,255,0.9)',
     fontSize: 15,
-    fontWeight: '500',
-    textDecorationLine: 'underline',
+    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
@@ -448,4 +436,21 @@ const styles = StyleSheet.create({
   sheetBtnLabel: {
     fontWeight: '700',
   },
+  // Viewfinder overlay helpers
+  maskRow: {
+    flexDirection: 'row',
+  },
+  maskFlex: {
+    flex: 1,
+  },
+  cornerBase: {
+    position: 'absolute',
+    width: CORNER_LEN,
+    height: CORNER_LEN,
+    borderColor: 'rgba(255,255,255,0.95)',
+  },
+  cornerTL: { top: 0, left: 0, borderTopWidth: CORNER_THICK, borderLeftWidth: CORNER_THICK, borderTopLeftRadius: 4 },
+  cornerTR: { top: 0, right: 0, borderTopWidth: CORNER_THICK, borderRightWidth: CORNER_THICK, borderTopRightRadius: 4 },
+  cornerBL: { bottom: 0, left: 0, borderBottomWidth: CORNER_THICK, borderLeftWidth: CORNER_THICK, borderBottomLeftRadius: 4 },
+  cornerBR: { bottom: 0, right: 0, borderBottomWidth: CORNER_THICK, borderRightWidth: CORNER_THICK, borderBottomRightRadius: 4 },
 });

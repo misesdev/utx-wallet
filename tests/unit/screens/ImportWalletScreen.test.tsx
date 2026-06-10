@@ -5,6 +5,7 @@ import { renderWithTheme } from '../../mocks/renderWithProviders';
 
 const mockGoBack = jest.fn();
 const mockNavigate = jest.fn();
+const mockNavigationReset = jest.fn();
 const mockSubmit = jest.fn();
 const mockImportSync = jest.fn();
 const mockSetWalletName = jest.fn();
@@ -19,7 +20,7 @@ let mockWalletName = '';
 let mockSeed = '';
 
 jest.mock('../../../src/presentation/hooks/useAppNavigation', () => ({
-  useAppNavigation: () => ({ navigate: mockNavigate, goBack: mockGoBack }),
+  useAppNavigation: () => ({ navigate: mockNavigate, goBack: mockGoBack, reset: mockNavigationReset }),
 }));
 
 jest.mock('../../../src/presentation/hooks/useImportWallet', () => ({
@@ -133,7 +134,7 @@ describe('ImportWalletScreen', () => {
     await waitFor(() => expect(mockSubmit).toHaveBeenCalledTimes(1));
   });
 
-  it('shows progress modal then navigates back when import and sync succeed', async () => {
+  it('shows progress modal then resets navigation to WalletList when import and sync succeed', async () => {
     const wallet = { id: '1', name: 'Savings', network: 'testnet', status: 'locked', createdAt: new Date().toISOString() };
     mockSubmit.mockResolvedValue(wallet);
 
@@ -142,7 +143,7 @@ describe('ImportWalletScreen', () => {
 
     await waitFor(() => expect(screen.getByText('walletSetup.done')).toBeTruthy());
     fireEvent.press(screen.getByTestId('wallet-setup-done-btn'));
-    await waitFor(() => expect(mockGoBack).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockNavigationReset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'WalletList' }] }));
   });
 
   it('calls importSync with wallet id and network after successful submit', async () => {
@@ -157,12 +158,13 @@ describe('ImportWalletScreen', () => {
     );
   });
 
-  it('does not navigate back when submit returns null', async () => {
+  it('does not navigate when submit returns null', async () => {
     mockSubmit.mockResolvedValue(null);
     const screen = renderWithTheme(<ImportWalletScreen />);
     fireEvent.press(screen.getByLabelText('importWallet.importAction'));
     await waitFor(() => expect(mockSubmit).toHaveBeenCalled());
     expect(mockGoBack).not.toHaveBeenCalled();
+    expect(mockNavigationReset).not.toHaveBeenCalled();
   });
 
   it('does not call importSync when submit returns null', async () => {

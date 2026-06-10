@@ -7,6 +7,7 @@ import { renderWithTheme } from '../../mocks/renderWithProviders';
 
 const mockNavigate = jest.fn();
 const mockGoBack = jest.fn();
+const mockNavigationReset = jest.fn();
 const mockImportWallet = jest.fn();
 
 const MNEMONIC = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
@@ -14,7 +15,7 @@ const MNEMONIC = 'abandon abandon abandon abandon abandon abandon abandon abando
 let mockRoute: { params?: Record<string, unknown> } = { params: undefined };
 
 jest.mock('../../../src/presentation/hooks/useAppNavigation', () => ({
-  useAppNavigation: () => ({ navigate: mockNavigate, goBack: mockGoBack }),
+  useAppNavigation: () => ({ navigate: mockNavigate, goBack: mockGoBack, reset: mockNavigationReset }),
 }));
 
 jest.mock('../../../src/presentation/hooks/useWallet', () => ({
@@ -99,7 +100,7 @@ describe('QrWalletImportScreens', () => {
     fireEvent.press(screen.getByTestId('qr-import-submit'));
 
     await waitFor(() => expect(mockImportWallet).toHaveBeenCalledWith('Read only', 'tpubD6NzVbkrYhZ4Xexample', 'testnet'));
-    expect(mockNavigate).toHaveBeenCalledWith('WalletList');
+    expect(mockNavigationReset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'WalletList' }] });
   });
 
   it('requires a wallet name before importing', () => {

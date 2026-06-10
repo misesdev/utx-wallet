@@ -93,10 +93,13 @@ export function SendFeesScreen() {
 
   useEffect(() => {
     if (!sentResult) return;
-    navigation.replace(AppRoutes.TransactionSuccess, {
-      txid: sentResult.txid,
-      amountSats: sentResult.transaction.amountSats,
-      feeSats: sentResult.transaction.feeSats ?? 0,
+    navigation.reset({
+      index: 2,
+      routes: [
+        { name: AppRoutes.WalletList },
+        { name: AppRoutes.Home },
+        { name: AppRoutes.TransactionSuccess, params: { txid: sentResult.txid, amountSats: sentResult.transaction.amountSats, feeSats: sentResult.transaction.feeSats ?? 0 } },
+      ],
     });
     resetSend();
   }, [sentResult, navigation, resetSend]);

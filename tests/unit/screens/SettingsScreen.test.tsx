@@ -7,6 +7,7 @@ import type { Wallet } from '../../../src/core/domain/entities/Wallet';
 
 const mockNavigate = jest.fn();
 const mockGoBack = jest.fn();
+const mockNavigationReset = jest.fn();
 const mockRenameWallet = jest.fn().mockResolvedValue({ id: 'w1', name: 'Updated', network: 'testnet', status: 'locked', createdAt: '' });
 const mockDeleteWallet = jest.fn().mockResolvedValue(undefined);
 
@@ -27,7 +28,7 @@ jest.mock('../../../src/presentation/hooks/useWallet', () => ({
 }));
 
 jest.mock('../../../src/presentation/hooks/useAppNavigation', () => ({
-  useAppNavigation: () => ({ navigate: mockNavigate, goBack: mockGoBack }),
+  useAppNavigation: () => ({ navigate: mockNavigate, goBack: mockGoBack, reset: mockNavigationReset }),
 }));
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -188,13 +189,13 @@ describe('SettingsScreen', () => {
       expect(mockDeleteWallet).toHaveBeenCalledWith('w1');
     });
 
-    it('navigates to WalletList after successful deletion', async () => {
+    it('resets navigation to WalletList after successful deletion', async () => {
       const screen = renderWithTheme(<SettingsScreen />);
       fireEvent.press(screen.getByTestId('delete-wallet-btn'));
       await act(async () => {
         fireEvent.press(screen.getByTestId('confirm-modal-confirm'));
       });
-      await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.WalletList));
+      await waitFor(() => expect(mockNavigationReset).toHaveBeenCalledWith({ index: 0, routes: [{ name: AppRoutes.WalletList }] }));
     });
   });
 });

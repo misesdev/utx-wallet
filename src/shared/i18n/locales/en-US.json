@@ -538,9 +538,11 @@
     "setNewTitle": "Create PIN",
     "confirmNewTitle": "Confirm PIN",
     "verifyToRemoveTitle": "Verify PIN",
+    "verifyTitle": "Enter PIN",
     "setNewSubtitle": "Enter a 4 to 8 digit PIN",
     "confirmNewSubtitle": "Enter the PIN again to confirm",
-    "verifyToRemoveSubtitle": "Enter your current PIN to remove it"
+    "verifyToRemoveSubtitle": "Enter your current PIN to remove it",
+    "verifySubtitle": "Enter your PIN to continue"
   },
   "wallet": {
     "balanceTotal": "Total balance",
