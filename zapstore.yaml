@@ -82,14 +82,14 @@ categories:
 icons:
   - assets/icon.png
 
-screenshots:
-  - store/screenshots/screenshot-1.png
-  - store/screenshots/screenshot-2.png
-  - store/screenshots/screenshot-3.png
-  - store/screenshots/screenshot-4.png
-  - store/screenshots/screenshot-5.png
-  - store/screenshots/screenshot-6.png
-  - store/screenshots/screenshot-7.png
+images:
+  - ./store/screenshots/screenshot-1.png
+  - ./store/screenshots/screenshot-2.png
+  - ./store/screenshots/screenshot-3.png
+  - ./store/screenshots/screenshot-4.png
+  - ./store/screenshots/screenshot-5.png
+  - ./store/screenshots/screenshot-6.png
+  - ./store/screenshots/screenshot-7.png
 
 # Path to the signed release APK produced by `./gradlew assembleRelease`
 apk: android/app/build/outputs/apk/release/app-release.apk
