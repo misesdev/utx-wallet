@@ -1,15 +1,16 @@
-name: Publish to Zap Store
+name: Build & Publish to Zap Store
 
-# Triggered by version tags: git tag v1.2 && git push --tags
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - master
+      - main
 
 jobs:
   publish:
-    name: Build APK and publish to Zap Store
+    name: Build release APK and publish to Zap Store
     runs-on: ubuntu-latest
+    environment: Prod
 
     steps:
       # ── Checkout ──────────────────────────────────────────────────────────
@@ -26,17 +27,15 @@ jobs:
       - name: Install JS dependencies
         run: npm ci
 
-      # ── Java (required by Gradle) ─────────────────────────────────────────
+      # ── Java + Gradle cache ───────────────────────────────────────────────
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: temurin
+          cache: gradle
 
       # ── Android keystore ──────────────────────────────────────────────────
-      # Store your keystore as a base64-encoded GitHub secret:
-      #   base64 -w 0 android/app/utxwallet-release.keystore | pbcopy
-      # Then add it as secret KEYSTORE_BASE64 in GitHub repo settings.
       - name: Decode keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d \
@@ -44,46 +43,41 @@ jobs:
 
       - name: Write keystore.properties
         run: |
-          cat > android/keystore.properties <<EOF
-          UTXWALLET_UPLOAD_STORE_FILE=utxwallet-release.keystore
-          UTXWALLET_UPLOAD_KEY_ALIAS=${{ secrets.KEY_ALIAS }}
-          UTXWALLET_UPLOAD_STORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}
-          UTXWALLET_UPLOAD_KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}
-          EOF
+          echo "UTXWALLET_UPLOAD_STORE_FILE=utxwallet-release.keystore" > android/keystore.properties
+          echo "UTXWALLET_UPLOAD_KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> android/keystore.properties
+          echo "UTXWALLET_UPLOAD_STORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> android/keystore.properties
+          echo "UTXWALLET_UPLOAD_KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> android/keystore.properties
 
       # ── Build signed release APK ──────────────────────────────────────────
       - name: Grant Gradle execute permission
         run: chmod +x android/gradlew
 
       - name: Build release APK
-        run: |
-          cd android
-          ./gradlew assembleRelease --no-daemon
+        run: cd android && ./gradlew assembleRelease --no-daemon
 
-      # ── Install zapstore-cli ──────────────────────────────────────────────
-      # zapstore-cli is a standalone binary released at:
-      # https://github.com/zapstore/zapstore-cli/releases
-      - name: Install zapstore-cli
-        run: |
-          curl -sL \
-            "https://github.com/zapstore/zapstore-cli/releases/latest/download/zapstore-linux-x64.tar.gz" \
-            | tar xz
-          sudo mv zapstore /usr/local/bin/zapstore
-          zapstore --version
-
-      # ── Publish to Zap Store ──────────────────────────────────────────────
-      # NOSTR_SECRET_KEY must be an nsec1... Nostr private key stored as a
-      # GitHub secret. Generate one at https://keys.band or with any Nostr
-      # client and store the nsec as secret NOSTR_SECRET_KEY.
-      - name: Publish to Zap Store
-        run: zapstore publish
-        env:
-          NOSTR_SECRET_KEY: ${{ secrets.NOSTR_SECRET_KEY }}
-
-      # ── Upload APK as workflow artifact (optional, for verification) ──────
+      # ── Upload APK as workflow artifact ───────────────────────────────────
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: utxwallet-release-apk
           path: android/app/build/outputs/apk/release/app-release.apk
-          retention-days: 30
+          retention-days: 90
+
+      # ── Install zapstore-cli ──────────────────────────────────────────────
+      # Binary releases: https://github.com/zapstore/zapstore-cli/releases
+      - name: Install zapstore-cli
+        run: |
+          ZAPSTORE_VERSION=$(curl -s https://api.github.com/repos/zapstore/zapstore-cli/releases/latest \
+            | grep '"tag_name"' | cut -d'"' -f4)
+          curl -sL \
+            "https://github.com/zapstore/zapstore-cli/releases/download/${ZAPSTORE_VERSION}/zapstore-cli-${ZAPSTORE_VERSION}-linux-amd64" \
+            -o zapstore
+          chmod +x zapstore
+          sudo mv zapstore /usr/local/bin/zapstore
+          zapstore --version
+
+      # ── Publish to Zap Store ──────────────────────────────────────────────
+      - name: Publish to Zap Store
+        run: zapstore publish
+        env:
+          NOSTR_SECRET_KEY: ${{ secrets.NOSTR_SECRET_KEY }}

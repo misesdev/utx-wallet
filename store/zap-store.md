@@ -28,16 +28,15 @@ nsec — your app will be associated with your Nostr pubkey.
 To generate a fresh key:
 ```bash
 # Using nak (Nostr Army Knife)
-brew install nak          # macOS
-# or download from https://github.com/fiatjaf/nak/releases
-
+# Download from https://github.com/fiatjaf/nak/releases
 nak key generate
 # Output: nsec1... (keep this secret) + npub1... (your public identity)
 ```
 
-### 2. Add GitHub Actions secrets
+### 2. Configure the GitHub environment secrets
 
-In **GitHub → Settings → Secrets and variables → Actions**, add:
+All secrets live in the **Prod** environment
+(**GitHub → Settings → Environments → Prod → Environment secrets**):
 
 | Secret name | Value |
 |-------------|-------|
@@ -49,40 +48,49 @@ In **GitHub → Settings → Secrets and variables → Actions**, add:
 
 ### 3. Add screenshots
 
-Add the six screenshot files to `store/screenshots/` as described in
+Add the seven screenshot files to `store/screenshots/` as described in
 `store/screenshots/README.md`. The `zapstore.yaml` references them by filename.
 
 ---
 
 ## Publishing a new release
 
+Every push to `master` triggers the workflow automatically:
+
+1. Builds the signed release APK via Gradle
+2. Downloads and installs `zapstore-cli` (latest release from GitHub)
+3. Runs `zapstore publish` — reads `zapstore.yaml`, uploads assets, signs and
+   broadcasts the Nostr events
+
+To ship a new version:
+
 ```bash
 # 1. Bump versionCode + versionName in android/app/build.gradle
 # 2. Update publish/notes.md with the new release notes
-# 3. Commit, then tag and push:
-git tag v1.3
-git push origin v1.3
+# 3. Push to master
+git add android/app/build.gradle publish/notes.md
+git commit -m "release: v1.3"
+git push origin master
 ```
-
-The `zapstore.yml` GitHub Actions workflow fires automatically on the tag push:
-1. Builds the signed release APK
-2. Installs `zapstore-cli`
-3. Runs `zapstore publish` — reads `zapstore.yaml`, uploads assets, signs and
-   broadcasts the Nostr events
 
 ---
 
 ## Local publish (without CI)
 
-Install `zapstore-cli` locally:
+Install `zapstore-cli`:
 
 ```bash
-# Linux (amd64)
-curl -sL https://github.com/zapstore/zapstore-cli/releases/latest/download/zapstore-linux-x64.tar.gz \
-  | tar xz
-sudo mv zapstore /usr/local/bin/
+# Get latest version
+ZAPSTORE_VERSION=$(curl -s https://api.github.com/repos/zapstore/zapstore-cli/releases/latest \
+  | grep '"tag_name"' | cut -d'"' -f4)
 
-# Verify
+# Download Linux amd64 binary
+curl -sL \
+  "https://github.com/zapstore/zapstore-cli/releases/download/${ZAPSTORE_VERSION}/zapstore-cli-${ZAPSTORE_VERSION}-linux-amd64" \
+  -o zapstore
+chmod +x zapstore
+sudo mv zapstore /usr/local/bin/zapstore
+
 zapstore --version
 ```
 
