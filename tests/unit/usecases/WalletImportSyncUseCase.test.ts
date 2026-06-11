@@ -9,6 +9,7 @@ import type { TransactionRepository } from '../../../src/core/domain/repositorie
 import type { UtxoRepository } from '../../../src/core/domain/repositories/UtxoRepository';
 import type { WalletAddressRepository } from '../../../src/core/domain/repositories/WalletAddressRepository';
 import type { AddressOriginRepository } from '../../../src/core/domain/repositories/AddressOriginRepository';
+import type { WalletRepository, RawWalletKey } from '../../../src/core/domain/repositories/WalletRepository';
 import type { CreateAddressOriginUseCase } from '../../../src/core/domain/usecases/address/CreateAddressOriginUseCase';
 import type { SyncBalanceUseCase } from '../../../src/core/domain/usecases/wallet/SyncBalanceUseCase';
 import {
@@ -162,6 +163,22 @@ function makeSyncBalance(): jest.Mocked<SyncBalanceUseCase> {
   return { execute: jest.fn(async () => {}) } as unknown as jest.Mocked<SyncBalanceUseCase>;
 }
 
+function makeWalletRepository(key?: Partial<RawWalletKey> | null): jest.Mocked<WalletRepository> {
+  const defaultKey: RawWalletKey = { kind: 'hd', secret: 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about' };
+  return {
+    create: jest.fn(),
+    import: jest.fn(),
+    list: jest.fn(),
+    findById: jest.fn(),
+    rename: jest.fn(),
+    retrieveSeed: jest.fn(),
+    retrieveRawKey: jest.fn().mockResolvedValue(
+      key === null ? null : { ...defaultKey, ...key },
+    ),
+    delete: jest.fn(),
+  } as unknown as jest.Mocked<WalletRepository>;
+}
+
 function makeUseCase(opts: {
   txMap?: Map<string, Transaction[]>;
   utxoMap?: Map<string, Utxo[]>;
@@ -169,6 +186,7 @@ function makeUseCase(opts: {
   existingTxs?: Transaction[];
   existingUtxos?: Utxo[];
   existingOrigins?: AddressOrigin[];
+  walletRepository?: jest.Mocked<WalletRepository> | null;
 }): {
   useCase: WalletImportSyncUseCase;
   blockchain: jest.Mocked<BlockchainProvider>;
@@ -196,6 +214,8 @@ function makeUseCase(opts: {
     originRepo,
     createOrigin,
     balance,
+    null,
+    opts.walletRepository !== undefined ? opts.walletRepository : null,
   );
 
   return { useCase, blockchain, txRepo, utxoRepo, addressRepo, originRepo, createOrigin, syncBalance: balance };
@@ -639,6 +659,92 @@ describe('WalletImportSyncUseCase', () => {
       const result = await useCase.execute(WALLET_ID, NETWORK);
 
       expect(result.newUtxos).toBe(1);
+    });
+  });
+
+  describe('watch-only wallet (zpub/vpub secret) — single account only', () => {
+    const ZPUB_SECRET = 'zpub6rFR7y4Q2AijBEexyz'; // dummy zpub prefix for test
+
+    it('creates only the Default origin for a watch-only wallet even when addresses appear active', async () => {
+      // All receive-0-* and receive-1-* have transactions — without the guard,
+      // the loop would create origins for accounts 0 and 1 (and more).
+      const txMap = new Map([
+        ['receive-0-0', [makeTx()]],
+        ['receive-1-0', [makeTx()]],
+        ['receive-2-0', [makeTx()]],
+      ]);
+      const walletRepo = makeWalletRepository({ secret: ZPUB_SECRET });
+      const { useCase, createOrigin } = makeUseCase({
+        txMap,
+        origins: [makeOrigin(DEFAULT_ORIGIN_NAME, 0)],
+        walletRepository: walletRepo,
+      });
+
+      const result = await useCase.execute(WALLET_ID, NETWORK);
+
+      expect(result.origins).toHaveLength(1);
+      expect(result.origins[0].name).toBe(DEFAULT_ORIGIN_NAME);
+      expect(createOrigin.execute).toHaveBeenCalledTimes(1);
+    });
+
+    it('still syncs transactions found on account 0 for a watch-only wallet', async () => {
+      const TX = makeTx({ txid: 'tx-watch-only' });
+      const UTXO = makeUtxo('receive-0-0');
+      const txMap = new Map([['receive-0-0', [TX]]]);
+      const utxoMap = new Map([['receive-0-0', [UTXO]]]);
+      const walletRepo = makeWalletRepository({ secret: ZPUB_SECRET });
+      const { useCase, txRepo, utxoRepo } = makeUseCase({
+        txMap,
+        utxoMap,
+        origins: [makeOrigin(DEFAULT_ORIGIN_NAME, 0)],
+        walletRepository: walletRepo,
+      });
+
+      const result = await useCase.execute(WALLET_ID, NETWORK);
+
+      expect(result.newTransactions).toBe(1);
+      expect(result.newUtxos).toBe(1);
+      expect(txRepo.upsertAll).toHaveBeenCalled();
+      const saved = (txRepo.upsertAll as jest.Mock).mock.calls[0][1] as Transaction[];
+      expect(saved.some(t => t.txid === TX.txid)).toBe(true);
+      const savedUtxos = (utxoRepo.replaceAll as jest.Mock).mock.calls[0][1] as Utxo[];
+      expect(savedUtxos.some(u => u.txid === UTXO.txid)).toBe(true);
+    });
+
+    it('behaves as normal multi-account when walletRepository is not provided', async () => {
+      const txMap = new Map([
+        ['receive-0-0', [makeTx()]],
+        ['receive-1-0', [makeTx()]],
+      ]);
+      // No walletRepository → falls back to default MAX_ACCOUNTS behaviour
+      const { useCase, createOrigin } = makeUseCase({
+        txMap,
+        origins: [makeOrigin(DEFAULT_ORIGIN_NAME, 0), makeOrigin('Account 1', 1)],
+      });
+
+      const result = await useCase.execute(WALLET_ID, NETWORK);
+
+      expect(result.origins).toHaveLength(2);
+      expect(createOrigin.execute).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns false for isWatchOnly when walletRepository returns null', async () => {
+      // walletRepository present but returns null key → treated as non-watch-only
+      const walletRepo = makeWalletRepository(null);
+      const txMap = new Map([
+        ['receive-0-0', [makeTx()]],
+        ['receive-1-0', [makeTx()]],
+      ]);
+      const { useCase, createOrigin } = makeUseCase({
+        txMap,
+        origins: [makeOrigin(DEFAULT_ORIGIN_NAME, 0), makeOrigin('Account 1', 1)],
+        walletRepository: walletRepo,
+      });
+
+      const result = await useCase.execute(WALLET_ID, NETWORK);
+
+      expect(result.origins).toHaveLength(2);
+      expect(createOrigin.execute).toHaveBeenCalledTimes(2);
     });
   });
 });

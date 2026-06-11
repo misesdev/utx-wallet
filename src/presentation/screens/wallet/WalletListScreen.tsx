@@ -119,6 +119,7 @@ function WalletCard({ wallet, summary, hidden, onOpen }: WalletCardProps) {
   const { theme } = useTheme();
   const { t } = useAppTranslation();
   const accent = walletAccent(wallet);
+  const isWatchOnly = wallet.status === 'watch-only';
 
   const rawBalance = summary?.isLoaded ? formatBalance(summary.balanceSats) : '—';
   const balanceLabel = hidden ? HIDDEN_PLACEHOLDER : rawBalance;
@@ -162,6 +163,14 @@ function WalletCard({ wallet, summary, hidden, onOpen }: WalletCardProps) {
               <AppText variant="caption" style={[styles.networkLabel, { color: accent }]}>
                 {wallet.network === 'mainnet' ? 'Mainnet' : 'Testnet'}
               </AppText>
+              {isWatchOnly && (
+                <>
+                  <AppText variant="caption" color="faint"> · </AppText>
+                  <View style={[styles.watchOnlyBadge, { backgroundColor: theme.colors.surfaceMuted, borderRadius: theme.radii.sm }]}>
+                    <AppText variant="label" color="muted">{t('wallet.watchOnly')}</AppText>
+                  </View>
+                </>
+              )}
               {wallet.createdAt ? (
                 <>
                   <AppText variant="caption" color="faint"> · </AppText>
@@ -607,6 +616,10 @@ const styles = StyleSheet.create({
   networkLabel: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  watchOnlyBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
 
   // Stats box

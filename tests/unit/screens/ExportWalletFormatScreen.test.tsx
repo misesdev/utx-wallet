@@ -5,11 +5,13 @@ import { renderWithTheme } from '../../mocks/renderWithProviders';
 import { AppRoutes } from '../../../src/app/navigation/routes';
 import type { Wallet } from '../../../src/core/domain/entities/Wallet';
 import type { WalletExportFormat } from '../../../src/core/domain/usecases/wallet/ExportWalletKeyUseCase';
+import type { AddressOrigin } from '../../../src/core/domain/entities/AddressOrigin';
 
 const mockNavigate = jest.fn();
 const mockGoBack = jest.fn();
 const mockRequireAuth = jest.fn().mockResolvedValue(true);
 const mockGetExportFormats = jest.fn().mockResolvedValue(['mnemonic', 'xpriv', 'xpub'] as WalletExportFormat[]);
+const mockGetOrigins = jest.fn();
 
 const WALLET: Wallet = {
   id: 'w1',
@@ -18,6 +20,27 @@ const WALLET: Wallet = {
   status: 'locked',
   createdAt: '',
 };
+
+const ORIGINS: AddressOrigin[] = [
+  {
+    id: 'o1',
+    walletId: 'w1',
+    name: 'Default',
+    type: 'default',
+    accountIndex: 0,
+    createdAt: '2024-01-01T00:00:00.000Z',
+    archivedAt: null,
+  },
+  {
+    id: 'o2',
+    walletId: 'w1',
+    name: 'Savings',
+    type: 'custom',
+    accountIndex: 1,
+    createdAt: '2024-01-02T00:00:00.000Z',
+    archivedAt: null,
+  },
+];
 
 jest.mock('../../../src/presentation/hooks/useWallet', () => ({
   useWallet: () => ({
@@ -41,12 +64,29 @@ jest.mock('../../../src/presentation/hooks/useReauthenticate', () => ({
   }),
 }));
 
+jest.mock('../../../src/app/providers/AddressManagerProvider', () => ({
+  useAddressManager: () => ({
+    getOrigins: mockGetOrigins,
+    createAddressOrigin: jest.fn(),
+    renameAddressOrigin: jest.fn(),
+    getReceiveAddress: jest.fn(),
+    getChangeAddress: jest.fn(),
+    ensureAddressPool: jest.fn(),
+    listAddresses: jest.fn(),
+    discoverWalletAccounts: jest.fn(),
+    importSync: jest.fn(),
+  }),
+}));
+
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
 describe('ExportWalletFormatScreen', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetOrigins.mockResolvedValue(ORIGINS);
+  });
 
   it('renders the screen title', async () => {
     const screen = renderWithTheme(<ExportWalletFormatScreen />);
@@ -89,7 +129,7 @@ describe('ExportWalletFormatScreen', () => {
     expect(mockGoBack).toHaveBeenCalled();
   });
 
-  it('requires auth before navigating to export key screen', async () => {
+  it('requires auth before navigating to export key screen for mnemonic', async () => {
     const screen = renderWithTheme(<ExportWalletFormatScreen />);
     await waitFor(() => screen.getByTestId('format-mnemonic'));
     await act(async () => {
@@ -119,5 +159,85 @@ describe('ExportWalletFormatScreen', () => {
     mockGetExportFormats.mockRejectedValueOnce(new Error('Storage error'));
     const screen = renderWithTheme(<ExportWalletFormatScreen />);
     await waitFor(() => expect(screen.getByText('Storage error')).toBeTruthy());
+  });
+
+  describe('zpub account picker', () => {
+    it('shows account picker modal when xpub format is tapped (after auth)', async () => {
+      const screen = renderWithTheme(<ExportWalletFormatScreen />);
+      await waitFor(() => screen.getByTestId('format-xpub'));
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('format-xpub'));
+      });
+
+      await waitFor(() => expect(screen.getByText('walletExport.zpubPickerTitle')).toBeTruthy());
+    });
+
+    it('does NOT navigate directly to ExportWalletKey when xpub is tapped', async () => {
+      const screen = renderWithTheme(<ExportWalletFormatScreen />);
+      await waitFor(() => screen.getByTestId('format-xpub'));
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('format-xpub'));
+      });
+
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('shows origin accounts in the picker modal', async () => {
+      const screen = renderWithTheme(<ExportWalletFormatScreen />);
+      await waitFor(() => screen.getByTestId('format-xpub'));
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('format-xpub'));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('zpub-account-0')).toBeTruthy();
+        expect(screen.getByTestId('zpub-account-1')).toBeTruthy();
+      });
+    });
+
+    it('navigates to ExportWalletKey with format xpub and accountIndex after selecting an account and pressing export', async () => {
+      const screen = renderWithTheme(<ExportWalletFormatScreen />);
+      await waitFor(() => screen.getByTestId('format-xpub'));
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('format-xpub'));
+      });
+
+      await waitFor(() => screen.getByTestId('zpub-account-0'));
+      fireEvent.press(screen.getByTestId('zpub-account-0'));
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('zpub-export-btn'));
+      });
+
+      expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.ExportWalletKey, { format: 'xpub', accountIndex: 0 });
+    });
+
+    it('export button is disabled when no account is selected', async () => {
+      const screen = renderWithTheme(<ExportWalletFormatScreen />);
+      await waitFor(() => screen.getByTestId('format-xpub'));
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('format-xpub'));
+      });
+
+      await waitFor(() => screen.getByTestId('zpub-export-btn'));
+      expect(screen.getByTestId('zpub-export-btn').props.accessibilityState?.disabled).toBeTruthy();
+    });
+
+    it('does not show picker if auth is denied', async () => {
+      mockRequireAuth.mockResolvedValueOnce(false);
+      const screen = renderWithTheme(<ExportWalletFormatScreen />);
+      await waitFor(() => screen.getByTestId('format-xpub'));
+
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('format-xpub'));
+      });
+
+      expect(screen.queryByText('walletExport.zpubPickerTitle')).toBeNull();
+    });
   });
 });

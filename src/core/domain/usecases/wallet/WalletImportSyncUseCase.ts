@@ -11,12 +11,16 @@ import type { TransactionRepository } from '../../repositories/TransactionReposi
 import type { UtxoRepository } from '../../repositories/UtxoRepository';
 import type { WalletAddressRepository } from '../../repositories/WalletAddressRepository';
 import type { WalletAddressProvider } from '../../repositories/WalletAddressProvider';
+import type { WalletRepository } from '../../repositories/WalletRepository';
 import type { CreateAddressOriginUseCase } from '../address/CreateAddressOriginUseCase';
 import type { SyncAddressStatusUseCase } from '../address/SyncAddressStatusUseCase';
 import type { SyncBalanceUseCase } from './SyncBalanceUseCase';
 import { AppError } from '../../../application/errors/AppError';
 import { derivationPathForAddress } from '../../services/AddressDerivationService';
 import { generateId } from '../../../../shared/utils/generateId';
+
+// An xpub/zpub/vpub/tpub secret means the wallet is watch-only (already at account level)
+const XPUB_RE = /^(xpub|tpub|zpub|vpub)[a-zA-Z0-9]+$/;
 
 export type ImportSyncProgress = {
   phase: 'discovering' | 'syncing';
@@ -77,6 +81,7 @@ export class WalletImportSyncUseCase {
     private readonly createOriginUseCase: CreateAddressOriginUseCase,
     private readonly syncBalance: SyncBalanceUseCase,
     private readonly syncAddressStatus: SyncAddressStatusUseCase | null = null,
+    private readonly walletRepository: WalletRepository | null = null,
   ) {}
 
   async execute(
@@ -92,8 +97,13 @@ export class WalletImportSyncUseCase {
       (await this.transactionRepository.list(walletId)).map(tx => tx.txid ?? tx.id),
     );
 
+    // Watch-only wallets store a zpub/vpub that is already fixed to one account.
+    // They can never have more than 1 account — skip multi-account discovery.
+    const isWatchOnly = await this.resolveIsWatchOnly(walletId);
+    const maxAccounts = isWatchOnly ? 1 : MAX_ACCOUNTS;
+
     // Phase 1: Adaptive parallel account + chain scan
-    for (let accountIndex = 0; accountIndex < MAX_ACCOUNTS; accountIndex++) {
+    for (let accountIndex = 0; accountIndex < maxAccounts; accountIndex++) {
       const scan = await this.scanAccount(
         walletId, network, accountIndex, onProgress, allFetchedTxs, addressesWithActivity,
       );
@@ -375,5 +385,11 @@ export class WalletImportSyncUseCase {
       for (const tx of txs) seen.add(tx.txid ?? tx.id);
     }
     return [...seen].filter(id => !preSyncTxIds.has(id)).length;
+  }
+
+  private async resolveIsWatchOnly(walletId: string): Promise<boolean> {
+    if (!this.walletRepository) return false;
+    const key = await this.walletRepository.retrieveRawKey(walletId);
+    return key ? XPUB_RE.test(key.secret) : false;
   }
 }

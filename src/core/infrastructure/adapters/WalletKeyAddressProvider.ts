@@ -5,6 +5,9 @@ import { AppError } from '../../application/errors/AppError';
 import { NetworkType } from '../../domain/value-objects/NetworkType';
 import { WalletKeyStorage } from '../storage/WalletKeyStorage';
 
+// zpub/vpub/xpub/tpub = already at account level; hardened child derivation is impossible
+const XPUB_RE = /^(xpub|tpub|zpub|vpub)[a-zA-Z0-9]+$/;
+
 export class WalletKeyAddressProvider implements WalletAddressProvider {
   constructor(private readonly walletKeyStorage: WalletKeyStorage) {}
 
@@ -21,7 +24,9 @@ export class WalletKeyAddressProvider implements WalletAddressProvider {
       }
       return loaded.pair.getAddress('p2wpkh');
     }
-    return loaded.wallet.getAddress(index, { account: accountIndex, change: 0 });
+    // Watch-only wallets are already at account level — only account 0 is valid
+    const effectiveAccount = loaded.isWatchOnly ? 0 : accountIndex;
+    return loaded.wallet.getAddress(index, { account: effectiveAccount, change: 0 });
   }
 
   async getChangeAddress(
@@ -37,7 +42,8 @@ export class WalletKeyAddressProvider implements WalletAddressProvider {
       }
       return loaded.pair.getAddress('p2wpkh');
     }
-    return loaded.wallet.getAddress(index, { account: accountIndex, change: 1 });
+    const effectiveAccount = loaded.isWatchOnly ? 0 : accountIndex;
+    return loaded.wallet.getAddress(index, { account: effectiveAccount, change: 1 });
   }
 
   private async loadWallet(walletId: string, network: BitcoinNetwork) {
@@ -46,10 +52,10 @@ export class WalletKeyAddressProvider implements WalletAddressProvider {
       throw new AppError('Wallet secret not found', 'WALLET_NOT_FOUND');
     }
     if (key.kind === 'single-private-key') {
-      return { kind: key.kind, pair: ECPairKey.fromWif(key.secret) } as const;
+      return { kind: key.kind, isWatchOnly: false, pair: ECPairKey.fromWif(key.secret) } as const;
     }
     const bNetwork = NetworkType.of(network).toBNetwork();
     const hd = HDWallet.import(key.secret, key.passphrase, { network: bNetwork, purpose: 84 });
-    return { kind: key.kind, ...hd } as const;
+    return { kind: key.kind, isWatchOnly: XPUB_RE.test(key.secret), ...hd } as const;
   }
 }

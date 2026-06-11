@@ -112,7 +112,7 @@ export type AppStackParamList = {
   AddressPolicy: undefined;
   AccountPolicy: undefined;
   ExportWalletFormat: undefined;
-  ExportWalletKey: { format: WalletExportFormat };
+  ExportWalletKey: { format: WalletExportFormat; accountIndex?: number };
   SignatureMenu: undefined;
   SignContent: undefined;
   SignatureResult: { encoded: string };

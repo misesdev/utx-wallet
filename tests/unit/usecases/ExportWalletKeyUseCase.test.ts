@@ -83,7 +83,7 @@ describe('ExportWalletKeyUseCase', () => {
 
     it('throws EXPORT_FORMAT_UNAVAILABLE for xpub-only wallets', async () => {
       const { wallet } = HDWallet.import(MNEMONIC, undefined, { network: 'mainnet', purpose: 84 });
-      const zpub = wallet.getXPub();
+      const zpub = wallet.getAccountXPub(0);
       const repo = makeRepo({ kind: 'hd', secret: zpub });
       await expect(
         new ExportWalletKeyUseCase(repo).execute({ walletId: WALLET_ID, format: 'mnemonic', network: 'mainnet' }),
@@ -129,7 +129,7 @@ describe('ExportWalletKeyUseCase', () => {
 
     it('throws EXPORT_FORMAT_UNAVAILABLE when secret is a zpub (watch-only)', async () => {
       const { wallet } = HDWallet.import(MNEMONIC, undefined, { network: 'mainnet', purpose: 84 });
-      const zpub = wallet.getXPub();
+      const zpub = wallet.getAccountXPub(0);
       const repo = makeRepo({ kind: 'hd', secret: zpub });
       await expect(
         new ExportWalletKeyUseCase(repo).execute({ walletId: WALLET_ID, format: 'xpriv', network: 'mainnet' }),
@@ -157,10 +157,11 @@ describe('ExportWalletKeyUseCase', () => {
   });
 
   // ── xpub export ─────────────────────────────────────────────────────────
-  // bitcoin-tx-lib 2.x returns BIP84 version bytes: zpub (mainnet) / vpub (testnet)
+  // bitcoin-tx-lib 2.x uses getAccountXPub(account) for BIP84 account-level keys:
+  // zpub (mainnet) / vpub (testnet) at m/84'/coin_type'/account'
 
   describe('execute – xpub', () => {
-    it('exports zpub... for mainnet BIP84 mnemonic wallet', async () => {
+    it('exports zpub... for mainnet BIP84 mnemonic wallet (account 0)', async () => {
       const result = await new ExportWalletKeyUseCase(makeRepo()).execute({
         walletId: WALLET_ID, format: 'xpub', network: 'mainnet',
       });
@@ -168,7 +169,7 @@ describe('ExportWalletKeyUseCase', () => {
       expect(result.value.startsWith('zpub')).toBe(true);
     });
 
-    it('exports vpub... for testnet BIP84 mnemonic wallet', async () => {
+    it('exports vpub... for testnet BIP84 mnemonic wallet (account 0)', async () => {
       const result = await new ExportWalletKeyUseCase(makeRepo()).execute({
         walletId: WALLET_ID, format: 'xpub', network: 'testnet',
       });
@@ -176,16 +177,37 @@ describe('ExportWalletKeyUseCase', () => {
       expect(result.value.startsWith('vpub')).toBe(true);
     });
 
-    it('watch-only wallet stored as native zpub exports zpub', async () => {
+    it('account 0 and account 1 produce different zpubs', async () => {
+      const useCase = new ExportWalletKeyUseCase(makeRepo());
+      const [acc0, acc1] = await Promise.all([
+        useCase.execute({ walletId: WALLET_ID, format: 'xpub', network: 'mainnet', accountIndex: 0 }),
+        useCase.execute({ walletId: WALLET_ID, format: 'xpub', network: 'mainnet', accountIndex: 1 }),
+      ]);
+      expect(acc0.value).not.toBe(acc1.value);
+      expect(acc0.value.startsWith('zpub')).toBe(true);
+      expect(acc1.value.startsWith('zpub')).toBe(true);
+    });
+
+    it('undefined accountIndex defaults to account 0', async () => {
+      const useCase = new ExportWalletKeyUseCase(makeRepo());
+      const [explicit, implicit] = await Promise.all([
+        useCase.execute({ walletId: WALLET_ID, format: 'xpub', network: 'mainnet', accountIndex: 0 }),
+        useCase.execute({ walletId: WALLET_ID, format: 'xpub', network: 'mainnet' }),
+      ]);
+      expect(explicit.value).toBe(implicit.value);
+    });
+
+    it('watch-only wallet stored as native zpub exports the stored zpub directly', async () => {
       const { wallet: bip84 } = HDWallet.import(MNEMONIC, undefined, { network: 'mainnet', purpose: 84 });
-      const zpub = bip84.getXPub();
+      // Use getAccountXPub(0) — the correct account-level key for watch-only storage
+      const zpub = bip84.getAccountXPub(0);
       expect(zpub.startsWith('zpub')).toBe(true);
 
       const repo = makeRepo({ kind: 'hd', secret: zpub });
       const result = await new ExportWalletKeyUseCase(repo).execute({
         walletId: WALLET_ID, format: 'xpub', network: 'mainnet',
       });
-      expect(result.value.startsWith('zpub')).toBe(true);
+      expect(result.value).toBe(zpub);
     });
 
     it('throws EXPORT_FORMAT_UNAVAILABLE for single-key wallets', async () => {

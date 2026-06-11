@@ -3,6 +3,7 @@ import { fireEvent, waitFor } from '@testing-library/react-native';
 import { SegregationScreen } from '../../../src/presentation/screens/wallet/SegregationScreen';
 import { renderWithTheme } from '../../mocks/renderWithProviders';
 import type { AddressOrigin } from '../../../src/core/domain/entities/AddressOrigin';
+import type { Wallet } from '../../../src/core/domain/entities/Wallet';
 
 const mockNavigate = jest.fn();
 const mockGoBack = jest.fn();
@@ -20,6 +21,24 @@ const ORIGIN: AddressOrigin = {
   archivedAt: null,
 };
 
+const LOCKED_WALLET: Wallet = {
+  id: 'wallet-1',
+  name: 'My Wallet',
+  network: 'mainnet',
+  status: 'locked',
+  createdAt: 'now',
+};
+
+const WATCH_ONLY_WALLET: Wallet = {
+  id: 'wallet-2',
+  name: 'Watch Wallet',
+  network: 'testnet',
+  status: 'watch-only',
+  createdAt: 'now',
+};
+
+let mockSelectedWallet: Wallet = LOCKED_WALLET;
+
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
@@ -30,7 +49,7 @@ jest.mock('../../../src/presentation/hooks/useAppNavigation', () => ({
 
 jest.mock('../../../src/presentation/hooks/useWallet', () => ({
   useWallet: () => ({
-    selectedWallet: { id: 'wallet-1', name: 'My Wallet', network: 'mainnet', status: 'locked', createdAt: 'now' },
+    selectedWallet: mockSelectedWallet,
   }),
 }));
 
@@ -55,6 +74,7 @@ describe('SegregationScreen', () => {
     mockGetOrigins.mockResolvedValue([ORIGIN]);
     mockCreateAddressOrigin.mockResolvedValue(undefined);
     mockReloadAccountSummaries.mockResolvedValue(undefined);
+    mockSelectedWallet = LOCKED_WALLET;
   });
 
   it('renders the screen title', async () => {
@@ -83,5 +103,33 @@ describe('SegregationScreen', () => {
   it('shows the new account button', async () => {
     const { getByText } = renderWithTheme(<SegregationScreen />);
     expect(getByText('segregation.newButton')).toBeTruthy();
+  });
+
+  describe('watch-only wallet', () => {
+    beforeEach(() => {
+      mockSelectedWallet = WATCH_ONLY_WALLET;
+    });
+
+    it('shows watch-only notice when wallet is watch-only', async () => {
+      const { getByTestId } = renderWithTheme(<SegregationScreen />);
+      await waitFor(() => expect(getByTestId('segregation-watch-only-notice')).toBeTruthy());
+    });
+
+    it('shows watch-only title text', async () => {
+      const { getByText } = renderWithTheme(<SegregationScreen />);
+      await waitFor(() => expect(getByText('segregation.watchOnlyTitle')).toBeTruthy());
+    });
+
+    it('new account button is disabled for watch-only wallet', async () => {
+      const { getByTestId } = renderWithTheme(<SegregationScreen />);
+      const btn = getByTestId('segregation-new-btn');
+      expect(btn.props.accessibilityState?.disabled).toBeTruthy();
+    });
+
+    it('does not show watch-only notice for regular wallet', async () => {
+      mockSelectedWallet = LOCKED_WALLET;
+      const { queryByTestId } = renderWithTheme(<SegregationScreen />);
+      expect(queryByTestId('segregation-watch-only-notice')).toBeNull();
+    });
   });
 });

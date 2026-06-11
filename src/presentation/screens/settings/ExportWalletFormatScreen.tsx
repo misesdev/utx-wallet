@@ -1,7 +1,10 @@
-import React from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NoopScreenCaptureAdapter } from '../../../core/infrastructure/adapters/ScreenCaptureAdapter';
+import type { AddressOrigin } from '../../../core/domain/entities/AddressOrigin';
+import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
+import { AppButton } from '../../components/base/AppButton';
 import { AppIcon } from '../../components/base/AppIcon';
 import { AppLoading } from '../../components/base/AppLoading';
 import { AppText } from '../../components/base/AppText';
@@ -14,9 +17,14 @@ import { useWallet } from '../../hooks/useWallet';
 import { useWalletExport } from '../../hooks/useWalletExport';
 import { AppRoutes } from '../../../app/navigation/routes';
 import type { WalletExportFormat } from '../../../core/domain/usecases/wallet/ExportWalletKeyUseCase';
-import { useEffect } from 'react';
 
 const screenCaptureGuard = new NoopScreenCaptureAdapter();
+
+const COIN_TYPE: Record<string, string> = {
+  mainnet: "0'",
+  testnet: "1'",
+  regtest: "1'",
+};
 
 type FormatConfig = {
   format: WalletExportFormat;
@@ -31,6 +39,136 @@ const FORMAT_CONFIGS: FormatConfig[] = [
   { format: 'wif', titleKey: 'walletExport.formatWif', descKey: 'walletExport.formatWifDesc' },
 ];
 
+// ─── Zpub Account Picker Modal ────────────────────────────────────────────────
+
+type ZpubPickerModalProps = {
+  visible: boolean;
+  origins: AddressOrigin[];
+  isLoading: boolean;
+  network: string;
+  onClose: () => void;
+  onExport: (accountIndex: number) => void;
+};
+
+function ZpubPickerModal({ visible, origins, isLoading, network, onClose, onExport }: ZpubPickerModalProps) {
+  const { theme } = useTheme();
+  const { t } = useAppTranslation();
+  const [selected, setSelected] = useState<number | null>(null);
+
+  const coinType = COIN_TYPE[network] ?? "0'";
+  const activeOrigins = origins.filter(o => !o.archivedAt);
+
+  function handleExport() {
+    if (selected !== null) onExport(selected);
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.overlay} onPress={onClose}>
+        <Pressable
+          style={[
+            styles.pickerModal,
+            {
+              backgroundColor: theme.colors.surfaceRaised,
+              borderColor: theme.colors.borderHighlight,
+              borderRadius: theme.radii.xl,
+              ...theme.shadows.elevated,
+            },
+          ]}
+          onPress={() => undefined}
+        >
+          {/* Title */}
+          <AppText variant="subtitle" style={styles.pickerTitle}>
+            {t('walletExport.zpubPickerTitle' as any)}
+          </AppText>
+
+          {/* Info */}
+          <View
+            style={[
+              styles.pickerInfoBox,
+              {
+                backgroundColor: theme.colors.accentMuted,
+                borderRadius: theme.radii.md,
+              },
+            ]}
+          >
+            <AppIcon name="info" size={16} color={theme.colors.accent} />
+            <AppText variant="caption" color="accent" style={styles.pickerInfoText}>
+              {t('walletExport.zpubPickerInfo' as any)}
+            </AppText>
+          </View>
+
+          {/* Account list */}
+          {isLoading ? (
+            <AppLoading />
+          ) : (
+            <View style={styles.pickerList}>
+              {activeOrigins.map(origin => {
+                const isSelected = selected === origin.accountIndex;
+                return (
+                  <Pressable
+                    key={origin.id}
+                    testID={`zpub-account-${origin.accountIndex}`}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isSelected }}
+                    onPress={() => setSelected(origin.accountIndex)}
+                    style={[
+                      styles.pickerItem,
+                      {
+                        backgroundColor: isSelected ? theme.colors.accentMuted : theme.colors.surface,
+                        borderColor: isSelected ? theme.colors.accent : theme.colors.border,
+                        borderRadius: theme.radii.lg,
+                      },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.pickerItemIcon,
+                        {
+                          backgroundColor: isSelected ? theme.colors.accent : theme.colors.surfaceMuted,
+                          borderRadius: theme.radii.md,
+                        },
+                      ]}
+                    >
+                      <AppIcon
+                        name={origin.type === 'default' ? 'wallet' : 'accounts'}
+                        size={20}
+                        color={isSelected ? '#fff' : theme.colors.textMuted}
+                      />
+                    </View>
+                    <View style={styles.pickerItemBody}>
+                      <AppText variant="body" style={styles.pickerItemName}>{origin.name}</AppText>
+                      <AppText variant="caption" color="muted">
+                        {`m/84'/${coinType}/${origin.accountIndex}'`}
+                      </AppText>
+                    </View>
+                    {isSelected && (
+                      <AppIcon name="check" size={20} color={theme.colors.accent} />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+
+          {/* Actions */}
+          <View style={styles.pickerActions}>
+            <AppButton title={t('common.cancel')} variant="ghost" onPress={onClose} />
+            <AppButton
+              title={t('walletExport.zpubPickerExport' as any)}
+              onPress={handleExport}
+              disabled={selected === null}
+              testID="zpub-export-btn"
+            />
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+// ─── ExportWalletFormatScreen ─────────────────────────────────────────────────
+
 export function ExportWalletFormatScreen() {
   const { theme } = useTheme();
   const { t } = useAppTranslation();
@@ -39,17 +177,40 @@ export function ExportWalletFormatScreen() {
   const { selectedWallet } = useWallet();
   const { formats, loadingFormats, formatsError } = useWalletExport();
   const { requireAuth, pinModalVisible, pinError, submitPin, cancelAuth } = useReauthenticate();
+  const { getOrigins } = useAddressManager();
+
+  const [zpubPickerVisible, setZpubPickerVisible] = useState(false);
+  const [origins, setOrigins] = useState<AddressOrigin[]>([]);
+  const [isLoadingOrigins, setIsLoadingOrigins] = useState(false);
 
   useEffect(() => {
     screenCaptureGuard.enable();
     return () => screenCaptureGuard.disable();
   }, []);
 
+  useEffect(() => {
+    if (!selectedWallet) return;
+    setIsLoadingOrigins(true);
+    getOrigins(selectedWallet.id)
+      .then(setOrigins)
+      .catch(() => undefined)
+      .finally(() => setIsLoadingOrigins(false));
+  }, [selectedWallet?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSelectFormat = async (format: WalletExportFormat) => {
     const ok = await requireAuth();
     if (!ok) return;
+    if (format === 'xpub') {
+      setZpubPickerVisible(true);
+      return;
+    }
     navigation.navigate(AppRoutes.ExportWalletKey, { format });
   };
+
+  function handleZpubExport(accountIndex: number) {
+    setZpubPickerVisible(false);
+    navigation.navigate(AppRoutes.ExportWalletKey, { format: 'xpub', accountIndex });
+  }
 
   const visibleConfigs = FORMAT_CONFIGS.filter(c => formats.includes(c.format));
 
@@ -61,6 +222,15 @@ export function ExportWalletFormatScreen() {
         error={pinError}
         onSubmit={submitPin}
         onCancel={cancelAuth}
+      />
+
+      <ZpubPickerModal
+        visible={zpubPickerVisible}
+        origins={origins}
+        isLoading={isLoadingOrigins}
+        network={selectedWallet?.network ?? 'mainnet'}
+        onClose={() => setZpubPickerVisible(false)}
+        onExport={handleZpubExport}
       />
 
       {/* Header */}
@@ -258,5 +428,61 @@ const styles = StyleSheet.create({
   divider: {
     height: StyleSheet.hairlineWidth,
     marginLeft: 68,
+  },
+
+  // Zpub picker modal
+  overlay: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  pickerModal: {
+    borderWidth: 1,
+    gap: 16,
+    padding: 24,
+    width: '100%',
+  },
+  pickerTitle: {
+    fontWeight: '700',
+  },
+  pickerInfoBox: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 10,
+    padding: 12,
+  },
+  pickerInfoText: {
+    flex: 1,
+    lineHeight: 18,
+  },
+  pickerList: {
+    gap: 8,
+  },
+  pickerItem: {
+    alignItems: 'center',
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    padding: 14,
+  },
+  pickerItemIcon: {
+    alignItems: 'center',
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
+  pickerItemBody: {
+    flex: 1,
+    gap: 3,
+  },
+  pickerItemName: {
+    fontWeight: '600',
+  },
+  pickerActions: {
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'flex-end',
   },
 });

@@ -200,6 +200,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       activityChecker,
       createAddressOriginUseCase,
       addressOriginRepository,
+      walletRepository,
     );
 
     const syncBalance = new SyncBalanceUseCase(utxoRepository);
@@ -213,6 +214,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       createAddressOriginUseCase,
       syncBalance,
       syncAddressStatus,
+      walletRepository,
     );
 
     const addressManagerService = new AddressManagerService(

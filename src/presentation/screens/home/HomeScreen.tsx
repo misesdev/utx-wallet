@@ -29,12 +29,13 @@ type HomeHeaderProps = {
   walletName: string;
   networkConfig: ReturnType<typeof useHomeWallet>['networkConfig'];
   isSafeMode: boolean;
+  isWatchOnly: boolean;
   hideBalanceEnabled: boolean;
   hidden: boolean;
   onToggleReveal: () => void;
 };
 
-function HomeHeader({ walletName, networkConfig, isSafeMode, hideBalanceEnabled, hidden, onToggleReveal }: HomeHeaderProps) {
+function HomeHeader({ walletName, networkConfig, isSafeMode, isWatchOnly, hideBalanceEnabled, hidden, onToggleReveal }: HomeHeaderProps) {
   const { theme } = useTheme();
   const { t } = useAppTranslation();
   return (
@@ -44,6 +45,11 @@ function HomeHeader({ walletName, networkConfig, isSafeMode, hideBalanceEnabled,
         {isSafeMode && (
           <View style={[styles.safeModeBadge, { backgroundColor: theme.colors.dangerMuted, borderRadius: theme.radii.sm }]}>
             <AppText variant="label" color="warning">{t('home.safeMode')}</AppText>
+          </View>
+        )}
+        {isWatchOnly && (
+          <View style={[styles.watchOnlyBadge, { backgroundColor: theme.colors.surfaceMuted, borderRadius: theme.radii.sm }]}>
+            <AppText variant="label" color="muted">{t('wallet.watchOnly' as any)}</AppText>
           </View>
         )}
         {hideBalanceEnabled && (
@@ -300,6 +306,7 @@ export function HomeScreen() {
           walletName={wallet.name}
           networkConfig={networkConfig}
           isSafeMode={isSafeMode}
+          isWatchOnly={wallet.status === 'watch-only'}
           hideBalanceEnabled={hideBalanceEnabled}
           hidden={hidden}
           onToggleReveal={toggleReveal}
@@ -515,6 +522,10 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   safeModeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  watchOnlyBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
   },

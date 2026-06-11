@@ -35,26 +35,35 @@ type NavRowProps = {
   testID?: string;
   onPress: () => void;
   isLast: boolean;
+  disabled?: boolean;
+  disabledReason?: string;
 };
 
-function NavRow({ icon, title, description, testID, onPress, isLast }: NavRowProps) {
+function NavRow({ icon, title, description, testID, onPress, isLast, disabled, disabledReason }: NavRowProps) {
   const { theme } = useTheme();
   return (
     <>
       <Pressable
         accessibilityRole="button"
         testID={testID}
-        onPress={onPress}
-        style={({ pressed }) => [styles.navRow, { opacity: pressed ? 0.72 : 1 }]}
+        accessibilityState={{ disabled: disabled ?? false }}
+        onPress={() => { if (!disabled) onPress(); }}
+        style={[styles.navRow, disabled ? styles.navRowDisabled : undefined]}
       >
-        <View style={[styles.navIcon, { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radii.md }]}>
-          <AppIcon name={icon} size={22} color={theme.colors.accent} />
+        <View style={[styles.navIcon, { backgroundColor: disabled ? theme.colors.surfaceMuted : theme.colors.accentMuted, borderRadius: theme.radii.md }]}>
+          <AppIcon name={icon} size={22} color={disabled ? theme.colors.textFaint : theme.colors.accent} />
         </View>
         <View style={styles.navBody}>
-          <AppText variant="body" style={styles.navTitle}>{title}</AppText>
-          <AppText variant="caption" color="muted" numberOfLines={1}>{description}</AppText>
+          <AppText variant="body" style={[styles.navTitle, disabled ? { color: theme.colors.textFaint } : undefined]}>{title}</AppText>
+          <AppText variant="caption" color="muted" numberOfLines={1}>
+            {disabled && disabledReason ? disabledReason : description}
+          </AppText>
         </View>
-        <AppIcon name="chevronRight" size={22} color={theme.colors.textMuted} />
+        {disabled ? (
+          <AppIcon name="safeMode" size={18} color={theme.colors.textFaint} />
+        ) : (
+          <AppIcon name="chevronRight" size={22} color={theme.colors.textMuted} />
+        )}
       </Pressable>
       {!isLast && <View style={[styles.rowDivider, { backgroundColor: theme.colors.border }]} />}
     </>
@@ -67,6 +76,7 @@ export function SettingsScreen() {
   const navigation = useAppNavigation();
   const { t } = useAppTranslation();
   const { selectedWallet, renameWallet, deleteWallet } = useWallet();
+  const isWatchOnly = selectedWallet?.status === 'watch-only';
 
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
@@ -261,17 +271,22 @@ export function SettingsScreen() {
               },
             ]}
           >
-            {WALLET_ITEMS.map((item, idx) => (
-              <NavRow
-                key={item.route}
-                icon={item.icon}
-                title={t(item.titleKey as any)}
-                description={t(item.descKey as any)}
-                testID={item.testID}
-                onPress={() => navigation.navigate(AppRoutes[item.route])}
-                isLast={idx === WALLET_ITEMS.length - 1}
-              />
-            ))}
+            {WALLET_ITEMS.map((item, idx) => {
+              const itemDisabled = isWatchOnly && (item.route === 'ViewSeed' || item.route === 'ExportWalletFormat');
+              return (
+                <NavRow
+                  key={item.route}
+                  icon={item.icon}
+                  title={t(item.titleKey as any)}
+                  description={t(item.descKey as any)}
+                  testID={item.testID}
+                  onPress={() => navigation.navigate(AppRoutes[item.route])}
+                  isLast={idx === WALLET_ITEMS.length - 1}
+                  disabled={itemDisabled}
+                  disabledReason={itemDisabled ? t('settings.watchOnlyDisabled' as any) : undefined}
+                />
+              );
+            })}
           </View>
         </View>
 
@@ -435,6 +450,9 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
+  },
+  navRowDisabled: {
+    opacity: 0.45,
   },
   navIcon: {
     alignItems: 'center',

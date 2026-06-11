@@ -7,7 +7,7 @@ export type UseWalletExportState = {
   formats: WalletExportFormat[];
   loadingFormats: boolean;
   formatsError: string | null;
-  exportKey: (format: WalletExportFormat) => Promise<string>;
+  exportKey: (format: WalletExportFormat, accountIndex?: number) => Promise<string>;
 };
 
 export function useWalletExport(): UseWalletExportState {
@@ -31,7 +31,7 @@ export function useWalletExport(): UseWalletExportState {
   }, [selectedWallet?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const exportKey = useCallback(
-    async (format: WalletExportFormat): Promise<string> => {
+    async (format: WalletExportFormat, accountIndex?: number): Promise<string> => {
       if (!selectedWallet) {
         throw new AppError('No wallet selected', 'WALLET_NOT_FOUND');
       }
@@ -39,6 +39,7 @@ export function useWalletExport(): UseWalletExportState {
         walletId: selectedWallet.id,
         format,
         network: selectedWallet.network,
+        accountIndex,
       });
       return result.value;
     },

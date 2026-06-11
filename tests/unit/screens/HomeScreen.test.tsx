@@ -160,6 +160,20 @@ describe('HomeScreen', () => {
       const screen = renderWithTheme(<HomeScreen />);
       expect(screen.getByText('home.safeMode')).toBeTruthy();
     });
+
+    it('shows watch-only badge when wallet status is watch-only', () => {
+      mockHomeState = {
+        ...WALLET_STATE,
+        wallet: { ...WALLET_STATE.wallet!, status: 'watch-only' },
+      };
+      const screen = renderWithTheme(<HomeScreen />);
+      expect(screen.getByText('wallet.watchOnly')).toBeTruthy();
+    });
+
+    it('does not show watch-only badge when wallet is not watch-only', () => {
+      const screen = renderWithTheme(<HomeScreen />);
+      expect(screen.queryByText('wallet.watchOnly')).toBeNull();
+    });
   });
 
   describe('Action buttons navigation', () => {

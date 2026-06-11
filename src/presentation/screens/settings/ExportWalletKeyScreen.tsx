@@ -32,7 +32,7 @@ export function ExportWalletKeyScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
   const route = useRoute<ExportKeyRouteProps>();
-  const { format } = route.params;
+  const { format, accountIndex } = route.params;
   const { exportKey } = useWalletExport();
 
   const [keyValue, setKeyValue] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export function ExportWalletKeyScreen() {
   }, []);
 
   useEffect(() => {
-    exportKey(format)
+    exportKey(format, accountIndex)
       .then(setKeyValue)
       .catch(e => setError(e instanceof Error ? e.message : t('walletExport.loadError')))
       .finally(() => setIsLoading(false));

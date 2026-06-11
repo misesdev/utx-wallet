@@ -312,7 +312,9 @@
     "creating": "Creating…",
     "create": "Create",
     "default": "Default",
-    "errorCreate": "Failed to create segregation"
+    "errorCreate": "Failed to create segregation",
+    "watchOnlyTitle": "Not available for watch-only wallets",
+    "watchOnlyDesc": "Account segregation requires a private key. Watch-only wallets can only derive addresses from the imported master public key."
   },
   "accountDetails": {
     "title": "Account",
@@ -360,17 +362,18 @@
     "utxos": "UTXOs",
     "utxosDesc": "View and manage your UTXOs",
     "export": "Export",
-    "exportDesc": "Export wallet keys"
+    "exportDesc": "Export wallet keys",
+    "watchOnlyDisabled": "Disabled for watch-only wallets"
   },
   "walletExport": {
     "title": "Export Wallet",
     "chooseFormat": "Choose export format",
     "formatMnemonic": "Mnemonic",
     "formatMnemonicDesc": "12 to 24 word recovery phrase",
-    "formatXpriv": "xpriv",
-    "formatXprivDesc": "Extended private key",
-    "formatXpub": "xpub",
-    "formatXpubDesc": "Extended public key",
+    "formatXpriv": "zprv / vprv",
+    "formatXprivDesc": "BIP84 extended private key",
+    "formatXpub": "zpub / vpub",
+    "formatXpubDesc": "BIP84 extended public key",
     "formatWif": "WIF",
     "formatWifDesc": "Private key in WIF format",
     "exportedKey": "Exported Key",
@@ -378,7 +381,10 @@
     "warningBody": "Never share this key. Anyone with access can control your wallet.",
     "copied": "Copied!",
     "loadError": "Failed to export key",
-    "loading": "Exporting…"
+    "loading": "Exporting…",
+    "zpubPickerTitle": "Select Account",
+    "zpubPickerInfo": "Each account has its own unique zpub/vpub — a BIP84 public key scoped to that account only. Export it to set up a watch-only wallet for the selected account.",
+    "zpubPickerExport": "Export zpub"
   },
   "language": {
     "title": "Select language",
@@ -572,7 +578,8 @@
     "balanceTotal": "Total balance",
     "availableToSend": "Available to send",
     "secured": "secured",
-    "errorNoWalletSelected": "No wallet selected"
+    "errorNoWalletSelected": "No wallet selected",
+    "watchOnly": "Watch Only"
   },
   "rbf": {
     "title": "Accelerate transaction",

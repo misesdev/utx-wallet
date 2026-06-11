@@ -1,6 +1,7 @@
 import type { AddressActivityChecker } from '../../../src/core/domain/repositories/AddressActivityChecker';
 import type { WalletAddressProvider } from '../../../src/core/domain/repositories/WalletAddressProvider';
 import type { AddressOriginRepository } from '../../../src/core/domain/repositories/AddressOriginRepository';
+import type { WalletRepository, RawWalletKey } from '../../../src/core/domain/repositories/WalletRepository';
 import { WalletDiscoveryUseCase } from '../../../src/core/domain/usecases/wallet/WalletDiscoveryUseCase';
 import { DEFAULT_ORIGIN_NAME } from '../../../src/core/domain/entities/AddressOrigin';
 import { AppError } from '../../../src/core/application/errors/AppError';
@@ -60,6 +61,22 @@ function makeCreateOriginUseCase(
       return origin;
     }),
   } as unknown as InstanceType<typeof import('../../../src/core/domain/usecases/address/CreateAddressOriginUseCase').CreateAddressOriginUseCase>;
+}
+
+function makeWalletRepository(key?: Partial<RawWalletKey> | null): jest.Mocked<WalletRepository> {
+  const defaultKey: RawWalletKey = { kind: 'hd', secret: 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about' };
+  return {
+    create: jest.fn(),
+    import: jest.fn(),
+    list: jest.fn(),
+    findById: jest.fn(),
+    rename: jest.fn(),
+    retrieveSeed: jest.fn(),
+    retrieveRawKey: jest.fn().mockResolvedValue(
+      key === null ? null : { ...defaultKey, ...key },
+    ),
+    delete: jest.fn(),
+  } as unknown as jest.Mocked<WalletRepository>;
 }
 
 describe('WalletDiscoveryUseCase', () => {
@@ -268,6 +285,64 @@ describe('WalletDiscoveryUseCase', () => {
       const useCase = new WalletDiscoveryUseCase(provider, checker, createOrigin, repo);
 
       await expect(useCase.execute(WALLET_ID, NETWORK)).rejects.toThrow('DB failure');
+    });
+  });
+
+  describe('watch-only wallet (zpub/vpub) — single account only', () => {
+    const ZPUB_SECRET = 'zpub6rFR7y4Q2AijBEexyz';
+
+    it('creates only the Default origin even when addresses appear active on multiple accounts', async () => {
+      // Without the guard, accounts 1+ would all look active (same addresses as account 0)
+      const txCounts = new Map([
+        ['addr-0-receive-0', 3],
+        ['addr-1-receive-0', 3], // same addresses appear active
+        ['addr-2-receive-0', 3],
+      ]);
+      const walletRepo = makeWalletRepository({ secret: ZPUB_SECRET });
+      const provider = makeAddressProvider();
+      const checker = makeActivityChecker(txCounts);
+      const createOrigin = makeCreateOriginUseCase();
+      const repo = makeOriginRepository();
+      const useCase = new WalletDiscoveryUseCase(provider, checker, createOrigin, repo, walletRepo);
+
+      const origins = await useCase.execute(WALLET_ID, NETWORK);
+
+      expect(origins).toHaveLength(1);
+      expect(origins[0].name).toBe(DEFAULT_ORIGIN_NAME);
+      expect(createOrigin.execute).toHaveBeenCalledTimes(1);
+    });
+
+    it('creates Default origin for a fresh watch-only wallet', async () => {
+      const walletRepo = makeWalletRepository({ secret: ZPUB_SECRET });
+      const provider = makeAddressProvider();
+      const checker = makeActivityChecker();
+      const createOrigin = makeCreateOriginUseCase();
+      const repo = makeOriginRepository();
+      const useCase = new WalletDiscoveryUseCase(provider, checker, createOrigin, repo, walletRepo);
+
+      const origins = await useCase.execute(WALLET_ID, NETWORK);
+
+      expect(origins).toHaveLength(1);
+      expect(origins[0].name).toBe(DEFAULT_ORIGIN_NAME);
+    });
+
+    it('still allows multi-account discovery for non-watch-only wallets with walletRepository', async () => {
+      const txCounts = new Map([
+        ['addr-0-receive-0', 2],
+        ['addr-1-receive-0', 1],
+      ]);
+      const walletRepo = makeWalletRepository(); // mnemonic secret, not zpub
+      const provider = makeAddressProvider();
+      const checker = makeActivityChecker(txCounts);
+      const createOrigin = makeCreateOriginUseCase();
+      const repo = makeOriginRepository();
+      const useCase = new WalletDiscoveryUseCase(provider, checker, createOrigin, repo, walletRepo);
+
+      const origins = await useCase.execute(WALLET_ID, NETWORK);
+
+      expect(origins).toHaveLength(2);
+      expect(origins[0].name).toBe(DEFAULT_ORIGIN_NAME);
+      expect(origins[1].name).toBe('Account 1');
     });
   });
 });

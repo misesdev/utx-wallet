@@ -312,7 +312,9 @@
     "creating": "Criando…",
     "create": "Criar",
     "default": "Padrão",
-    "errorCreate": "Falha ao criar segregação"
+    "errorCreate": "Falha ao criar segregação",
+    "watchOnlyTitle": "Não disponível para carteiras somente leitura",
+    "watchOnlyDesc": "A segregação de contas requer uma chave privada. Carteiras somente leitura só podem derivar endereços da chave pública mestra importada."
   },
   "accountDetails": {
     "title": "Conta",
@@ -360,17 +362,18 @@
     "utxos": "UTXOs",
     "utxosDesc": "Visualize e gerencie seus UTXOs",
     "export": "Exportar",
-    "exportDesc": "Exporte as chaves da carteira"
+    "exportDesc": "Exporte as chaves da carteira",
+    "watchOnlyDisabled": "Desabilitado para carteiras somente leitura"
   },
   "walletExport": {
     "title": "Exportar Carteira",
     "chooseFormat": "Escolha o formato de exportação",
     "formatMnemonic": "Mnemônico",
     "formatMnemonicDesc": "Frase de recuperação de 12 a 24 palavras",
-    "formatXpriv": "xpriv",
-    "formatXprivDesc": "Chave privada estendida",
-    "formatXpub": "xpub",
-    "formatXpubDesc": "Chave pública estendida",
+    "formatXpriv": "zprv / vprv",
+    "formatXprivDesc": "Chave privada estendida BIP84",
+    "formatXpub": "zpub / vpub",
+    "formatXpubDesc": "Chave pública estendida BIP84",
     "formatWif": "WIF",
     "formatWifDesc": "Chave privada em formato WIF",
     "exportedKey": "Chave Exportada",
@@ -378,7 +381,10 @@
     "warningBody": "Nunca compartilhe esta chave. Quem tiver acesso pode controlar sua carteira.",
     "copied": "Copiado!",
     "loadError": "Erro ao exportar a chave",
-    "loading": "Exportando…"
+    "loading": "Exportando…",
+    "zpubPickerTitle": "Selecionar Conta",
+    "zpubPickerInfo": "Cada conta tem seu próprio zpub/vpub exclusivo — uma chave pública BIP84 limitada àquela conta. Exporte para configurar uma carteira somente leitura para a conta selecionada.",
+    "zpubPickerExport": "Exportar zpub"
   },
   "language": {
     "title": "Selecionar idioma",
@@ -572,7 +578,8 @@
     "balanceTotal": "Saldo total",
     "availableToSend": "Disponível para envio",
     "secured": "seguro",
-    "errorNoWalletSelected": "Nenhuma carteira selecionada"
+    "errorNoWalletSelected": "Nenhuma carteira selecionada",
+    "watchOnly": "Somente Leitura"
   },
   "rbf": {
     "title": "Acelerar transação",

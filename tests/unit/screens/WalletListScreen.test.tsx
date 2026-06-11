@@ -214,6 +214,18 @@ describe('WalletListScreen', () => {
       const screen = renderWithTheme(<WalletListScreen />);
       expect(screen.queryByLabelText('Delete wallet My Wallet')).toBeNull();
     });
+
+    it('shows watch-only badge when wallet status is watch-only', () => {
+      mockWallets = [makeWallet({ name: 'Read Only', network: 'mainnet', status: 'watch-only' })];
+      const screen = renderWithTheme(<WalletListScreen />);
+      expect(screen.getByText('wallet.watchOnly')).toBeTruthy();
+    });
+
+    it('does not show watch-only badge for a regular (locked) wallet', () => {
+      mockWallets = [makeWallet({ name: 'Regular', network: 'mainnet', status: 'locked' })];
+      const screen = renderWithTheme(<WalletListScreen />);
+      expect(screen.queryByText('wallet.watchOnly')).toBeNull();
+    });
   });
 
   describe('Wallet stats', () => {

@@ -19,9 +19,19 @@ const WALLET: Wallet = {
   createdAt: '2026-06-08T00:00:00.000Z',
 };
 
+const WATCH_ONLY_WALLET: Wallet = {
+  id: 'w2',
+  name: 'Watch Wallet',
+  network: 'testnet',
+  status: 'watch-only',
+  createdAt: '2026-06-08T00:00:00.000Z',
+};
+
+let mockSelectedWallet: Wallet = WALLET;
+
 jest.mock('../../../src/presentation/hooks/useWallet', () => ({
   useWallet: () => ({
-    selectedWallet: WALLET,
+    selectedWallet: mockSelectedWallet,
     renameWallet: mockRenameWallet,
     deleteWallet: mockDeleteWallet,
     exportWalletKey: jest.fn(),
@@ -38,7 +48,10 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 
 describe('SettingsScreen', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSelectedWallet = WALLET;
+  });
 
   describe('wallet name display', () => {
     it('shows wallet name', () => {
@@ -171,6 +184,36 @@ describe('SettingsScreen', () => {
       const screen = renderWithTheme(<SettingsScreen />);
       fireEvent.press(screen.getByTestId('settings-export'));
       expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.ExportWalletFormat);
+    });
+  });
+
+  describe('watch-only wallet', () => {
+    beforeEach(() => {
+      mockSelectedWallet = WATCH_ONLY_WALLET;
+    });
+
+    it('does NOT navigate to ViewSeed when pressed (disabled for watch-only)', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      fireEvent.press(screen.getByTestId('settings-view-seed'));
+      expect(mockNavigate).not.toHaveBeenCalledWith(AppRoutes.ViewSeed);
+    });
+
+    it('does NOT navigate to ExportWalletFormat when pressed (disabled for watch-only)', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      fireEvent.press(screen.getByTestId('settings-export'));
+      expect(mockNavigate).not.toHaveBeenCalledWith(AppRoutes.ExportWalletFormat);
+    });
+
+    it('still navigates to Addresses for watch-only wallet', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      fireEvent.press(screen.getByTestId('settings-addresses'));
+      expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.Addresses);
+    });
+
+    it('still navigates to Utxos for watch-only wallet', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      fireEvent.press(screen.getByTestId('settings-utxos'));
+      expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.Utxos);
     });
   });
 

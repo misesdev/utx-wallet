@@ -4,8 +4,11 @@ import type { BitcoinNetwork } from '../../entities/Network';
 import type { WalletAddressProvider } from '../../repositories/WalletAddressProvider';
 import type { AddressActivityChecker } from '../../repositories/AddressActivityChecker';
 import type { AddressOriginRepository } from '../../repositories/AddressOriginRepository';
+import type { WalletRepository } from '../../repositories/WalletRepository';
 import { CreateAddressOriginUseCase } from '../address/CreateAddressOriginUseCase';
 import { AppError } from '../../../application/errors/AppError';
+
+const XPUB_RE = /^(xpub|tpub|zpub|vpub)[a-zA-Z0-9]+$/;
 
 export type WalletDiscoveryProgress = {
   phase: 'discovering';
@@ -23,6 +26,7 @@ export class WalletDiscoveryUseCase {
     private readonly activityChecker: AddressActivityChecker,
     private readonly createOriginUseCase: CreateAddressOriginUseCase,
     private readonly originRepository: AddressOriginRepository,
+    private readonly walletRepository: WalletRepository | null = null,
   ) {}
 
   async execute(
@@ -33,13 +37,16 @@ export class WalletDiscoveryUseCase {
     const discoveredOrigins: AddressOrigin[] = [];
     let accountIndex = 0;
 
+    // Watch-only wallets hold a zpub/vpub already fixed to one account — never discover more.
+    const isWatchOnly = await this.resolveIsWatchOnly(walletId);
+
     while (true) {
       const isActive = await this.isAccountActive(walletId, network, accountIndex, onProgress);
 
       if (accountIndex === 0) {
         const origin = await this.getOrCreateOrigin(walletId, DEFAULT_ORIGIN_NAME, network);
         discoveredOrigins.push(origin);
-        if (!isActive) break;
+        if (!isActive || isWatchOnly) break;
       } else {
         if (!isActive) break;
         const origin = await this.getOrCreateOrigin(walletId, `Account ${accountIndex}`, network);
@@ -67,6 +74,12 @@ export class WalletDiscoveryUseCase {
       }
       throw err;
     }
+  }
+
+  private async resolveIsWatchOnly(walletId: string): Promise<boolean> {
+    if (!this.walletRepository) return false;
+    const key = await this.walletRepository.retrieveRawKey(walletId);
+    return key ? XPUB_RE.test(key.secret) : false;
   }
 
   private async isAccountActive(

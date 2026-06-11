@@ -191,6 +191,7 @@ export function SegregationScreen() {
 
   const walletNetwork = selectedWallet?.network ?? 'mainnet';
   const coinType = COIN_TYPE[walletNetwork] ?? "0'";
+  const isWatchOnly = selectedWallet?.status === 'watch-only';
 
   const loadOrigins = useCallback(async () => {
     if (!selectedWallet) return;
@@ -210,7 +211,7 @@ export function SegregationScreen() {
   }, [loadOrigins]);
 
   const handleCreate = useCallback(async (name: string) => {
-    if (!selectedWallet) return;
+    if (!selectedWallet || isWatchOnly) return;
     setIsCreating(true);
     setCreateError(null);
     try {
@@ -224,7 +225,7 @@ export function SegregationScreen() {
     } finally {
       setIsCreating(false);
     }
-  }, [selectedWallet, createAddressOrigin, loadOrigins, reloadAccountSummaries, t]);
+  }, [selectedWallet, isWatchOnly, createAddressOrigin, loadOrigins, reloadAccountSummaries, t]);
 
   const infoButton = (
     <Pressable
@@ -273,18 +274,46 @@ export function SegregationScreen() {
         </View>
       )}
 
+      {isWatchOnly ? (
+        <View
+          style={[
+            styles.watchOnlyNotice,
+            {
+              backgroundColor: theme.colors.surfaceMuted,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.lg,
+            },
+          ]}
+          testID="segregation-watch-only-notice"
+        >
+          <AppIcon name="eye" size={20} color={theme.colors.textMuted} />
+          <View style={styles.watchOnlyNoticeBody}>
+            <AppText variant="body" style={styles.watchOnlyNoticeTitle}>
+              {t('segregation.watchOnlyTitle' as any)}
+            </AppText>
+            <AppText variant="caption" color="muted">
+              {t('segregation.watchOnlyDesc' as any)}
+            </AppText>
+          </View>
+        </View>
+      ) : null}
+
       <AppButton
         title={t('segregation.newButton')}
         onPress={() => { setCreateError(null); setShowCreateModal(true); }}
+        disabled={isWatchOnly}
+        testID="segregation-new-btn"
       />
 
-      <CreateModal
-        visible={showCreateModal}
-        isLoading={isCreating}
-        error={createError}
-        onClose={() => setShowCreateModal(false)}
-        onConfirm={handleCreate}
-      />
+      {!isWatchOnly && (
+        <CreateModal
+          visible={showCreateModal}
+          isLoading={isCreating}
+          error={createError}
+          onClose={() => setShowCreateModal(false)}
+          onConfirm={handleCreate}
+        />
+      )}
     </AppScreen>
   );
 }
@@ -380,5 +409,19 @@ const styles = StyleSheet.create({
   },
   spinner: {
     marginTop: -8,
+  },
+  watchOnlyNotice: {
+    alignItems: 'flex-start',
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    padding: 14,
+  },
+  watchOnlyNoticeBody: {
+    flex: 1,
+    gap: 4,
+  },
+  watchOnlyNoticeTitle: {
+    fontWeight: '600',
   },
 });

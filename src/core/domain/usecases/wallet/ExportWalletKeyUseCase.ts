@@ -10,6 +10,7 @@ export interface ExportWalletKeyParams {
   walletId: string;
   format: WalletExportFormat;
   network: BitcoinNetwork;
+  accountIndex?: number;
 }
 
 export interface ExportWalletKeyResult {
@@ -72,8 +73,13 @@ export class ExportWalletKeyUseCase {
       if (kind !== 'hd') {
         throw new AppError('xpub is only available for HD wallets', 'EXPORT_FORMAT_UNAVAILABLE');
       }
+      // Watch-only wallets already store the account-level xpub as secret;
+      // getAccountXPub() would throw (hardened derivation needs the private key).
+      if (XPUB_RE.test(secret)) {
+        return { format, value: secret };
+      }
       const { wallet } = HDWallet.import(secret, passphrase, { network: bNetwork, purpose: 84 });
-      return { format, value: wallet.getXPub() };
+      return { format, value: wallet.getAccountXPub(params.accountIndex ?? 0) };
     }
 
     throw new AppError(`Unknown export format: ${format as string}`, 'EXPORT_FORMAT_UNKNOWN');

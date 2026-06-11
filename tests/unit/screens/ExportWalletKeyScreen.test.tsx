@@ -74,9 +74,9 @@ describe('ExportWalletKeyScreen', () => {
     await waitFor(() => expect(screen.getByText('walletExport.warningTitle')).toBeTruthy());
   });
 
-  it('calls exportKey with the format from route params', async () => {
+  it('calls exportKey with the format and accountIndex from route params', async () => {
     renderWithTheme(<ExportWalletKeyScreen />);
-    await waitFor(() => expect(mockExportKey).toHaveBeenCalledWith('xpub'));
+    await waitFor(() => expect(mockExportKey).toHaveBeenCalledWith('xpub', undefined));
   });
 
   it('renders QR code after key is loaded', async () => {
