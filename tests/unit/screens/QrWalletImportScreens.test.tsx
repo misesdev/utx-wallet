@@ -1,6 +1,7 @@
 import React from 'react';
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import { HDWallet } from 'bitcoin-tx-lib';
+import { AppError } from '../../../src/core/application/errors/AppError';
 import { QrWalletScannerScreen } from '../../../src/presentation/screens/qr/QrWalletScannerScreen';
 import { ConfirmQrWalletImportScreen } from '../../../src/presentation/screens/qr/ConfirmQrWalletImportScreen';
 import { renderWithTheme } from '../../mocks/renderWithProviders';
@@ -10,6 +11,7 @@ const mockNavigate = jest.fn();
 const mockGoBack = jest.fn();
 const mockNavigationReset = jest.fn();
 const mockImportWallet = jest.fn();
+const mockImportSync = jest.fn();
 
 const MNEMONIC = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
 
@@ -21,6 +23,20 @@ jest.mock('../../../src/presentation/hooks/useAppNavigation', () => ({
 
 jest.mock('../../../src/presentation/hooks/useWallet', () => ({
   useWallet: () => ({ importWallet: mockImportWallet }),
+}));
+
+jest.mock('../../../src/app/providers/AddressManagerProvider', () => ({
+  useAddressManager: () => ({
+    importSync: mockImportSync,
+    getOrigins: jest.fn(),
+    createAddressOrigin: jest.fn(),
+    renameAddressOrigin: jest.fn(),
+    getReceiveAddress: jest.fn(),
+    getChangeAddress: jest.fn(),
+    ensureAddressPool: jest.fn(),
+    listAddresses: jest.fn(),
+    discoverWalletAccounts: jest.fn(),
+  }),
 }));
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -42,6 +58,7 @@ describe('QrWalletImportScreens', () => {
       status: 'watch-only',
       createdAt: '2024-01-01T00:00:00.000Z',
     });
+    mockImportSync.mockResolvedValue({ origins: [], newTransactions: 0, newUtxos: 0 });
   });
 
   it('renders scanner frame and manual entry button', () => {
@@ -152,7 +169,7 @@ describe('QrWalletImportScreens', () => {
     expect(mockNavigate).not.toHaveBeenCalledWith('ImportWallet', expect.anything());
   });
 
-  it('imports the confirmed QR wallet after the user defines a name', async () => {
+  it('imports the confirmed QR wallet and shows progress modal before navigating', async () => {
     const secret = 'tpubD6NzVbkrYhZ4Xexample';
     mockRoute = {
       params: {
@@ -169,7 +186,82 @@ describe('QrWalletImportScreens', () => {
     fireEvent.press(screen.getByTestId('qr-import-submit'));
 
     await waitFor(() => expect(mockImportWallet).toHaveBeenCalledWith('Read only', secret, 'testnet'));
-    expect(mockNavigationReset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'WalletList' }] });
+    await waitFor(() => expect(mockImportSync).toHaveBeenCalledWith('wallet-1', 'testnet', expect.any(Function)));
+    await waitFor(() => expect(screen.getByText('walletSetup.done')).toBeTruthy());
+
+    fireEvent.press(screen.getByTestId('wallet-setup-done-btn'));
+    await waitFor(() =>
+      expect(mockNavigationReset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'WalletList' }] }),
+    );
+  });
+
+  it('calls importSync with the wallet id and network returned by importWallet', async () => {
+    mockImportWallet.mockResolvedValue({
+      id: 'wallet-42',
+      name: 'My Wallet',
+      network: 'mainnet',
+      status: 'locked',
+      createdAt: '2024-01-01T00:00:00.000Z',
+    });
+    mockRoute = {
+      params: {
+        secretRef: stashSensitiveData('zpubSomething'),
+        format: 'xpub',
+        network: 'mainnet',
+        canSign: false,
+        isWatchOnly: true,
+      },
+    };
+    const screen = renderWithTheme(<ConfirmQrWalletImportScreen />);
+
+    fireEvent.changeText(screen.getByTestId('qr-wallet-name-input'), 'Savings');
+    fireEvent.press(screen.getByTestId('qr-import-submit'));
+
+    await waitFor(() =>
+      expect(mockImportSync).toHaveBeenCalledWith('wallet-42', 'mainnet', expect.any(Function)),
+    );
+  });
+
+  it('shows an error on the screen (not in the modal) when importWallet fails with wallet-exists', async () => {
+    mockImportWallet.mockRejectedValue(new AppError('wallet already exists', 'WALLET_EXISTS'));
+    mockRoute = {
+      params: {
+        secretRef: stashSensitiveData('zpubSomething'),
+        format: 'xpub',
+        network: 'testnet',
+        canSign: false,
+        isWatchOnly: true,
+      },
+    };
+    const screen = renderWithTheme(<ConfirmQrWalletImportScreen />);
+
+    fireEvent.changeText(screen.getByTestId('qr-wallet-name-input'), 'Savings');
+    fireEvent.press(screen.getByTestId('qr-import-submit'));
+
+    await waitFor(() =>
+      expect(screen.getByText('importWallet.errorWalletExists')).toBeTruthy(),
+    );
+    expect(mockImportSync).not.toHaveBeenCalled();
+  });
+
+  it('does not navigate when importWallet fails', async () => {
+    mockImportWallet.mockRejectedValue(new Error('generic error'));
+    mockRoute = {
+      params: {
+        secretRef: stashSensitiveData('zpubSomething'),
+        format: 'xpub',
+        network: 'testnet',
+        canSign: false,
+        isWatchOnly: true,
+      },
+    };
+    const screen = renderWithTheme(<ConfirmQrWalletImportScreen />);
+
+    fireEvent.changeText(screen.getByTestId('qr-wallet-name-input'), 'Savings');
+    fireEvent.press(screen.getByTestId('qr-import-submit'));
+
+    await waitFor(() => expect(screen.getByText('qrImport.importFailed')).toBeTruthy());
+    expect(mockNavigationReset).not.toHaveBeenCalled();
   });
 
   it('requires a wallet name before importing', () => {

@@ -10,8 +10,10 @@ import { AppButton } from '../../components/base/AppButton';
 import { AppIcon } from '../../components/base/AppIcon';
 import { AppText } from '../../components/base/AppText';
 import { FormInput } from '../../components/forms/FormInput';
+import { WalletSetupProgressModal } from '../../components/wallet/WalletSetupProgressModal';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
+import { usePostImportSync } from '../../hooks/usePostImportSync';
 import { useTheme } from '../../hooks/useTheme';
 import { useWallet } from '../../hooks/useWallet';
 
@@ -40,6 +42,7 @@ export function ConfirmQrWalletImportScreen() {
   const insets = useSafeAreaInsets();
   const route = useRoute<ConfirmRoute>();
   const { importWallet } = useWallet();
+  const { setupStep, setupVisible, setupError, subMessage, showImportingStep, hideProgress, runSync, handleDone, handleRetry } = usePostImportSync();
   const [walletName, setWalletName] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -69,10 +72,12 @@ export function ConfirmQrWalletImportScreen() {
 
     setIsLoading(true);
     setError('');
+    showImportingStep();
     try {
-      await importWallet(trimmedName, secretRef.current, route.params.network);
-      navigation.reset({ index: 0, routes: [{ name: AppRoutes.WalletList }] });
+      const wallet = await importWallet(trimmedName, secretRef.current, route.params.network);
+      await runSync(wallet.id, wallet.network);
     } catch (err) {
+      hideProgress();
       if (err instanceof AppError && err.code === 'WALLET_EXISTS') {
         setError(t('importWallet.errorWalletExists', { name: trimmedName }));
       } else if (err instanceof AppError && err.code === 'INVALID_SECRET') {
@@ -90,6 +95,14 @@ export function ConfirmQrWalletImportScreen() {
       style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      <WalletSetupProgressModal
+        visible={setupVisible}
+        currentStep={setupStep}
+        subMessage={subMessage}
+        error={setupError}
+        onDone={handleDone}
+        onRetry={handleRetry}
+      />
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"

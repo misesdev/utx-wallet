@@ -9,12 +9,11 @@ import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
 import { FormInput } from '../../components/forms/FormInput';
 import { WalletSetupProgressModal } from '../../components/wallet/WalletSetupProgressModal';
-import type { WalletSetupStep } from '../../components/wallet/WalletSetupProgressModal';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useImportWallet } from '../../hooks/useImportWallet';
+import { usePostImportSync } from '../../hooks/usePostImportSync';
 import { useTheme } from '../../hooks/useTheme';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
-import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
 
 type ImportWalletRoute = RouteProp<AppStackParamList, typeof AppRoutes.ImportWallet>;
 
@@ -50,7 +49,7 @@ export function ImportWalletScreen() {
     clearError,
     submit,
   } = useImportWallet(routeNetwork);
-  const { importSync } = useAddressManager();
+  const { setupStep, setupVisible, setupError, subMessage, showImportingStep, hideProgress, runSync, handleDone, handleRetry } = usePostImportSync();
 
   // Pre-fill seed when arriving via QR scanner (pop-on-read: clears from store immediately)
   useEffect(() => {
@@ -64,63 +63,19 @@ export function ImportWalletScreen() {
   const { t } = useAppTranslation();
   const [passphraseEnabled, setPassphraseEnabled] = useState(false);
   const [showPassphrase, setShowPassphrase] = useState(false);
-  const [setupStep, setSetupStep] = useState<WalletSetupStep>('importing');
-  const [setupVisible, setSetupVisible] = useState(false);
-  const [setupError, setSetupError] = useState<string | undefined>();
-  const [subMessage, setSubMessage] = useState<string | undefined>();
 
   async function handleImport() {
-    setSetupStep('importing');
-    setSetupError(undefined);
-    setSubMessage(t('walletSetup.generatingKeys'));
-    setSetupVisible(true);
-    // Yield to the JS event loop so React flushes state and renders the modal
-    // before CPU-intensive key derivation blocks the thread.
+    showImportingStep(t('walletSetup.generatingKeys'));
+    // Yield to JS event loop so React renders the modal before CPU-intensive key derivation.
     await new Promise<void>(resolve => setTimeout(resolve, 32));
 
     const wallet = await submit();
     if (!wallet) {
-      setSetupVisible(false);
+      hideProgress();
       return;
     }
 
-    setSetupStep('discovering');
-    setSubMessage(undefined);
-    try {
-      await importSync(wallet.id, wallet.network, (progress) => {
-        if (progress.phase === 'syncing') {
-          setSetupStep('syncing');
-          setSubMessage(t('walletSetup.syncingChain'));
-          return;
-        }
-        if (progress.txFound) {
-          setSubMessage(t('walletSetup.foundActivity', { account: progress.accountIndex }));
-        } else {
-          setSubMessage(
-            t('walletSetup.checkingAddress', {
-              account: progress.accountIndex,
-              index: progress.addressIndex + 1,
-            }),
-          );
-        }
-      });
-    } catch (err) {
-      setSetupError(err instanceof Error ? err.message : undefined);
-      setSetupStep('error');
-      return;
-    }
-
-    setSubMessage(undefined);
-    setSetupStep('done');
-  }
-
-  function handleSetupDone() {
-    setSetupVisible(false);
-    navigation.reset({ index: 0, routes: [{ name: AppRoutes.WalletList }] });
-  }
-
-  function handleSetupRetry() {
-    setSetupVisible(false);
+    await runSync(wallet.id, wallet.network);
   }
 
   return (
@@ -133,8 +88,8 @@ export function ImportWalletScreen() {
         currentStep={setupStep}
         subMessage={subMessage}
         error={setupError}
-        onDone={handleSetupDone}
-        onRetry={handleSetupRetry}
+        onDone={handleDone}
+        onRetry={handleRetry}
       />
       {/* Header */}
       <View style={styles.header}>
