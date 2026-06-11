@@ -1,5 +1,4 @@
-import { sha256 } from '@noble/hashes/sha256';
-import { secp256k1 } from '@noble/curves/secp256k1';
+import { ECPairKey, sha256, bytesToHex, hexToBytes } from 'bitcoin-tx-lib';
 import type { SignedMessage } from '../entities/SignedMessage';
 
 /**
@@ -13,36 +12,41 @@ import type { SignedMessage } from '../entities/SignedMessage';
 
 const MESSAGE_PREFIX = 'UTXWallet Signed Message:\n';
 
-const bytesToHex = (b: Uint8Array) =>
-  Array.from(b).map(x => x.toString(16).padStart(2, '0')).join('');
-
-const hexToBytes = (h: string): Uint8Array => {
-  const pairs = h.match(/.{2}/g);
-  if (!pairs || pairs.length * 2 !== h.length) throw new Error('Invalid hex string');
-  return new Uint8Array(pairs.map(b => parseInt(b, 16)));
-};
-
 function messageHash(content: string): Uint8Array {
-  return sha256(sha256(MESSAGE_PREFIX + content));
+  const encoded = new TextEncoder().encode(MESSAGE_PREFIX + content);
+  return sha256(sha256(encoded));
+}
+
+class PublicKeyVerifier extends ECPairKey {
+  private readonly _pubkeyBytes: Uint8Array;
+
+  constructor(pubkeyBytes: Uint8Array) {
+    super({});
+    this._pubkeyBytes = pubkeyBytes;
+  }
+
+  override getPublicKey(): Uint8Array {
+    return this._pubkeyBytes;
+  }
 }
 
 export class MessageSigningService {
   sign(content: string, privateKey: Uint8Array): SignedMessage {
     const hash = messageHash(content);
-    const sig = secp256k1.sign(hash, privateKey, { lowS: true });
-    const pubkey = secp256k1.getPublicKey(privateKey, true);
+    const key = new ECPairKey({ privateKey });
     return {
       version: 1,
-      pubkey: bytesToHex(pubkey),
+      pubkey: key.getPublicKeyHex(),
       content,
-      sig: bytesToHex(sig.toDERRawBytes()),
+      sig: bytesToHex(key.signDER(hash)),
     };
   }
 
   verify(content: string, pubkeyHex: string, sigHex: string): boolean {
     try {
       const hash = messageHash(content);
-      return secp256k1.verify(hexToBytes(sigHex), hash, hexToBytes(pubkeyHex));
+      const verifier = new PublicKeyVerifier(hexToBytes(pubkeyHex));
+      return verifier.verifySignature(hash, hexToBytes(sigHex));
     } catch {
       return false;
     }

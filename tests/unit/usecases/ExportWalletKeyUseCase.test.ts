@@ -1,5 +1,6 @@
 import { ExportWalletKeyUseCase } from '../../../src/core/domain/usecases/wallet/ExportWalletKeyUseCase';
 import { WalletImportFormatDetector } from '../../../src/core/domain/services/WalletImportFormatDetector';
+import { HDWallet } from 'bitcoin-tx-lib';
 import type { WalletRepository, RawWalletKey } from '../../../src/core/domain/repositories/WalletRepository';
 
 const MNEMONIC =
@@ -33,18 +34,20 @@ describe('ExportWalletKeyUseCase', () => {
       expect(await useCase.getAvailableFormats(WALLET_ID)).toEqual(['mnemonic', 'xpriv', 'xpub']);
     });
 
-    it('returns xpriv/xpub for HD xpriv wallets (tprv testnet)', async () => {
-      // Stored as xprv (normalised from tprv during import)
-      const repo = makeRepo({ kind: 'hd', secret: 'xprv9s21ZrQH143K3GJpoapnV8SFfure' }); // dummy xprv prefix ok for regex
+    it('returns xpriv/xpub for HD wallets stored as native tprv (testnet)', async () => {
+      const repo = makeRepo({ kind: 'hd', secret: 'tprv8ZgxMBicQKsPd' }); // dummy tprv prefix
       const useCase = new ExportWalletKeyUseCase(repo);
-      // Won't actually call HDWallet.import in getAvailableFormats
-      const formats = await useCase.getAvailableFormats(WALLET_ID);
-      // xprv matches XPRIV_RE → ['xpriv','xpub']
-      expect(formats).toEqual(['xpriv', 'xpub']);
+      expect(await useCase.getAvailableFormats(WALLET_ID)).toEqual(['xpriv', 'xpub']);
     });
 
-    it('returns xpub only for watch-only (xpub) wallets', async () => {
-      const repo = makeRepo({ kind: 'hd', secret: 'xpub661MyMwAqdummy' });
+    it('returns xpriv/xpub for HD wallets stored as native vprv (BIP84 testnet)', async () => {
+      const repo = makeRepo({ kind: 'hd', secret: 'vprv9DMUxX4ShgxML' }); // dummy vprv prefix
+      const useCase = new ExportWalletKeyUseCase(repo);
+      expect(await useCase.getAvailableFormats(WALLET_ID)).toEqual(['xpriv', 'xpub']);
+    });
+
+    it('returns xpub only for watch-only (zpub) wallets', async () => {
+      const repo = makeRepo({ kind: 'hd', secret: 'zpub6rFR7y4Q2AijBE' }); // dummy zpub prefix
       const useCase = new ExportWalletKeyUseCase(repo);
       expect(await useCase.getAvailableFormats(WALLET_ID)).toEqual(['xpub']);
     });
@@ -79,9 +82,11 @@ describe('ExportWalletKeyUseCase', () => {
     });
 
     it('throws EXPORT_FORMAT_UNAVAILABLE for xpub-only wallets', async () => {
-      const repo = makeRepo({ kind: 'hd', secret: 'xpub661MyMwAqdummy' });
+      const { wallet } = HDWallet.import(MNEMONIC, undefined, { network: 'mainnet', purpose: 84 });
+      const zpub = wallet.getXPub();
+      const repo = makeRepo({ kind: 'hd', secret: zpub });
       await expect(
-        new ExportWalletKeyUseCase(repo).execute({ walletId: WALLET_ID, format: 'mnemonic', network: 'testnet' }),
+        new ExportWalletKeyUseCase(repo).execute({ walletId: WALLET_ID, format: 'mnemonic', network: 'mainnet' }),
       ).rejects.toMatchObject({ code: 'EXPORT_FORMAT_UNAVAILABLE' });
     });
   });
@@ -102,43 +107,30 @@ describe('ExportWalletKeyUseCase', () => {
     });
   });
 
-  // ── xpriv export — network-aware ────────────────────────────────────────
+  // ── xpriv export ────────────────────────────────────────────────────────
+  // bitcoin-tx-lib 2.x returns BIP84 version bytes: zprv (mainnet) / vprv (testnet)
 
   describe('execute – xpriv', () => {
-    it('exports xprv... for mainnet mnemonic wallet', async () => {
+    it('exports zprv... for mainnet BIP84 mnemonic wallet', async () => {
       const result = await new ExportWalletKeyUseCase(makeRepo()).execute({
         walletId: WALLET_ID, format: 'xpriv', network: 'mainnet',
       });
       expect(result.format).toBe('xpriv');
-      expect(result.value.startsWith('xprv')).toBe(true);
+      expect(result.value.startsWith('zprv')).toBe(true);
     });
 
-    it('exports tprv... for testnet mnemonic wallet', async () => {
+    it('exports vprv... for testnet BIP84 mnemonic wallet', async () => {
       const result = await new ExportWalletKeyUseCase(makeRepo()).execute({
         walletId: WALLET_ID, format: 'xpriv', network: 'testnet',
       });
       expect(result.format).toBe('xpriv');
-      expect(result.value.startsWith('tprv')).toBe(true);
+      expect(result.value.startsWith('vprv')).toBe(true);
     });
 
-    it('mainnet and testnet xpriv differ only in version prefix', async () => {
-      const { createBase58check } = require('@scure/base');
-      const { sha256 } = require('@noble/hashes/sha256');
-      const b58 = createBase58check(sha256);
-      const useCase = new ExportWalletKeyUseCase(makeRepo());
-      const mainnet = await useCase.execute({ walletId: WALLET_ID, format: 'xpriv', network: 'mainnet' });
-      const testnet = await useCase.execute({ walletId: WALLET_ID, format: 'xpriv', network: 'testnet' });
-      expect(mainnet.value.startsWith('xprv')).toBe(true);
-      expect(testnet.value.startsWith('tprv')).toBe(true);
-      // Same payload bytes after the 4-byte version prefix
-      const payloadMain = b58.decode(mainnet.value).slice(4);
-      const payloadTest = b58.decode(testnet.value).slice(4);
-      const toHex = (u: Uint8Array) => Array.from(u).map(b => b.toString(16).padStart(2, '0')).join('');
-      expect(toHex(payloadMain)).toBe(toHex(payloadTest));
-    });
-
-    it('throws EXPORT_FORMAT_UNAVAILABLE when secret is an xpub (watch-only)', async () => {
-      const repo = makeRepo({ kind: 'hd', secret: 'xpub661MyMwAqdummy' });
+    it('throws EXPORT_FORMAT_UNAVAILABLE when secret is a zpub (watch-only)', async () => {
+      const { wallet } = HDWallet.import(MNEMONIC, undefined, { network: 'mainnet', purpose: 84 });
+      const zpub = wallet.getXPub();
+      const repo = makeRepo({ kind: 'hd', secret: zpub });
       await expect(
         new ExportWalletKeyUseCase(repo).execute({ walletId: WALLET_ID, format: 'xpriv', network: 'mainnet' }),
       ).rejects.toMatchObject({ code: 'EXPORT_FORMAT_UNAVAILABLE' });
@@ -150,64 +142,50 @@ describe('ExportWalletKeyUseCase', () => {
         new ExportWalletKeyUseCase(repo).execute({ walletId: WALLET_ID, format: 'xpriv', network: 'mainnet' }),
       ).rejects.toMatchObject({ code: 'EXPORT_FORMAT_UNAVAILABLE' });
     });
+
+    it('wallet stored as native vprv exports its vprv', async () => {
+      const { wallet: bip84 } = HDWallet.import(MNEMONIC, undefined, { network: 'testnet', purpose: 84 });
+      const vprv = bip84.getXPriv();
+      expect(vprv.startsWith('vprv')).toBe(true);
+
+      const repo = makeRepo({ kind: 'hd', secret: vprv });
+      const result = await new ExportWalletKeyUseCase(repo).execute({
+        walletId: WALLET_ID, format: 'xpriv', network: 'testnet',
+      });
+      expect(result.value.startsWith('vprv')).toBe(true);
+    });
   });
 
-  // ── xpub export — network-aware ─────────────────────────────────────────
+  // ── xpub export ─────────────────────────────────────────────────────────
+  // bitcoin-tx-lib 2.x returns BIP84 version bytes: zpub (mainnet) / vpub (testnet)
 
   describe('execute – xpub', () => {
-    it('exports xpub... for mainnet mnemonic wallet', async () => {
+    it('exports zpub... for mainnet BIP84 mnemonic wallet', async () => {
       const result = await new ExportWalletKeyUseCase(makeRepo()).execute({
         walletId: WALLET_ID, format: 'xpub', network: 'mainnet',
       });
       expect(result.format).toBe('xpub');
-      expect(result.value.startsWith('xpub')).toBe(true);
+      expect(result.value.startsWith('zpub')).toBe(true);
     });
 
-    it('exports tpub... for testnet mnemonic wallet', async () => {
+    it('exports vpub... for testnet BIP84 mnemonic wallet', async () => {
       const result = await new ExportWalletKeyUseCase(makeRepo()).execute({
         walletId: WALLET_ID, format: 'xpub', network: 'testnet',
       });
       expect(result.format).toBe('xpub');
-      expect(result.value.startsWith('tpub')).toBe(true);
+      expect(result.value.startsWith('vpub')).toBe(true);
     });
 
-    it('mainnet and testnet xpub differ only in version prefix', async () => {
-      const { createBase58check } = require('@scure/base');
-      const { sha256 } = require('@noble/hashes/sha256');
-      const b58 = createBase58check(sha256);
-      const useCase = new ExportWalletKeyUseCase(makeRepo());
-      const mainnet = await useCase.execute({ walletId: WALLET_ID, format: 'xpub', network: 'mainnet' });
-      const testnet = await useCase.execute({ walletId: WALLET_ID, format: 'xpub', network: 'testnet' });
-      expect(mainnet.value.startsWith('xpub')).toBe(true);
-      expect(testnet.value.startsWith('tpub')).toBe(true);
-      const payloadMain = b58.decode(mainnet.value).slice(4);
-      const payloadTest = b58.decode(testnet.value).slice(4);
-      const toHex = (u: Uint8Array) => Array.from(u).map(b => b.toString(16).padStart(2, '0')).join('');
-      expect(toHex(payloadMain)).toBe(toHex(payloadTest));
-    });
-
-    it('watch-only wallet: exports same key re-versioned for the wallet network', async () => {
-      // Import via detector: zprv (mainnet BIP84) → normalised to xprv → stored
-      const { HDWallet } = require('bitcoin-tx-lib');
+    it('watch-only wallet stored as native zpub exports zpub', async () => {
       const { wallet: bip84 } = HDWallet.import(MNEMONIC, undefined, { network: 'mainnet', purpose: 84 });
-      const zpub = bip84.getXPub(); // zpub...
+      const zpub = bip84.getXPub();
+      expect(zpub.startsWith('zpub')).toBe(true);
 
-      // Simulate what WalletImportFormatDetector stores: zpub normalised to xpub
-      const { createBase58check } = require('@scure/base');
-      const { sha256 } = require('@noble/hashes/sha256');
-      const b58 = createBase58check(sha256);
-      const xpubVer = new Uint8Array([0x04, 0x88, 0xb2, 0x1e]);
-      const dec = b58.decode(zpub);
-      const storedXpub = b58.encode(new Uint8Array([...xpubVer, ...dec.slice(4)]));
-
-      const repo = makeRepo({ kind: 'hd', secret: storedXpub });
-      const useCase = new ExportWalletKeyUseCase(repo);
-
-      const mainnet = await useCase.execute({ walletId: WALLET_ID, format: 'xpub', network: 'mainnet' });
-      expect(mainnet.value.startsWith('xpub')).toBe(true);
-
-      const testnet = await useCase.execute({ walletId: WALLET_ID, format: 'xpub', network: 'testnet' });
-      expect(testnet.value.startsWith('tpub')).toBe(true);
+      const repo = makeRepo({ kind: 'hd', secret: zpub });
+      const result = await new ExportWalletKeyUseCase(repo).execute({
+        walletId: WALLET_ID, format: 'xpub', network: 'mainnet',
+      });
+      expect(result.value.startsWith('zpub')).toBe(true);
     });
 
     it('throws EXPORT_FORMAT_UNAVAILABLE for single-key wallets', async () => {
@@ -245,10 +223,11 @@ describe('ExportWalletKeyUseCase', () => {
   describe('export → import round-trip', () => {
     const detector = new WalletImportFormatDetector();
 
-    it('exported mainnet xpriv can be re-imported as mainnet xpriv', async () => {
+    it('exported mainnet xpriv (zprv) can be re-imported as mainnet xpriv', async () => {
       const result = await new ExportWalletKeyUseCase(makeRepo()).execute({
         walletId: WALLET_ID, format: 'xpriv', network: 'mainnet',
       });
+      expect(result.value.startsWith('zprv')).toBe(true);
       const detected = detector.detect(result.value);
       expect(detected).not.toBeNull();
       expect(detected!.format).toBe('xpriv');
@@ -256,11 +235,11 @@ describe('ExportWalletKeyUseCase', () => {
       expect(detected!.canSign).toBe(true);
     });
 
-    it('exported testnet xpriv can be re-imported as testnet xpriv', async () => {
+    it('exported testnet xpriv (vprv) can be re-imported as testnet xpriv', async () => {
       const result = await new ExportWalletKeyUseCase(makeRepo()).execute({
         walletId: WALLET_ID, format: 'xpriv', network: 'testnet',
       });
-      // tprv... detected and normalised to xprv with network=testnet
+      expect(result.value.startsWith('vprv')).toBe(true);
       const detected = detector.detect(result.value);
       expect(detected).not.toBeNull();
       expect(detected!.format).toBe('xpriv');
@@ -268,10 +247,11 @@ describe('ExportWalletKeyUseCase', () => {
       expect(detected!.canSign).toBe(true);
     });
 
-    it('exported mainnet xpub can be re-imported as mainnet watch-only', async () => {
+    it('exported mainnet xpub (zpub) can be re-imported as mainnet watch-only', async () => {
       const result = await new ExportWalletKeyUseCase(makeRepo()).execute({
         walletId: WALLET_ID, format: 'xpub', network: 'mainnet',
       });
+      expect(result.value.startsWith('zpub')).toBe(true);
       const detected = detector.detect(result.value);
       expect(detected).not.toBeNull();
       expect(detected!.format).toBe('xpub');
@@ -279,11 +259,11 @@ describe('ExportWalletKeyUseCase', () => {
       expect(detected!.isWatchOnly).toBe(true);
     });
 
-    it('exported testnet xpub can be re-imported as testnet watch-only', async () => {
+    it('exported testnet xpub (vpub) can be re-imported as testnet watch-only', async () => {
       const result = await new ExportWalletKeyUseCase(makeRepo()).execute({
         walletId: WALLET_ID, format: 'xpub', network: 'testnet',
       });
-      // tpub... detected and normalised to xpub with network=testnet
+      expect(result.value.startsWith('vpub')).toBe(true);
       const detected = detector.detect(result.value);
       expect(detected).not.toBeNull();
       expect(detected!.format).toBe('xpub');

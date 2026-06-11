@@ -1,5 +1,3 @@
-import { createBase58check } from '@scure/base';
-import { sha256 } from '@noble/hashes/sha256';
 import { ECPairKey, HDWallet } from 'bitcoin-tx-lib';
 import type { BitcoinNetwork } from '../entities/Network';
 import { NetworkType } from '../value-objects/NetworkType';
@@ -23,43 +21,16 @@ export type WalletImportFormatResult = {
   storageKind: WalletSecretStorageKind;
 };
 
-// All BIP44 and BIP84 extended key prefixes.
-// HDWallet.import only accepts xprv/xpub; all others must be normalized first.
+// All BIP44 and BIP84 extended key prefixes accepted by bitcoin-tx-lib 2.x.
 const XPUB_RE = /^(xpub|tpub|zpub|vpub)[a-zA-Z0-9]+$/;
 const XPRIV_RE = /^(xprv|tprv|zprv|vprv)[a-zA-Z0-9]+$/;
 const HEX_PRIVATE_KEY_RE = /^[0-9a-fA-F]{64}$/;
 
-// BIP44 mainnet version bytes — the only ones HDWallet.import accepts for xprv/xpub.
-const XPRV_VERSION = new Uint8Array([0x04, 0x88, 0xad, 0xe4]); // xprv
-const XPUB_VERSION = new Uint8Array([0x04, 0x88, 0xb2, 0x1e]); // xpub
-
-const b58check = createBase58check(sha256);
-
-/**
- * Rewrites the 4-byte version prefix of a base58check-encoded extended key.
- * Used to normalise any extended key format (tprv/zprv/vprv → xprv, etc.)
- * so that HDWallet.import can handle it.
- */
-function reversion(encoded: string, versionBytes: Uint8Array): string {
-  const decoded = b58check.decode(encoded);
-  return b58check.encode(new Uint8Array([...versionBytes, ...decoded.slice(4)]));
-}
-
-/** True when the key uses version bytes other than xprv (mainnet BIP44). */
-function needsXprvNormalization(s: string): boolean {
-  return s.startsWith('tprv') || s.startsWith('zprv') || s.startsWith('vprv');
-}
-
-/** True when the key uses version bytes other than xpub (mainnet BIP44). */
-function needsXpubNormalization(s: string): boolean {
-  return s.startsWith('tpub') || s.startsWith('zpub') || s.startsWith('vpub');
-}
-
 function networkFromExtendedKey(secret: string): BitcoinNetwork | undefined {
   if (secret.startsWith('xpub') || secret.startsWith('xprv')) return 'mainnet';
-  if (secret.startsWith('tpub') || secret.startsWith('tprv')) return 'testnet'; // BIP44 testnet
-  if (secret.startsWith('zpub') || secret.startsWith('zprv')) return 'mainnet'; // BIP84 mainnet
-  if (secret.startsWith('vpub') || secret.startsWith('vprv')) return 'testnet'; // BIP84 testnet
+  if (secret.startsWith('tpub') || secret.startsWith('tprv')) return 'testnet';
+  if (secret.startsWith('zpub') || secret.startsWith('zprv')) return 'mainnet';
+  if (secret.startsWith('vpub') || secret.startsWith('vprv')) return 'testnet';
   return undefined;
 }
 
@@ -118,15 +89,12 @@ export class WalletImportFormatDetector {
     if (!XPUB_RE.test(secret)) return null;
     try {
       const network = networkFromExtendedKey(secret);
-      // Normalize to xpub so HDWallet.import can handle it (it rejects tpub/zpub/vpub)
-      const normalized = needsXpubNormalization(secret) ? reversion(secret, XPUB_VERSION) : secret;
-      HDWallet.import(normalized, undefined, {
+      HDWallet.import(secret, undefined, {
         network: NetworkType.of(network ?? 'testnet').toBNetwork(),
-        purpose: 84,
       });
       return {
         format,
-        normalizedSecret: normalized,
+        normalizedSecret: secret,
         canSign: false,
         isWatchOnly: true,
         network,
@@ -141,15 +109,12 @@ export class WalletImportFormatDetector {
     if (!XPRIV_RE.test(secret)) return null;
     try {
       const network = networkFromExtendedKey(secret);
-      // Normalize to xprv so HDWallet.import can handle it (it rejects tprv/zprv/vprv)
-      const normalized = needsXprvNormalization(secret) ? reversion(secret, XPRV_VERSION) : secret;
-      HDWallet.import(normalized, undefined, {
+      HDWallet.import(secret, undefined, {
         network: NetworkType.of(network ?? 'testnet').toBNetwork(),
-        purpose: 84,
       });
       return {
         format: 'xpriv',
-        normalizedSecret: normalized,
+        normalizedSecret: secret,
         canSign: true,
         isWatchOnly: false,
         network,
