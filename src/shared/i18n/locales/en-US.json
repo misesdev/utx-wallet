@@ -23,7 +23,9 @@
     "account": "Account {{accountIndex}}",
     "loadingAccounts": "Loading accounts…",
     "qrCode": "QR",
-    "info": "Info"
+    "info": "Info",
+    "revealBalance": "Show balances",
+    "hideBalance": "Hide balances"
   },
   "welcome": {
     "tagline": "Your keys. Your Bitcoin.",
@@ -51,6 +53,7 @@
     "utxos": "UTXOs",
     "addresses": "Addresses",
     "segregation": "Segregation",
+    "signature": "Signature",
     "errorLoadWalletData": "Failed to load wallet data. Pull to refresh.",
     "errorSyncFailed": "Sync failed. Try again."
   },
@@ -133,7 +136,8 @@
     "errorSeedRequired": "Seed phrase is required",
     "errorInvalidSeed": "Invalid seed phrase. Please check your words and try again.",
     "errorWalletExists": "A wallet named \"{{name}}\" already exists.",
-    "errorImportFailed": "Failed to import wallet. Please try again."
+    "errorImportFailed": "Failed to import wallet. Please try again.",
+    "scanQr": "Scan QR"
   },
   "walletSetup": {
     "step1Label": "Importing keys",
@@ -204,8 +208,8 @@
     "speedCustom": "manual",
     "customFeePlaceholder": "sats per vByte",
     "payFee": "Deduct fee from amount",
-    "payFeeHint": "Fee is deducted from the amount you send",
-    "noPayFeeHint": "Fee is added on top of the amount",
+    "payFeeHint": "Fee is added on top of the amount",
+    "noPayFeeHint": "Fee is deducted from the amount you send",
     "recipientReceives": "Recipient receives"
   },
   "txReview": {
@@ -354,7 +358,27 @@
     "addresses": "Addresses",
     "addressesDesc": "Manage your Bitcoin addresses",
     "utxos": "UTXOs",
-    "utxosDesc": "View and manage your UTXOs"
+    "utxosDesc": "View and manage your UTXOs",
+    "export": "Export",
+    "exportDesc": "Export wallet keys"
+  },
+  "walletExport": {
+    "title": "Export Wallet",
+    "chooseFormat": "Choose export format",
+    "formatMnemonic": "Mnemonic",
+    "formatMnemonicDesc": "12 to 24 word recovery phrase",
+    "formatXpriv": "xpriv",
+    "formatXprivDesc": "Extended private key",
+    "formatXpub": "xpub",
+    "formatXpubDesc": "Extended public key",
+    "formatWif": "WIF",
+    "formatWifDesc": "Private key in WIF format",
+    "exportedKey": "Exported Key",
+    "warningTitle": "Sensitive Data",
+    "warningBody": "Never share this key. Anyone with access can control your wallet.",
+    "copied": "Copied!",
+    "loadError": "Failed to export key",
+    "loading": "Exporting…"
   },
   "language": {
     "title": "Select language",
@@ -680,5 +704,40 @@
     "s6Body": "Once an address has been spent, it is permanently retired. It will never be suggested for receiving again. Change always goes to a fresh change address, never back to the originating address. This prevents blockchain observers from linking your transactions.",
     "s7Title": "Your Keys Stay Private",
     "s7Body": "Private keys are never stored in the address database. Only public data is kept — derivation paths, balances, and transaction references. Your private key is derived from your seed only at the moment of signing, then immediately discarded from memory."
+  },
+  "signature": {
+    "menuTitle": "Signature",
+    "menuSubtitle": "Sign or verify content with your wallet key",
+    "signOption": "Sign content",
+    "signOptionDesc": "Sign any text with your wallet's private key",
+    "verifyOption": "Verify signature",
+    "verifyOptionDesc": "Verify a signature using the public key",
+    "signTitle": "Sign content",
+    "contentLabel": "Content",
+    "contentPlaceholder": "Enter the content you want to sign…",
+    "signAction": "Sign content",
+    "resultTitle": "Signature",
+    "resultContentLabel": "Signed content",
+    "resultPubkeyLabel": "Public key",
+    "copyAction": "Copy",
+    "shareAction": "Share",
+    "verifyTitle": "Verify signature",
+    "pubkeyLabel": "Public key",
+    "pubkeyPlaceholder": "Compressed public key (hex)",
+    "contentVerifyLabel": "Content",
+    "contentVerifyPlaceholder": "The original content that was signed",
+    "sigLabel": "Signature",
+    "sigPlaceholder": "DER signature (hex)",
+    "scanQr": "Scan QR",
+    "verifyAction": "Verify",
+    "validSignature": "Valid signature",
+    "invalidSignature": "Invalid signature",
+    "validDesc": "The signature is authentic and matches the content.",
+    "invalidDesc": "The signature does not match or the data is incorrect.",
+    "watchOnlyError": "Watch-only wallets cannot sign content.",
+    "errorContentRequired": "Content is required.",
+    "errorPubkeyRequired": "Public key is required.",
+    "errorSigRequired": "Signature is required.",
+    "errorSignFailed": "Failed to sign content. Please try again."
   }
 }

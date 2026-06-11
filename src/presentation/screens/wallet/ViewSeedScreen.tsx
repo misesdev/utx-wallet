@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AppState, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NoopScreenCaptureAdapter } from '../../../core/infrastructure/adapters/ScreenCaptureAdapter';
 import { AppIcon } from '../../components/base/AppIcon';
@@ -30,6 +30,18 @@ export function ViewSeedScreen() {
   useEffect(() => {
     screenCaptureGuard.enable();
     return () => screenCaptureGuard.disable();
+  }, []);
+
+  // Hide seed immediately when the app is backgrounded or the user switches apps
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'background' || state === 'inactive') {
+        setRevealed(false);
+        setWords([]);
+        setPassphrase(undefined);
+      }
+    });
+    return () => sub.remove();
   }, []);
 
   useEffect(() => {

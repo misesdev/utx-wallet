@@ -2,8 +2,11 @@ import React from 'react';
 import { fireEvent, waitFor } from '@testing-library/react-native';
 import { AccountDetailsScreen } from '../../../src/presentation/screens/wallet/AccountDetailsScreen';
 import { renderWithTheme } from '../../mocks/renderWithProviders';
+import { useSecurity } from '../../../src/app/providers/SecurityProvider';
 import type { AccountSummary } from '../../../src/core/domain/services/AccountSummaryService';
 import type { Transaction } from '../../../src/core/domain/entities/Transaction';
+
+const mockUseSecurity = useSecurity as jest.MockedFunction<typeof useSecurity>;
 
 const mockNavigate = jest.fn();
 const mockGoBack = jest.fn();
@@ -61,6 +64,24 @@ describe('AccountDetailsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockListTransactions.mockResolvedValue(TXS);
+    // reset to default: hideBalance off
+    mockUseSecurity.mockReturnValue({
+      settings: {
+        pinEnabled: false,
+        biometricEnabled: false,
+        autoLockSeconds: 300,
+        hideBalance: false,
+        blockScreenshots: false,
+      },
+      biometricAvailable: false,
+      biometricType: 'none',
+      isLoading: false,
+      updateSettings: jest.fn().mockResolvedValue(undefined),
+      setupPin: jest.fn().mockResolvedValue(undefined),
+      validatePin: jest.fn().mockResolvedValue(true),
+      removePin: jest.fn().mockResolvedValue(undefined),
+      reauthenticate: jest.fn().mockResolvedValue(true),
+    });
   });
 
   it('renders account name, balance and only account transactions', async () => {
@@ -81,5 +102,85 @@ describe('AccountDetailsScreen', () => {
 
     await waitFor(() => expect(mockRenameAddressOrigin).toHaveBeenCalledWith('origin-1', 'Cold savings'));
     expect(mockReload).toHaveBeenCalled();
+  });
+
+  describe('balance eye toggle', () => {
+    it('does not show eye button when hideBalance is disabled', () => {
+      const screen = renderWithTheme(<AccountDetailsScreen />);
+      expect(screen.queryByTestId('account-eye-btn')).toBeNull();
+    });
+
+    it('shows eye button when hideBalance is enabled', () => {
+      mockUseSecurity.mockReturnValue({
+        settings: {
+          pinEnabled: false,
+          biometricEnabled: false,
+          autoLockSeconds: 300,
+          hideBalance: true,
+          blockScreenshots: false,
+        },
+        biometricAvailable: false,
+        biometricType: 'none',
+        isLoading: false,
+        updateSettings: jest.fn().mockResolvedValue(undefined),
+        setupPin: jest.fn().mockResolvedValue(undefined),
+        validatePin: jest.fn().mockResolvedValue(true),
+        removePin: jest.fn().mockResolvedValue(undefined),
+        reauthenticate: jest.fn().mockResolvedValue(true),
+      });
+      const screen = renderWithTheme(<AccountDetailsScreen />);
+      expect(screen.getByTestId('account-eye-btn')).toBeTruthy();
+    });
+
+    it('masks balance when hideBalance is enabled', () => {
+      mockUseSecurity.mockReturnValue({
+        settings: {
+          pinEnabled: false,
+          biometricEnabled: false,
+          autoLockSeconds: 300,
+          hideBalance: true,
+          blockScreenshots: false,
+        },
+        biometricAvailable: false,
+        biometricType: 'none',
+        isLoading: false,
+        updateSettings: jest.fn().mockResolvedValue(undefined),
+        setupPin: jest.fn().mockResolvedValue(undefined),
+        validatePin: jest.fn().mockResolvedValue(true),
+        removePin: jest.fn().mockResolvedValue(undefined),
+        reauthenticate: jest.fn().mockResolvedValue(true),
+      });
+      const screen = renderWithTheme(<AccountDetailsScreen />);
+      expect(screen.getByTestId('account-balance').props.children).toBe('••••••');
+    });
+
+    it('reveals balance after eye button is pressed (no PIN required)', async () => {
+      mockUseSecurity.mockReturnValue({
+        settings: {
+          pinEnabled: false,
+          biometricEnabled: false,
+          autoLockSeconds: 300,
+          hideBalance: true,
+          blockScreenshots: false,
+        },
+        biometricAvailable: false,
+        biometricType: 'none',
+        isLoading: false,
+        updateSettings: jest.fn().mockResolvedValue(undefined),
+        setupPin: jest.fn().mockResolvedValue(undefined),
+        validatePin: jest.fn().mockResolvedValue(true),
+        removePin: jest.fn().mockResolvedValue(undefined),
+        reauthenticate: jest.fn().mockResolvedValue(true),
+      });
+      const screen = renderWithTheme(<AccountDetailsScreen />);
+
+      await waitFor(() => {
+        fireEvent.press(screen.getByTestId('account-eye-btn'));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('account-balance').props.children).toBe('150,000');
+      });
+    });
   });
 });

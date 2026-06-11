@@ -91,9 +91,8 @@ export class WalletTransactionSigner implements TransactionSigner {
     // Slow path: scan account 0 (legacy, covers wallets created before HD system)
     for (const change of [0, 1] as const) {
       for (let i = 0; i < ADDRESS_SCAN_LIMIT; i++) {
-        const key = wallet.getPairKey(i, { change });
-        if (key.getAddress() === address) {
-          return key;
+        if (wallet.getAddress(i, { change }) === address) {
+          return wallet.getPairKey(i, { change });
         }
       }
     }

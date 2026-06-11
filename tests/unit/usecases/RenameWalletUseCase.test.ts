@@ -19,6 +19,7 @@ function makeRepo(overrides: Partial<jest.Mocked<WalletRepository>> = {}): jest.
     findById: jest.fn(),
     rename: jest.fn().mockResolvedValue({ ...WALLET, name: 'New Name' }),
     retrieveSeed: jest.fn(),
+    retrieveRawKey: jest.fn(),
     delete: jest.fn(),
     ...overrides,
   };

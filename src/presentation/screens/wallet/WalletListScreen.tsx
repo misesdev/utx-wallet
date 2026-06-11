@@ -15,8 +15,11 @@ import { AppLoading } from '../../components/base/AppLoading';
 import { AppLogo } from '../../components/base/AppLogo';
 import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
+import { BalanceEyeButton } from '../../components/security/BalanceEyeButton';
+import { PinInputModal } from '../../components/security/PinInputModal';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
+import { useTemporaryRevealBalance } from '../../hooks/useTemporaryRevealBalance';
 import { useTheme } from '../../hooks/useTheme';
 import { useWallet } from '../../hooks/useWallet';
 import { AppRoutes } from '../../../app/navigation/routes';
@@ -103,21 +106,25 @@ function StatPill({ label, value, accent, testID, wide }: StatPillProps) {
 // WalletCard
 // ---------------------------------------------------------------------------
 
+const HIDDEN_PLACEHOLDER = '••••••';
+
 type WalletCardProps = {
   wallet: Wallet;
   summary: WalletSummary | undefined;
+  hidden: boolean;
   onOpen: () => void;
 };
 
-function WalletCard({ wallet, summary, onOpen }: WalletCardProps) {
+function WalletCard({ wallet, summary, hidden, onOpen }: WalletCardProps) {
   const { theme } = useTheme();
   const { t } = useAppTranslation();
   const accent = walletAccent(wallet);
 
-  const balanceLabel = summary?.isLoaded ? formatBalance(summary.balanceSats) : '—';
+  const rawBalance = summary?.isLoaded ? formatBalance(summary.balanceSats) : '—';
+  const balanceLabel = hidden ? HIDDEN_PLACEHOLDER : rawBalance;
   const accountLabel = summary?.isLoaded ? String(summary.accountCount) : '—';
   const utxoLabel = summary?.isLoaded ? String(summary.utxoCount) : '—';
-  const hasBalance = summary?.isLoaded && summary.balanceSats > 0;
+  const hasBalance = !hidden && summary?.isLoaded && summary.balanceSats > 0;
 
   return (
     <Pressable
@@ -304,6 +311,8 @@ export function WalletListScreen() {
   const navigation = useAppNavigation();
   const { wallets, isLoading, selectWallet, listUtxos } = useWallet();
   const { getOrigins } = useAddressManager();
+  const { hidden, hideBalanceEnabled, toggleReveal, pinModalVisible, pinError, submitPin, cancelAuth } =
+    useTemporaryRevealBalance();
 
   const NETWORK_TABS: { key: NetworkTab; label: string }[] = [
     { key: 'mainnet', label: t('walletList.mainnet') },
@@ -378,11 +387,21 @@ export function WalletListScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+      <PinInputModal
+        visible={pinModalVisible}
+        step="verify"
+        error={pinError}
+        onSubmit={submitPin}
+        onCancel={cancelAuth}
+      />
       {/* Header */}
       <View style={styles.header}>
         <AppLogo size="sm" showName={false} />
         <AppText variant="subtitle" style={styles.headerTitle}>{t('walletList.title')}</AppText>
         <View style={styles.headerActions}>
+          {hideBalanceEnabled && (
+            <BalanceEyeButton hidden={hidden} onPress={toggleReveal} testID="wallet-list-eye-btn" />
+          )}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('walletList.importWallet')}
@@ -443,6 +462,7 @@ export function WalletListScreen() {
                 key={wallet.id}
                 wallet={wallet}
                 summary={summaries[wallet.id]}
+                hidden={hidden}
                 onOpen={() => handleOpenWallet(wallet)}
               />
             ))

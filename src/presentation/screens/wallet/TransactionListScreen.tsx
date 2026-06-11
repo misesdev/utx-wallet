@@ -5,10 +5,12 @@ import { AppEmptyState } from '../../components/base/AppEmptyState';
 import { AppLoading } from '../../components/base/AppLoading';
 import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
+import { BalanceEyeButton } from '../../components/security/BalanceEyeButton';
+import { PinInputModal } from '../../components/security/PinInputModal';
 import { TransactionItem } from '../../components/wallet/TransactionItem';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
-import { useHideBalance } from '../../hooks/useHideBalance';
+import { useTemporaryRevealBalance } from '../../hooks/useTemporaryRevealBalance';
 import { useHomeWallet } from '../../hooks/useHomeWallet';
 import { useTheme } from '../../hooks/useTheme';
 import { AppRoutes } from '../../../app/navigation/routes';
@@ -24,7 +26,8 @@ export function TransactionListScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
   const { transactions, isLoading, error } = useHomeWallet();
-  const hideBalance = useHideBalance();
+  const { hidden: hideBalance, hideBalanceEnabled, toggleReveal, pinModalVisible, pinError, submitPin, cancelAuth } =
+    useTemporaryRevealBalance();
 
   const handleOpen = useCallback((tx: Transaction) => {
     navigation.navigate(AppRoutes.TransactionDetails, { txid: tx.txid ?? tx.id });
@@ -39,6 +42,13 @@ export function TransactionListScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+      <PinInputModal
+        visible={pinModalVisible}
+        step="verify"
+        error={pinError}
+        onSubmit={submitPin}
+        onCancel={cancelAuth}
+      />
       {/* Header */}
       <View style={styles.header}>
         <Pressable
@@ -53,7 +63,11 @@ export function TransactionListScreen() {
           <AppText variant="subtitle" style={styles.headerTitle}>{t('transactions.title')}</AppText>
           <AppText variant="caption" color="muted">{t('transactions.total', { count: transactions.length })}</AppText>
         </View>
-        <View style={styles.backBtn} />
+        <View style={styles.backBtn}>
+          {hideBalanceEnabled && (
+            <BalanceEyeButton hidden={hideBalance} onPress={toggleReveal} testID="transactions-eye-btn" />
+          )}
+        </View>
       </View>
 
       {/* Summary strip */}
@@ -108,7 +122,7 @@ export function TransactionListScreen() {
           {[...transactions]
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
             .map(tx => (
-              <TransactionItem key={tx.id} transaction={tx} onPress={() => handleOpen(tx)} />
+              <TransactionItem key={tx.id} transaction={tx} hidden={hideBalance} onPress={() => handleOpen(tx)} />
             ))}
         </ScrollView>
       )}

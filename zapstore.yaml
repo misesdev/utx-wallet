@@ -9,55 +9,46 @@ name: UTX Wallet
 summary: Self-custodial Bitcoin wallet with personal node and full UTXO control
 
 description: |
-  UTX Wallet is a self-custodial Bitcoin wallet built for users who take their
-  sovereignty seriously. Your keys never leave your device, your transactions
-  stay private, and you choose which node validates your data.
+  UTX Wallet is a self-custodial Bitcoin wallet for users who take sovereignty
+  seriously. Your keys never leave your device, your transactions stay private,
+  and you choose which node validates your data.
 
   YOUR KEYS, YOUR BITCOIN
 
-  UTX Wallet generates and stores your seed phrase exclusively on your device
-  using encrypted storage. Private keys are derived from your seed only at the
-  moment of signing and are never persisted anywhere.
-
-  Create a new wallet from a freshly generated 12-word BIP39 seed, or import
-  any existing wallet with a 12 or 24-word seed phrase. BIP39 passphrase
-  (25th word) is fully supported.
+  Seeds and private keys are stored exclusively on your device using encrypted
+  storage and are never transmitted anywhere. Create a wallet from a fresh
+  BIP39 mnemonic or import any 12/24-word seed phrase with optional passphrase
+  (25th word). Watch-only wallets via xpub or output descriptor are supported.
 
   PERSONAL NODE — TRUE PRIVACY
 
-  Connect to your own self-hosted Mempool.space instance so that no third party
-  ever sees your wallet data.
-
-  • Multiple personal nodes with custom priority ordering
-  • Automatic failover if a node is unreachable
-  • Public API fallback OFF by default
-  • Built-in node setup guide: Docker, Umbrel, RaspiBlitz, Start9
+  Connect to your own self-hosted Mempool.space instance. Configure multiple
+  nodes with custom priority ordering and automatic failover. Public API
+  fallback is off by default.
 
   FULL UTXO CONTROL
 
-  • View every UTXO with value, address, and confirmation status
-  • Freeze individual UTXOs to exclude from coin selection
-  • Address-grouped coin selection reduces fund traceability
-  • Replace-By-Fee (RBF) to accelerate stuck transactions
+  View every UTXO with value, address, and confirmation status. Freeze
+  individual UTXOs to exclude them from coin selection. Address-grouped coin
+  selection and Replace-By-Fee (RBF) for stuck transactions.
 
-  SEND & RECEIVE
+  MESSAGE SIGNING
 
-  • Native SegWit BIP84 addresses (bc1q)
-  • Fee presets: fast, half-hour, hour, economy — from real-time blockchain data
-  • Full transaction preview before signing
-  • QR code scanning for addresses and wallet import
+  Sign any text with your wallet key and share the result as a compact QR
+  code. Verify signatures from other wallets directly in-app.
 
   SECURITY
 
-  • PIN code + biometric (fingerprint / face) protection
-  • Auto-lock with configurable timeout
-  • Hide balance across all screens
-  • Watch-only wallet support (xpub / output descriptor)
+  • Biometric unlock on app open with PIN fallback
+  • Screenshot prevention (Android FLAG_SECURE)
+  • Seed auto-hides when switching apps
+  • PIN + biometric auto-lock with configurable timeout
+  • Balance hidden across all screens with eye-button reveal
+  • Navigation state never contains seeds or private keys
 
   OPEN SOURCE
 
-  UTX Wallet is free, open source, and contains no ads, no analytics, and no
-  telemetry. Your data belongs to you.
+  Free, open source, no ads, no analytics, no telemetry.
 
   Source: https://github.com/misesdev/utx-wallet
 

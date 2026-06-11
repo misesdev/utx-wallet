@@ -5,6 +5,11 @@ import type { Transaction } from '../../core/domain/entities/Transaction';
 import type { Utxo } from '../../core/domain/entities/Utxo';
 import type { BitcoinNetwork } from '../../core/domain/entities/Network';
 import type { SyncResult } from '../../core/domain/usecases/wallet/SyncWalletUseCase';
+import type {
+  ExportWalletKeyParams,
+  ExportWalletKeyResult,
+  WalletExportFormat,
+} from '../../core/domain/usecases/wallet/ExportWalletKeyUseCase';
 
 type WalletContextValue = {
   wallets: Wallet[];
@@ -22,6 +27,8 @@ type WalletContextValue = {
   syncWallet: (walletId: string) => Promise<SyncResult>;
   freezeUtxo: (walletId: string, txid: string, vout: number) => Promise<void>;
   unfreezeUtxo: (walletId: string, txid: string, vout: number) => Promise<void>;
+  exportWalletKey: (params: ExportWalletKeyParams) => Promise<ExportWalletKeyResult>;
+  getExportFormats: (walletId: string) => Promise<WalletExportFormat[]>;
 };
 
 export const WalletContext = createContext<WalletContextValue | null>(null);
@@ -90,6 +97,8 @@ export function WalletProvider({ children, walletService }: WalletProviderProps)
       },
       freezeUtxo: (walletId, txid, vout) => walletService.freezeUtxo(walletId, txid, vout),
       unfreezeUtxo: (walletId, txid, vout) => walletService.unfreezeUtxo(walletId, txid, vout),
+      exportWalletKey: (params) => walletService.exportWalletKey(params),
+      getExportFormats: (walletId) => walletService.getExportFormats(walletId),
     }),
     [reloadWallets, wallets, isLoading, selectedWallet, selectedWalletId, walletService],
   );

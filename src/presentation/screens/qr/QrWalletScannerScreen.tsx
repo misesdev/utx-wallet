@@ -14,6 +14,7 @@ import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Camera, useCameraDevice, useCameraPermission, useCodeScanner } from 'react-native-vision-camera';
 import { WalletImportFormatDetector } from '../../../core/domain/services/WalletImportFormatDetector';
+import { stashSensitiveData } from '../../../core/infrastructure/adapters/SensitiveDataStore';
 import type { BitcoinNetwork } from '../../../core/domain/entities/Network';
 import { AppRoutes, type AppStackParamList } from '../../../app/navigation/routes';
 import { AppIcon } from '../../components/base/AppIcon';
@@ -193,8 +194,16 @@ export function QrWalletScannerScreen() {
     }
     setError('');
     setShowManual(false);
+    if (detected.format === 'mnemonic') {
+      const importNetwork = (detected.network ?? selectedNetwork) as 'mainnet' | 'testnet';
+      navigation.navigate(AppRoutes.ImportWallet, {
+        network: importNetwork,
+        seedRef: stashSensitiveData(detected.normalizedSecret),
+      });
+      return;
+    }
     navigation.navigate(AppRoutes.ConfirmQrWalletImport, {
-      secret: detected.normalizedSecret,
+      secretRef: stashSensitiveData(detected.normalizedSecret),
       format: detected.format,
       network: detected.network ?? selectedNetwork,
       canSign: detected.canSign,

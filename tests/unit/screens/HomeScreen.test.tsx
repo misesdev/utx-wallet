@@ -192,6 +192,12 @@ describe('HomeScreen', () => {
       fireEvent.press(screen.getByLabelText('common.settings'));
       expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.Settings);
     });
+
+    it('navigates to SignatureMenu when Signature is pressed', () => {
+      const screen = renderWithTheme(<HomeScreen />);
+      fireEvent.press(screen.getByLabelText('home.signature'));
+      expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.SignatureMenu);
+    });
   });
 
   describe('Sync button', () => {

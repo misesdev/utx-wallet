@@ -269,11 +269,19 @@ describe('BuildTransactionUseCase', () => {
   });
 
   describe('Taxa alta demais', () => {
-    it('throws INSUFFICIENT_BALANCE when fee rate makes transaction unaffordable', async () => {
-      // 50_000 sats balance; at 500 sat/vB fee = (10+68+62)*500 = 70_000 → exceeds balance
+    it('throws when fee rate makes transaction unaffordable', async () => {
+      // 50_000 sats balance; at 500 sat/vB fee ≈ 70_000 → standard mode fails.
+      // Auto-drain retries in SFA mode: recipient = 1_000 - 70_000 < 0 → BELOW_DUST.
       const useCase = makeUseCase([makeUtxo(50_000)]);
       await expect(
         useCase.execute(baseParams({ amountSats: 1_000, feeRateSatsPerVByte: 500 })),
+      ).rejects.toMatchObject({ code: 'BELOW_DUST' });
+    });
+
+    it('throws INSUFFICIENT_BALANCE when amount itself exceeds balance (truly not enough funds)', async () => {
+      const useCase = makeUseCase([makeUtxo(500)]);
+      await expect(
+        useCase.execute(baseParams({ amountSats: 100_000 })),
       ).rejects.toMatchObject({ code: 'INSUFFICIENT_BALANCE' });
     });
   });
@@ -381,6 +389,76 @@ describe('BuildTransactionUseCase', () => {
       await expect(
         useCase.execute(baseParams({ amountSats: 7_100, feeRateSatsPerVByte: 50, subtractFeeFromAmount: true })),
       ).rejects.toMatchObject({ code: 'BELOW_DUST' });
+    });
+
+    it('succeeds when amountSats equals full balance (max send SFA mode)', async () => {
+      const balance = 50_000;
+      const useCase = makeUseCase([makeUtxo(balance)]);
+      // Sending entire balance in SFA mode: fee comes from the amount, not on top
+      const result = await useCase.execute(
+        baseParams({ amountSats: balance, subtractFeeFromAmount: true }),
+      );
+      const recipientOutput = result.outputs.find(o => !o.isChange)!;
+      expect(recipientOutput.amountSats).toBe(balance - result.feeSats);
+      expect(result.changeSats).toBe(0);
+    });
+
+    it('balance is conserved in SFA mode: inputs = recipientAmount + fee + change', async () => {
+      const balance = 500_000;
+      const useCase = makeUseCase([makeUtxo(balance)]);
+      const result = await useCase.execute(baseParams({ amountSats: 100_000, subtractFeeFromAmount: true }));
+      const inputTotal = result.inputs.reduce((s, i) => s + i.valueSats, 0);
+      expect(inputTotal).toBe(result.amountSats + result.feeSats + result.changeSats);
+    });
+  });
+
+  describe('auto-drain (standard mode + max balance)', () => {
+    it('builds successfully when standard mode would fail due to no room for fee', async () => {
+      const balance = 50_000;
+      const useCase = makeUseCase([makeUtxo(balance)]);
+      // Standard mode requires balance >= amountSats + fee, but balance == amountSats
+      // The use case must auto-switch to SFA mode
+      const result = await useCase.execute(
+        baseParams({ amountSats: balance, subtractFeeFromAmount: false }),
+      );
+      expect(result.status).toBe('built');
+    });
+
+    it('auto-drain: recipient receives amountSats minus fee', async () => {
+      const balance = 50_000;
+      const useCase = makeUseCase([makeUtxo(balance)]);
+      const result = await useCase.execute(
+        baseParams({ amountSats: balance, subtractFeeFromAmount: false }),
+      );
+      const recipientOutput = result.outputs.find(o => !o.isChange)!;
+      expect(recipientOutput.amountSats).toBe(balance - result.feeSats);
+    });
+
+    it('auto-drain: no change output when sending full balance', async () => {
+      const balance = 50_000;
+      const useCase = makeUseCase([makeUtxo(balance)]);
+      const result = await useCase.execute(
+        baseParams({ amountSats: balance, subtractFeeFromAmount: false }),
+      );
+      expect(result.changeSats).toBe(0);
+      expect(result.outputs.every(o => !o.isChange)).toBe(true);
+    });
+
+    it('auto-drain: balance conserved — inputs = recipient + fee', async () => {
+      const balance = 50_000;
+      const useCase = makeUseCase([makeUtxo(balance)]);
+      const result = await useCase.execute(
+        baseParams({ amountSats: balance, subtractFeeFromAmount: false }),
+      );
+      const inputTotal = result.inputs.reduce((s, i) => s + i.valueSats, 0);
+      expect(inputTotal).toBe(result.amountSats + result.feeSats);
+    });
+
+    it('still throws INSUFFICIENT_BALANCE when balance is truly too small for either mode', async () => {
+      const useCase = makeUseCase([makeUtxo(500)]);
+      await expect(
+        useCase.execute(baseParams({ amountSats: 100_000, subtractFeeFromAmount: false })),
+      ).rejects.toMatchObject({ code: 'INSUFFICIENT_BALANCE' });
     });
   });
 

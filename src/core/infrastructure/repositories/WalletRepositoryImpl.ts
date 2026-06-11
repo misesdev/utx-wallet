@@ -1,7 +1,7 @@
 import { HDWallet } from 'bitcoin-tx-lib';
 import type { Wallet } from '../../domain/entities/Wallet';
 import type { BitcoinNetwork } from '../../domain/entities/Network';
-import type { WalletRepository } from '../../domain/repositories/WalletRepository';
+import type { WalletRepository, RawWalletKey } from '../../domain/repositories/WalletRepository';
 import { AppError } from '../../application/errors/AppError';
 import { DEFAULT_NETWORK } from '../../../shared/constants/networks';
 import { NetworkType } from '../../domain/value-objects/NetworkType';
@@ -119,6 +119,12 @@ export class WalletRepositoryImpl implements WalletRepository {
     const key = await this.walletKeyStorage.retrieveKey(id);
     if (!key) return null;
     return { mnemonic: key.mnemonic, passphrase: key.passphrase };
+  }
+
+  async retrieveRawKey(id: string): Promise<RawWalletKey | null> {
+    const key = await this.walletKeyStorage.retrieveKey(id);
+    if (!key) return null;
+    return { kind: key.kind, secret: key.secret, passphrase: key.passphrase };
   }
 
   async delete(id: string): Promise<void> {

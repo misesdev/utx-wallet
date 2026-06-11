@@ -56,11 +56,23 @@ export class BuildTransactionUseCase {
       ? utxos.filter(u => params.allowedAddresses!.includes(u.address))
       : utxos;
     const feeRate = Math.max(params.feeRateSatsPerVByte, 1);
-    const { selectedUtxos, totalInputSats } = this.coinSelection.select(
-      eligibleUtxos,
-      params.amountSats,
-      feeRate,
-    );
+
+    // Determine effective fee mode. In standard mode, if the balance cannot
+    // cover amount + fee (drain scenario), auto-switch to SFA so the fee is
+    // deducted from the amount — otherwise the transaction is impossible.
+    let effectiveSubtractFee = params.subtractFeeFromAmount ?? false;
+    let selectionResult = (() => {
+      try {
+        return this.coinSelection.select(eligibleUtxos, params.amountSats, feeRate, effectiveSubtractFee);
+      } catch (err) {
+        if (!effectiveSubtractFee && err instanceof AppError && err.code === 'INSUFFICIENT_BALANCE') {
+          effectiveSubtractFee = true;
+          return this.coinSelection.select(eligibleUtxos, params.amountSats, feeRate, true);
+        }
+        throw err;
+      }
+    })();
+    const { selectedUtxos, totalInputSats } = selectionResult;
 
     // ── Change address — prefer HD system, fall back to legacy provider ────────
     let changeAddress: string;
@@ -89,9 +101,7 @@ export class BuildTransactionUseCase {
       scriptPubKey: Address.getScriptPubkey(u.address),
     }));
 
-    const subtractFeeFromAmount = params.subtractFeeFromAmount ?? false;
-
-    if (subtractFeeFromAmount) {
+    if (effectiveSubtractFee) {
       // SFA mode: fee is deducted from the amount going to the recipient
       let feeSats = this.feeEstimation.estimateFeeSats(selectedUtxos.length, 2, feeRate);
       const { recipientAmountSats: initialRecipient } =

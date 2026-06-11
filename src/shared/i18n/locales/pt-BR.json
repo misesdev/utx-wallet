@@ -23,7 +23,9 @@
     "account": "Conta {{accountIndex}}",
     "loadingAccounts": "Carregando contas…",
     "qrCode": "QR",
-    "info": "Info"
+    "info": "Info",
+    "revealBalance": "Mostrar saldos",
+    "hideBalance": "Ocultar saldos"
   },
   "welcome": {
     "tagline": "Suas chaves. Seu Bitcoin.",
@@ -51,6 +53,7 @@
     "utxos": "UTXOs",
     "addresses": "Endereços",
     "segregation": "Segregação",
+    "signature": "Assinatura",
     "errorLoadWalletData": "Falha ao carregar dados da carteira. Puxe para atualizar.",
     "errorSyncFailed": "Falha ao sincronizar. Tente novamente."
   },
@@ -133,7 +136,8 @@
     "errorSeedRequired": "Seed phrase é obrigatória",
     "errorInvalidSeed": "Seed phrase inválida. Revise as palavras e tente novamente.",
     "errorWalletExists": "Uma carteira chamada \"{{name}}\" já existe.",
-    "errorImportFailed": "Falha ao importar carteira. Tente novamente."
+    "errorImportFailed": "Falha ao importar carteira. Tente novamente.",
+    "scanQr": "Ler QR"
   },
   "walletSetup": {
     "step1Label": "Importando chaves",
@@ -204,8 +208,8 @@
     "speedCustom": "manual",
     "customFeePlaceholder": "sats por vByte",
     "payFee": "Deduzir taxa do valor",
-    "payFeeHint": "A taxa é deduzida do valor enviado",
-    "noPayFeeHint": "A taxa é somada ao valor enviado",
+    "payFeeHint": "A taxa é somada ao valor enviado",
+    "noPayFeeHint": "A taxa é deduzida do valor enviado",
     "recipientReceives": "Destinatário recebe"
   },
   "txReview": {
@@ -354,7 +358,27 @@
     "addresses": "Endereços",
     "addressesDesc": "Gerencie seus endereços Bitcoin",
     "utxos": "UTXOs",
-    "utxosDesc": "Visualize e gerencie seus UTXOs"
+    "utxosDesc": "Visualize e gerencie seus UTXOs",
+    "export": "Exportar",
+    "exportDesc": "Exporte as chaves da carteira"
+  },
+  "walletExport": {
+    "title": "Exportar Carteira",
+    "chooseFormat": "Escolha o formato de exportação",
+    "formatMnemonic": "Mnemônico",
+    "formatMnemonicDesc": "Frase de recuperação de 12 a 24 palavras",
+    "formatXpriv": "xpriv",
+    "formatXprivDesc": "Chave privada estendida",
+    "formatXpub": "xpub",
+    "formatXpubDesc": "Chave pública estendida",
+    "formatWif": "WIF",
+    "formatWifDesc": "Chave privada em formato WIF",
+    "exportedKey": "Chave Exportada",
+    "warningTitle": "Dado Sensível",
+    "warningBody": "Nunca compartilhe esta chave. Quem tiver acesso pode controlar sua carteira.",
+    "copied": "Copiado!",
+    "loadError": "Erro ao exportar a chave",
+    "loading": "Exportando…"
   },
   "language": {
     "title": "Selecionar idioma",
@@ -680,5 +704,40 @@
     "s6Body": "Uma vez que um endereço foi gasto, ele é permanentemente desativado. Nunca será sugerido para recebimento novamente. O troco sempre vai para um endereço de troco novo, nunca de volta ao endereço de origem. Isso impede que observadores da blockchain vinculem suas transações.",
     "s7Title": "Suas Chaves Permanecem Privadas",
     "s7Body": "Chaves privadas nunca são armazenadas no banco de endereços. Apenas dados públicos são mantidos — caminhos de derivação, saldos e referências de transações. Sua chave privada é derivada da seed somente no momento da assinatura, sendo imediatamente descartada da memória."
+  },
+  "signature": {
+    "menuTitle": "Assinatura",
+    "menuSubtitle": "Assine ou verifique conteúdo com a chave da sua carteira",
+    "signOption": "Assinar conteúdo",
+    "signOptionDesc": "Assine qualquer texto com a chave privada da sua carteira",
+    "verifyOption": "Verificar assinatura",
+    "verifyOptionDesc": "Verifique uma assinatura usando a chave pública",
+    "signTitle": "Assinar conteúdo",
+    "contentLabel": "Conteúdo",
+    "contentPlaceholder": "Digite o conteúdo que deseja assinar…",
+    "signAction": "Assinar conteúdo",
+    "resultTitle": "Assinatura",
+    "resultContentLabel": "Conteúdo assinado",
+    "resultPubkeyLabel": "Chave pública",
+    "copyAction": "Copiar",
+    "shareAction": "Compartilhar",
+    "verifyTitle": "Verificar assinatura",
+    "pubkeyLabel": "Chave pública",
+    "pubkeyPlaceholder": "Chave pública comprimida (hex)",
+    "contentVerifyLabel": "Conteúdo",
+    "contentVerifyPlaceholder": "O conteúdo original que foi assinado",
+    "sigLabel": "Assinatura",
+    "sigPlaceholder": "Assinatura DER (hex)",
+    "scanQr": "Ler QR",
+    "verifyAction": "Verificar",
+    "validSignature": "Assinatura válida",
+    "invalidSignature": "Assinatura inválida",
+    "validDesc": "A assinatura é autêntica e corresponde ao conteúdo.",
+    "invalidDesc": "A assinatura não confere ou os dados estão incorretos.",
+    "watchOnlyError": "Carteiras somente leitura não podem assinar conteúdo.",
+    "errorContentRequired": "O conteúdo é obrigatório.",
+    "errorPubkeyRequired": "A chave pública é obrigatória.",
+    "errorSigRequired": "A assinatura é obrigatória.",
+    "errorSignFailed": "Falha ao assinar conteúdo. Tente novamente."
   }
 }

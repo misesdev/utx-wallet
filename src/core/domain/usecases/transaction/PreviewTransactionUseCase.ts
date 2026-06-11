@@ -44,9 +44,15 @@ export class PreviewTransactionUseCase {
       .filter(u => u.isConfirmed)
       .reduce((sum, u) => sum + u.valueSats, 0);
 
-    const subtractFeeFromAmount = params.subtractFeeFromAmount ?? false;
+    // In standard mode, if amount + fee exceeds the balance but amount alone
+    // fits, auto-switch to SFA (drain) so the full balance can be swept.
+    const requestedSubtractFee = params.subtractFeeFromAmount ?? false;
+    const effectiveSubtractFee =
+      !requestedSubtractFee && params.amountSats + feeSats > confirmedSats && params.amountSats <= confirmedSats
+        ? true
+        : requestedSubtractFee;
 
-    if (subtractFeeFromAmount) {
+    if (effectiveSubtractFee) {
       // SFA mode: fee is deducted from the amount going to the recipient
       if (params.amountSats > confirmedSats) {
         throw new AppError('Saldo insuficiente', 'INSUFFICIENT_BALANCE');

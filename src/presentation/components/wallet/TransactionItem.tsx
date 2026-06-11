@@ -10,6 +10,8 @@ import { AppIcon } from '../base/AppIcon';
 type TransactionItemProps = {
   transaction: Transaction;
   onPress?: () => void;
+  /** Override the global hideBalance setting for per-screen reveal. */
+  hidden?: boolean;
 };
 
 function formatDate(iso: string): string {
@@ -26,10 +28,11 @@ const STATUS_KEY: Record<Transaction['status'], string> = {
   failed: 'transactions.failed',
 };
 
-export function TransactionItem({ transaction, onPress }: TransactionItemProps) {
+export function TransactionItem({ transaction, onPress, hidden: hiddenProp }: TransactionItemProps) {
   const { theme } = useTheme();
   const { t } = useAppTranslation();
-  const hideBalance = useHideBalance();
+  const globalHideBalance = useHideBalance();
+  const hideBalance = hiddenProp !== undefined ? hiddenProp : globalHideBalance;
   const isIncoming = transaction.direction === 'incoming';
 
   const accentColor = isIncoming ? theme.colors.success : theme.colors.text;

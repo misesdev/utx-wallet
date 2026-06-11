@@ -48,6 +48,9 @@ export const ICON_NAMES = {
   safeMode: 'lock-closed-outline',
   key: 'key-outline',
 
+  export: 'arrow-up-circle-outline',
+  sign: 'pencil-outline',
+
   // Editing
   edit: 'pencil-outline',
   trash: 'trash-outline',

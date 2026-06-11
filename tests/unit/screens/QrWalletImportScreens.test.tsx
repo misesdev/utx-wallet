@@ -4,6 +4,7 @@ import { HDWallet } from 'bitcoin-tx-lib';
 import { QrWalletScannerScreen } from '../../../src/presentation/screens/qr/QrWalletScannerScreen';
 import { ConfirmQrWalletImportScreen } from '../../../src/presentation/screens/qr/ConfirmQrWalletImportScreen';
 import { renderWithTheme } from '../../mocks/renderWithProviders';
+import { stashSensitiveData } from '../../../src/core/infrastructure/adapters/SensitiveDataStore';
 
 const mockNavigate = jest.fn();
 const mockGoBack = jest.fn();
@@ -65,6 +66,58 @@ describe('QrWalletImportScreens', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
+  it('navigates to ImportWallet with seedRef (not raw seed) when a mnemonic is scanned', async () => {
+    mockRoute = { params: { network: 'testnet' } };
+    const { useCodeScanner } = require('react-native-vision-camera');
+    const { popSensitiveData } = require('../../../src/core/infrastructure/adapters/SensitiveDataStore');
+    renderWithTheme(<QrWalletScannerScreen />);
+
+    await act(async () => {
+      const { __onCodeScanned } = useCodeScanner.mock.results[0].value;
+      __onCodeScanned([{ value: MNEMONIC, type: 'qr' }]);
+    });
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('ImportWallet', expect.objectContaining({
+      network: 'testnet',
+    })));
+
+    // The raw seed must NOT be in the nav params — only an opaque ref key
+    const callArg = mockNavigate.mock.calls[0][1];
+    expect(callArg.seed).toBeUndefined();
+    expect(typeof callArg.seedRef).toBe('string');
+    // Popping the ref from the store should return the actual mnemonic
+    expect(popSensitiveData(callArg.seedRef)).toBe(MNEMONIC);
+  });
+
+  it('navigates to ImportWallet with mainnet when mainnet mnemonic-like QR is scanned on mainnet', async () => {
+    mockRoute = { params: { network: 'mainnet' } };
+    const { useCodeScanner } = require('react-native-vision-camera');
+    renderWithTheme(<QrWalletScannerScreen />);
+
+    await act(async () => {
+      const { __onCodeScanned } = useCodeScanner.mock.results[0].value;
+      __onCodeScanned([{ value: MNEMONIC, type: 'qr' }]);
+    });
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('ImportWallet', expect.objectContaining({
+      network: 'mainnet',
+      seedRef: expect.any(String),
+    })));
+  });
+
+  it('does NOT navigate to ConfirmQrWalletImport when a mnemonic is scanned', async () => {
+    mockRoute = { params: { network: 'testnet' } };
+    const { useCodeScanner } = require('react-native-vision-camera');
+    renderWithTheme(<QrWalletScannerScreen />);
+
+    await act(async () => {
+      const { __onCodeScanned } = useCodeScanner.mock.results[0].value;
+      __onCodeScanned([{ value: MNEMONIC, type: 'qr' }]);
+    });
+
+    await waitFor(() => expect(mockNavigate).not.toHaveBeenCalledWith('ConfirmQrWalletImport', expect.anything()));
+  });
+
   it('navigates to confirmation when a valid xpub is scanned by camera', async () => {
     mockRoute = { params: { network: 'mainnet' } };
     const { wallet } = HDWallet.import(MNEMONIC, undefined, { network: 'mainnet', purpose: 44 });
@@ -84,10 +137,26 @@ describe('QrWalletImportScreens', () => {
     })));
   });
 
+  it('navigates to ConfirmQrWalletImport when a valid xpub is scanned (not to ImportWallet)', async () => {
+    mockRoute = { params: { network: 'mainnet' } };
+    const { wallet } = HDWallet.import(MNEMONIC, undefined, { network: 'mainnet', purpose: 44 });
+    const { useCodeScanner } = require('react-native-vision-camera');
+    renderWithTheme(<QrWalletScannerScreen />);
+
+    await act(async () => {
+      const { __onCodeScanned } = useCodeScanner.mock.results[0].value;
+      __onCodeScanned([{ value: wallet.getXPub(), type: 'qr' }]);
+    });
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('ConfirmQrWalletImport', expect.anything()));
+    expect(mockNavigate).not.toHaveBeenCalledWith('ImportWallet', expect.anything());
+  });
+
   it('imports the confirmed QR wallet after the user defines a name', async () => {
+    const secret = 'tpubD6NzVbkrYhZ4Xexample';
     mockRoute = {
       params: {
-        secret: 'tpubD6NzVbkrYhZ4Xexample',
+        secretRef: stashSensitiveData(secret),
         format: 'watch-only',
         network: 'testnet',
         canSign: false,
@@ -99,14 +168,14 @@ describe('QrWalletImportScreens', () => {
     fireEvent.changeText(screen.getByTestId('qr-wallet-name-input'), 'Read only');
     fireEvent.press(screen.getByTestId('qr-import-submit'));
 
-    await waitFor(() => expect(mockImportWallet).toHaveBeenCalledWith('Read only', 'tpubD6NzVbkrYhZ4Xexample', 'testnet'));
+    await waitFor(() => expect(mockImportWallet).toHaveBeenCalledWith('Read only', secret, 'testnet'));
     expect(mockNavigationReset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'WalletList' }] });
   });
 
   it('requires a wallet name before importing', () => {
     mockRoute = {
       params: {
-        secret: 'secret',
+        secretRef: stashSensitiveData('secret'),
         format: 'wif',
         network: 'testnet',
         canSign: true,

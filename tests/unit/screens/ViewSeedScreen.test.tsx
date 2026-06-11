@@ -1,4 +1,5 @@
 import React from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import { ViewSeedScreen } from '../../../src/presentation/screens/wallet/ViewSeedScreen';
 import { renderWithTheme } from '../../mocks/renderWithProviders';
@@ -167,6 +168,61 @@ describe('ViewSeedScreen', () => {
     it('shows security tips', () => {
       const screen = renderWithTheme(<ViewSeedScreen />);
       expect(screen.getByText('backupSeed.neverShare')).toBeTruthy();
+    });
+  });
+
+  describe('app-switch privacy: seed hidden on background/inactive', () => {
+    let appStateListeners: Array<(state: AppStateStatus) => void>;
+    let addEventListenerSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      appStateListeners = [];
+      addEventListenerSpy = jest
+        .spyOn(AppState, 'addEventListener')
+        .mockImplementation((event, handler) => {
+          if (event === 'change') {
+            appStateListeners.push(handler as (state: AppStateStatus) => void);
+          }
+          return { remove: jest.fn() };
+        });
+    });
+
+    afterEach(() => {
+      addEventListenerSpy.mockRestore();
+    });
+
+    it('hides seed when app goes to background', async () => {
+      const screen = renderWithTheme(<ViewSeedScreen />);
+
+      await act(async () => { fireEvent.press(screen.getByLabelText('backupSeed.tapReveal')); });
+      await waitFor(() => expect(screen.getByTestId('seed-grid')).toBeTruthy());
+
+      await act(async () => { appStateListeners.forEach(l => l('background')); });
+
+      await waitFor(() => expect(screen.queryByTestId('seed-grid')).toBeNull());
+      expect(screen.getByText('backupSeed.tapReveal')).toBeTruthy();
+    });
+
+    it('hides seed when app becomes inactive (task switcher)', async () => {
+      const screen = renderWithTheme(<ViewSeedScreen />);
+
+      await act(async () => { fireEvent.press(screen.getByLabelText('backupSeed.tapReveal')); });
+      await waitFor(() => expect(screen.getByTestId('seed-grid')).toBeTruthy());
+
+      await act(async () => { appStateListeners.forEach(l => l('inactive')); });
+
+      await waitFor(() => expect(screen.queryByTestId('seed-grid')).toBeNull());
+    });
+
+    it('does not hide seed when app returns to active', async () => {
+      const screen = renderWithTheme(<ViewSeedScreen />);
+
+      await act(async () => { fireEvent.press(screen.getByLabelText('backupSeed.tapReveal')); });
+      await waitFor(() => expect(screen.getByTestId('seed-grid')).toBeTruthy());
+
+      await act(async () => { appStateListeners.forEach(l => l('active')); });
+
+      expect(screen.getByTestId('seed-grid')).toBeTruthy();
     });
   });
 });

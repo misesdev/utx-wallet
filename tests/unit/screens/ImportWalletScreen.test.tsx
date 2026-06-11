@@ -58,7 +58,7 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
-let mockRouteParams: { network?: 'mainnet' | 'testnet' } | undefined;
+let mockRouteParams: { network?: 'mainnet' | 'testnet'; seedRef?: string } | undefined;
 
 jest.mock('@react-navigation/native', () => ({
   useRoute: () => ({ params: mockRouteParams }),
@@ -109,6 +109,33 @@ describe('ImportWalletScreen', () => {
   it('renders the import button', () => {
     const screen = renderWithTheme(<ImportWalletScreen />);
     expect(screen.getByLabelText('importWallet.importAction')).toBeTruthy();
+  });
+
+  it('renders the scan QR button', () => {
+    const screen = renderWithTheme(<ImportWalletScreen />);
+    expect(screen.getByTestId('import-scan-qr-btn')).toBeTruthy();
+  });
+
+  it('navigates to ScanWalletQr when scan QR button is pressed', () => {
+    const screen = renderWithTheme(<ImportWalletScreen />);
+    fireEvent.press(screen.getByTestId('import-scan-qr-btn'));
+    expect(mockNavigate).toHaveBeenCalledWith('ScanWalletQr', { network: 'testnet' });
+  });
+
+  it('navigates to ScanWalletQr with mainnet when route params specify mainnet', () => {
+    mockRouteParams = { network: 'mainnet' };
+    const screen = renderWithTheme(<ImportWalletScreen />);
+    fireEvent.press(screen.getByTestId('import-scan-qr-btn'));
+    expect(mockNavigate).toHaveBeenCalledWith('ScanWalletQr', { network: 'mainnet' });
+  });
+
+  it('pre-fills seed from route params when navigating back from QR scanner', () => {
+    const mnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+    // Stash the sensitive value and pass only the reference key via route params
+    const { stashSensitiveData } = require('../../../src/core/infrastructure/adapters/SensitiveDataStore');
+    mockRouteParams = { network: 'testnet', seedRef: stashSensitiveData(mnemonic) };
+    renderWithTheme(<ImportWalletScreen />);
+    expect(mockSetSeed).toHaveBeenCalledWith(mnemonic);
   });
 
   it('calls setWalletName when name input changes', () => {

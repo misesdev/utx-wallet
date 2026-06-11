@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppError } from '../../../core/application/errors/AppError';
 import { AppRoutes, type AppStackParamList } from '../../../app/navigation/routes';
+import { popSensitiveData } from '../../../core/infrastructure/adapters/SensitiveDataStore';
 import type { WalletImportFormat } from '../../../core/domain/services/WalletImportFormatDetector';
 import { AppButton } from '../../components/base/AppButton';
 import { AppIcon } from '../../components/base/AppIcon';
@@ -43,6 +44,13 @@ export function ConfirmQrWalletImportScreen() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Pop the actual secret on mount — it lives only in memory, never in nav state
+  const secretRef = useRef('');
+  useEffect(() => {
+    secretRef.current = popSensitiveData(route.params.secretRef) ?? '';
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const formatLabel = useMemo(
     () => t(FORMAT_LABEL_KEYS[route.params.format]),
     [route.params.format, t],
@@ -62,7 +70,7 @@ export function ConfirmQrWalletImportScreen() {
     setIsLoading(true);
     setError('');
     try {
-      await importWallet(trimmedName, route.params.secret, route.params.network);
+      await importWallet(trimmedName, secretRef.current, route.params.network);
       navigation.reset({ index: 0, routes: [{ name: AppRoutes.WalletList }] });
     } catch (err) {
       if (err instanceof AppError && err.code === 'WALLET_EXISTS') {

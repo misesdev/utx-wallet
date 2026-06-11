@@ -8,7 +8,12 @@ export type CoinSelectionResult = {
 };
 
 export interface ICoinSelectionService {
-  select(utxos: Utxo[], amountSats: number, feeRateSatsPerVByte: number): CoinSelectionResult;
+  select(
+    utxos: Utxo[],
+    amountSats: number,
+    feeRateSatsPerVByte: number,
+    subtractFeeFromAmount?: boolean,
+  ): CoinSelectionResult;
 }
 
 // Always assume two outputs (recipient + change) during selection so the fee
@@ -18,7 +23,12 @@ const ASSUMED_OUTPUT_COUNT = 2;
 export class CoinSelectionService implements ICoinSelectionService {
   constructor(private readonly feeEstimation: IFeeEstimationService) {}
 
-  select(utxos: Utxo[], amountSats: number, feeRateSatsPerVByte: number): CoinSelectionResult {
+  select(
+    utxos: Utxo[],
+    amountSats: number,
+    feeRateSatsPerVByte: number,
+    subtractFeeFromAmount = false,
+  ): CoinSelectionResult {
     // Group available UTXOs by address (confirmed, non-frozen only).
     // Policy: selecting any UTXO from an address means spending ALL UTXOs of that address.
     const groupsByAddress = new Map<string, Utxo[]>();
@@ -49,7 +59,10 @@ export class CoinSelectionService implements ICoinSelectionService {
         feeRateSatsPerVByte,
       );
 
-      if (totalInputSats >= amountSats + feeSats) {
+      // In SFA mode the fee comes out of amountSats, so inputs only need to
+      // cover amountSats. In standard mode the fee is an extra cost on top.
+      const required = subtractFeeFromAmount ? amountSats : amountSats + feeSats;
+      if (totalInputSats >= required) {
         return { selectedUtxos: selected, totalInputSats };
       }
     }

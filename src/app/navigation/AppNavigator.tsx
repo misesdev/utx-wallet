@@ -14,6 +14,8 @@ import { ManageNodesScreen } from '../../presentation/screens/settings/ManageNod
 import { SecuritySettingsScreen } from '../../presentation/screens/settings/SecuritySettingsScreen';
 import { LanguageScreen } from '../../presentation/screens/settings/LanguageScreen';
 import { SettingsScreen } from '../../presentation/screens/settings/SettingsScreen';
+import { ExportWalletFormatScreen } from '../../presentation/screens/settings/ExportWalletFormatScreen';
+import { ExportWalletKeyScreen } from '../../presentation/screens/settings/ExportWalletKeyScreen';
 import { DonationScreen } from '../../presentation/screens/donation/DonationScreen';
 import { AccountDetailsScreen } from '../../presentation/screens/wallet/AccountDetailsScreen';
 import { AddressesScreen } from '../../presentation/screens/wallet/AddressesScreen';
@@ -38,6 +40,11 @@ import { NodeTutorialScreen } from '../../presentation/screens/info/NodeTutorial
 import { WalletPolicyScreen } from '../../presentation/screens/info/WalletPolicyScreen';
 import { AddressPolicyScreen } from '../../presentation/screens/info/AddressPolicyScreen';
 import { AccountPolicyScreen } from '../../presentation/screens/info/AccountPolicyScreen';
+import { SignatureMenuScreen } from '../../presentation/screens/signature/SignatureMenuScreen';
+import { SignContentScreen } from '../../presentation/screens/signature/SignContentScreen';
+import { SignatureResultScreen } from '../../presentation/screens/signature/SignatureResultScreen';
+import { VerifySignatureScreen } from '../../presentation/screens/signature/VerifySignatureScreen';
+import { ScanTextQrScreen } from '../../presentation/screens/qr/ScanTextQrScreen';
 import type { AppStackParamList } from './routes';
 import { AppRoutes } from './routes';
 
@@ -85,6 +92,13 @@ export function AppNavigator() {
         <Stack.Screen name={AppRoutes.WalletPolicy} component={WalletPolicyScreen} />
         <Stack.Screen name={AppRoutes.AddressPolicy} component={AddressPolicyScreen} />
         <Stack.Screen name={AppRoutes.AccountPolicy} component={AccountPolicyScreen} />
+        <Stack.Screen name={AppRoutes.ExportWalletFormat} component={ExportWalletFormatScreen} />
+        <Stack.Screen name={AppRoutes.ExportWalletKey} component={ExportWalletKeyScreen} />
+        <Stack.Screen name={AppRoutes.SignatureMenu} component={SignatureMenuScreen} />
+        <Stack.Screen name={AppRoutes.SignContent} component={SignContentScreen} />
+        <Stack.Screen name={AppRoutes.SignatureResult} component={SignatureResultScreen} />
+        <Stack.Screen name={AppRoutes.VerifySignature} component={VerifySignatureScreen} />
+        <Stack.Screen name={AppRoutes.ScanTextQr} component={ScanTextQrScreen} />
       </Stack.Navigator>
     </CreateWalletProvider>
   );

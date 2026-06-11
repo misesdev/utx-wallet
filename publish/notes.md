@@ -1,35 +1,50 @@
-UTX Wallet v1.2
+UTX Wallet v1.3
 
 ── WHAT'S NEW ──────────────────────────────────────────────
 
+• Message signing
+  Sign any text with your wallet key and share the result
+  as a compact QR code. Verify signatures from other wallets
+  directly in-app — no third-party tools needed.
+
+• Balance privacy eye button
+  When "Hide Balances" is on, a tap on the eye button
+  temporarily reveals balances on that screen after PIN
+  verification. Tap again to re-hide instantly — no need
+  to visit settings.
+
+• Biometric unlock on app open
+  If a PIN is configured the app now tries biometric
+  authentication (fingerprint or face) first when opening,
+  falling back to PIN automatically. Sensitive flows
+  (send, view seed) continue to require the PIN so you
+  never forget it.
+
+• Screenshot prevention
+  Enabling "Block Screenshots" now enforces Android
+  FLAG_SECURE: the OS blocks screenshots, screen recording,
+  and hides the app thumbnail in the recent-apps switcher.
+
+• Seed auto-hides on app switch
+  The recovery phrase is cleared from the screen the
+  moment you switch away from the app, so it never
+  appears in the task switcher.
+
+• Navigation param hardening
+  Seeds and private keys are no longer stored in navigation
+  state. Sensitive values are held in an in-memory store
+  and consumed on first read, reducing the attack surface
+  if navigation state is ever inspected.
+
+── PREVIOUS RELEASE (v1.2) ─────────────────────────────────
+
 • Wallet import with adaptive address discovery
-  Scans the blockchain to recover your full transaction
-  history automatically on import.
-
-• Multi-account support
-  Each wallet supports multiple BIP44 accounts with
-  independent address pools and balance tracking.
-
-• Address segregation
-  Coin selection is grouped by account and address origin,
-  reducing cross-account fund traceability.
-
-• Personal node management
-  Configure multiple Mempool.space nodes with custom
-  priority order and automatic failover.
-
-• Node setup guide
-  Built-in tutorial for self-hosting on Docker, Umbrel,
-  RaspiBlitz, and Start9.
-
+• Multi-account support (BIP44)
+• Address segregation and coin control
+• Multiple personal nodes with priority and failover
+• Node setup guide (Docker, Umbrel, RaspiBlitz, Start9)
 • Account policy screen
-  In-app explanation of BIP84 address derivation and
-  account isolation.
-
-• Navigation hardening
-  Back-button is blocked after terminal flows (wallet
-  created, imported, deleted, transaction sent) to prevent
-  accidental re-entry.
+• Navigation hardening after terminal flows
 
 ── ABOUT UTX WALLET ────────────────────────────────────────
 

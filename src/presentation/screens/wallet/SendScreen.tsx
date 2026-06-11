@@ -7,8 +7,10 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
 import { AddressInput } from '../../components/wallet/AddressInput';
+import { BalanceEyeButton } from '../../components/security/BalanceEyeButton';
+import { PinInputModal } from '../../components/security/PinInputModal';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
-import { useHideBalance } from '../../hooks/useHideBalance';
+import { useTemporaryRevealBalance } from '../../hooks/useTemporaryRevealBalance';
 import { useSendBitcoin } from '../../hooks/useSendBitcoin';
 import { useTheme } from '../../hooks/useTheme';
 import type { AppStackParamList } from '../../../app/navigation/routes';
@@ -38,7 +40,8 @@ export function SendScreen() {
     originName = undefined;
   }
 
-  const hideBalance = useHideBalance();
+  const { hidden: hideBalance, hideBalanceEnabled, toggleReveal, pinModalVisible, pinError, submitPin, cancelAuth } =
+    useTemporaryRevealBalance();
 
   const {
     toAddress,
@@ -97,6 +100,13 @@ export function SendScreen() {
       style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      <PinInputModal
+        visible={pinModalVisible}
+        step="verify"
+        error={pinError}
+        onSubmit={submitPin}
+        onCancel={cancelAuth}
+      />
       {/* Header */}
       <View style={styles.header}>
         <Pressable
@@ -147,9 +157,14 @@ export function SendScreen() {
       {/* Available balance */}
       <View style={styles.balanceRow}>
         <AppText variant="caption" color="muted">{t('send.available')}</AppText>
-        <AppText variant="body" testID="available-balance">
-          {hideBalance ? '••••••' : `${formatSats(availableBalanceSats)} ${t('common.sats')}`}
-        </AppText>
+        <View style={styles.balanceValueRow}>
+          <AppText variant="body" testID="available-balance">
+            {hideBalance ? '••••••' : `${formatSats(availableBalanceSats)} ${t('common.sats')}`}
+          </AppText>
+          {hideBalanceEnabled && (
+            <BalanceEyeButton hidden={hideBalance} onPress={toggleReveal} testID="send-eye-btn" />
+          )}
+        </View>
       </View>
 
       {/* Scrollable content — keeps amount centred and address always above keyboard */}
@@ -300,6 +315,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 6,
+  },
+  balanceValueRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
   },
 
   // Scroll container — flexGrow fills available height so amountSection can flex inside

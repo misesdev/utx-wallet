@@ -1,5 +1,6 @@
 import type { BitcoinNetwork } from '../../core/domain/entities/Network';
 import type { WalletImportFormat } from '../../core/domain/services/WalletImportFormatDetector';
+import type { WalletExportFormat } from '../../core/domain/usecases/wallet/ExportWalletKeyUseCase';
 
 export const AuthRoutes = {
   Welcome: 'Welcome',
@@ -48,6 +49,13 @@ export const AppRoutes = {
   WalletPolicy: 'WalletPolicy',
   AddressPolicy: 'AddressPolicy',
   AccountPolicy: 'AccountPolicy',
+  ExportWalletFormat: 'ExportWalletFormat',
+  ExportWalletKey: 'ExportWalletKey',
+  SignatureMenu: 'SignatureMenu',
+  SignContent: 'SignContent',
+  SignatureResult: 'SignatureResult',
+  VerifySignature: 'VerifySignature',
+  ScanTextQr: 'ScanTextQr',
 } as const;
 
 export type AuthStackParamList = {
@@ -61,7 +69,7 @@ export type AuthStackParamList = {
 export type AppStackParamList = {
   WalletList: undefined;
   CreateWallet: { network?: 'mainnet' | 'testnet' } | undefined;
-  ImportWallet: { network?: 'mainnet' | 'testnet' } | undefined;
+  ImportWallet: { network?: 'mainnet' | 'testnet'; seedRef?: string } | undefined;
   BackupSeed: undefined;
   ConfirmSeed: undefined;
   Home: undefined;
@@ -103,8 +111,15 @@ export type AppStackParamList = {
   WalletPolicy: undefined;
   AddressPolicy: undefined;
   AccountPolicy: undefined;
+  ExportWalletFormat: undefined;
+  ExportWalletKey: { format: WalletExportFormat };
+  SignatureMenu: undefined;
+  SignContent: undefined;
+  SignatureResult: { encoded: string };
+  VerifySignature: undefined;
+  ScanTextQr: { eventName: string };
   ConfirmQrWalletImport: {
-    secret: string;
+    secretRef: string;
     format: WalletImportFormat;
     network: BitcoinNetwork;
     canSign: boolean;

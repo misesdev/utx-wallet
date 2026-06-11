@@ -151,4 +151,47 @@ describe('CoinSelectionService', () => {
       expect(selectedUtxos[0].valueSats).toBe(300_000);
     });
   });
+
+  describe('subtractFeeFromAmount mode', () => {
+    it('succeeds when UTXO value exactly equals amountSats (no room for fee on top)', () => {
+      const amount = 100_000;
+      // UTXO equals exactly the amount — standard mode would fail, SFA must succeed
+      const utxo = makeUtxo(amount);
+      const { selectedUtxos } = service.select([utxo], amount, FEE_RATE, true);
+      expect(selectedUtxos).toHaveLength(1);
+    });
+
+    it('succeeds when UTXO value is larger than amountSats but smaller than amountSats + fee', () => {
+      const amount = 100_000;
+      const feeSats = feeEstimation.estimateFeeSats(1, 2, FEE_RATE);
+      // Enough for SFA but not for standard mode
+      const utxo = makeUtxo(amount + feeSats - 1);
+      const { selectedUtxos } = service.select([utxo], amount, FEE_RATE, true);
+      expect(selectedUtxos).toHaveLength(1);
+    });
+
+    it('throws INSUFFICIENT_BALANCE when UTXO is smaller than amountSats', () => {
+      const amount = 100_000;
+      const utxo = makeUtxo(amount - 1);
+      expect(() => service.select([utxo], amount, FEE_RATE, true)).toThrow(
+        expect.objectContaining({ code: 'INSUFFICIENT_BALANCE' }),
+      );
+    });
+
+    it('standard mode still requires amountSats + fee (no regression)', () => {
+      const amount = 100_000;
+      // UTXO exactly equals amount — insufficient for standard mode
+      const utxo = makeUtxo(amount);
+      expect(() => service.select([utxo], amount, FEE_RATE, false)).toThrow(
+        expect.objectContaining({ code: 'INSUFFICIENT_BALANCE' }),
+      );
+    });
+
+    it('totalInputSats is correct in SFA mode', () => {
+      const amount = 50_000;
+      const utxo = makeUtxo(amount);
+      const { totalInputSats } = service.select([utxo], amount, FEE_RATE, true);
+      expect(totalInputSats).toBe(amount);
+    });
+  });
 });

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppRoutes } from '../../../app/navigation/routes';
 import type { AppStackParamList } from '../../../app/navigation/routes';
+import { popSensitiveData } from '../../../core/infrastructure/adapters/SensitiveDataStore';
 import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
 import { FormInput } from '../../components/forms/FormInput';
@@ -33,6 +34,7 @@ export function ImportWalletScreen() {
   const navigation = useAppNavigation();
   const route = useRoute<ImportWalletRoute>();
   const routeNetwork = route.params?.network ?? 'testnet';
+  const routeSeedRef = route.params?.seedRef;
   const accent = NETWORK_ACCENT[routeNetwork] ?? NETWORK_ACCENT.testnet;
   const {
     walletName,
@@ -49,6 +51,15 @@ export function ImportWalletScreen() {
     submit,
   } = useImportWallet(routeNetwork);
   const { importSync } = useAddressManager();
+
+  // Pre-fill seed when arriving via QR scanner (pop-on-read: clears from store immediately)
+  useEffect(() => {
+    if (routeSeedRef) {
+      const scannedSeed = popSensitiveData(routeSeedRef);
+      if (scannedSeed) setSeed(scannedSeed);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { t } = useAppTranslation();
   const [passphraseEnabled, setPassphraseEnabled] = useState(false);
@@ -327,7 +338,7 @@ export function ImportWalletScreen() {
         ) : null}
       </ScrollView>
 
-      {/* Sticky footer CTA */}
+      {/* Sticky footer dock — two-button layout matching AppBottomDock style */}
       <View
         style={[
           styles.footer,
@@ -338,24 +349,58 @@ export function ImportWalletScreen() {
           },
         ]}
       >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('importWallet.importAction')}
-          onPress={handleImport}
-          disabled={isLoading}
-          style={({ pressed }) => [
-            styles.cta,
+        <View
+          style={[
+            styles.dock,
             {
-              backgroundColor: theme.colors.primary,
-              borderRadius: theme.radii.lg,
-              opacity: pressed || isLoading ? 0.75 : 1,
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.borderHighlight,
+              borderRadius: theme.radii.xl,
+              ...theme.shadows.elevated,
             },
           ]}
         >
-          <AppText variant="subtitle" style={[styles.ctaText, { color: theme.colors.primaryText }]}>
-            {t('importWallet.importAction')}
-          </AppText>
-        </Pressable>
+          {/* Left: Scan QR */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('importWallet.scanQr')}
+            testID="import-scan-qr-btn"
+            onPress={() => navigation.navigate(AppRoutes.ScanWalletQr, { network: routeNetwork })}
+            style={({ pressed }) => [
+              styles.dockBtn,
+              {
+                backgroundColor: theme.colors.surfaceRaised,
+                borderRadius: theme.radii.lg,
+                opacity: pressed ? 0.78 : 1,
+              },
+            ]}
+          >
+            <AppIcon name="scan" size={22} color={theme.colors.text} />
+            <AppText variant="body" style={[styles.dockBtnLabel, { color: theme.colors.text }]}>
+              {t('importWallet.scanQr')}
+            </AppText>
+          </Pressable>
+
+          {/* Right: Import wallet */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('importWallet.importAction')}
+            onPress={handleImport}
+            disabled={isLoading}
+            style={({ pressed }) => [
+              styles.dockBtn,
+              {
+                backgroundColor: theme.colors.primary,
+                borderRadius: theme.radii.lg,
+                opacity: pressed || isLoading ? 0.75 : 1,
+              },
+            ]}
+          >
+            <AppText variant="subtitle" style={[styles.ctaText, { color: theme.colors.primaryText }]}>
+              {t('importWallet.importAction')}
+            </AppText>
+          </Pressable>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -423,8 +468,25 @@ const styles = StyleSheet.create({
   // Footer
   footer: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+  dock: {
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 10,
+  },
+  dockBtn: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    minHeight: 52,
+  },
+  dockBtnLabel: {
+    fontWeight: '700',
   },
 
   // Card
@@ -497,11 +559,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // CTA
-  cta: {
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
   ctaText: {
     fontWeight: '700',
   },

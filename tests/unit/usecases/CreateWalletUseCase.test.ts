@@ -18,6 +18,7 @@ describe('CreateWalletUseCase', () => {
       findById: jest.fn(),
       rename: jest.fn(),
       retrieveSeed: jest.fn(),
+    retrieveRawKey: jest.fn(),
       delete: jest.fn(),
     };
     const useCase = new CreateWalletUseCase(repository);

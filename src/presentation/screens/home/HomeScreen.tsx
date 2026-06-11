@@ -8,12 +8,14 @@ import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
 import type { IconName } from '../../../shared/icons/iconNames';
 import { NetworkBadge } from '../../components/wallet/NetworkBadge';
-import { useSecurity } from '../../../app/providers/SecurityProvider';
+import { BalanceEyeButton } from '../../components/security/BalanceEyeButton';
+import { PinInputModal } from '../../components/security/PinInputModal';
 import { useAccountSummaries } from '../../hooks/useAccountSummaries';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useHomeWallet } from '../../hooks/useHomeWallet';
 import { useWalletSync } from '../../hooks/useWalletSync';
+import { useTemporaryRevealBalance } from '../../hooks/useTemporaryRevealBalance';
 import { useTheme } from '../../hooks/useTheme';
 import { AppRoutes } from '../../../app/navigation/routes';
 import type { AccountSummary } from '../../../core/domain/services/AccountSummaryService';
@@ -27,9 +29,12 @@ type HomeHeaderProps = {
   walletName: string;
   networkConfig: ReturnType<typeof useHomeWallet>['networkConfig'];
   isSafeMode: boolean;
+  hideBalanceEnabled: boolean;
+  hidden: boolean;
+  onToggleReveal: () => void;
 };
 
-function HomeHeader({ walletName, networkConfig, isSafeMode }: HomeHeaderProps) {
+function HomeHeader({ walletName, networkConfig, isSafeMode, hideBalanceEnabled, hidden, onToggleReveal }: HomeHeaderProps) {
   const { theme } = useTheme();
   const { t } = useAppTranslation();
   return (
@@ -40,6 +45,9 @@ function HomeHeader({ walletName, networkConfig, isSafeMode }: HomeHeaderProps) 
           <View style={[styles.safeModeBadge, { backgroundColor: theme.colors.dangerMuted, borderRadius: theme.radii.sm }]}>
             <AppText variant="label" color="warning">{t('home.safeMode')}</AppText>
           </View>
+        )}
+        {hideBalanceEnabled && (
+          <BalanceEyeButton hidden={hidden} onPress={onToggleReveal} testID="home-eye-btn" />
         )}
         <NetworkBadge config={networkConfig} />
       </View>
@@ -231,8 +239,8 @@ export function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { t } = useAppTranslation();
-  const { settings } = useSecurity();
-  const hidden = settings.hideBalance;
+  const { hidden, hideBalanceEnabled, toggleReveal, pinModalVisible, pinError, submitPin, cancelAuth } =
+    useTemporaryRevealBalance();
   const { summaries, reload: reloadAccounts } = useAccountSummaries();
 
   const {
@@ -272,6 +280,13 @@ export function HomeScreen() {
       testID="home-screen"
       style={[styles.root, { backgroundColor: theme.colors.background }]}
     >
+      <PinInputModal
+        visible={pinModalVisible}
+        step="verify"
+        error={pinError}
+        onSubmit={submitPin}
+        onCancel={cancelAuth}
+      />
       <ScrollView
         showsVerticalScrollIndicator={false}
         decelerationRate="fast"
@@ -281,7 +296,14 @@ export function HomeScreen() {
         ]}
       >
         {/* Header: wallet name left, network + safe mode right */}
-        <HomeHeader walletName={wallet.name} networkConfig={networkConfig} isSafeMode={isSafeMode} />
+        <HomeHeader
+          walletName={wallet.name}
+          networkConfig={networkConfig}
+          isSafeMode={isSafeMode}
+          hideBalanceEnabled={hideBalanceEnabled}
+          hidden={hidden}
+          onToggleReveal={toggleReveal}
+        />
 
         {/* Balance hero */}
         <BalanceHero
@@ -299,8 +321,12 @@ export function HomeScreen() {
           onSync={handleSync}
         />
 
-        {/* Quick action buttons */}
-        <View style={styles.quickActionsRow}>
+        {/* Quick action buttons — horizontally scrollable */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.quickActionsRow}
+        >
           <QuickAction
             icon="accounts"
             label={t('home.segregation')}
@@ -326,7 +352,13 @@ export function HomeScreen() {
             a11yLabel={t('home.addresses')}
             onPress={() => navigation.navigate(AppRoutes.Addresses)}
           />
-        </View>
+          <QuickAction
+            icon="sign"
+            label={t('home.signature')}
+            a11yLabel={t('home.signature')}
+            onPress={() => navigation.navigate(AppRoutes.SignatureMenu)}
+          />
+        </ScrollView>
 
         {/* Accounts / summaries list */}
         {summaries.length > 0 && (
@@ -543,12 +575,13 @@ const styles = StyleSheet.create({
   // Quick actions
   quickActionsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    gap: 4,
+    paddingHorizontal: 4,
   },
   quickAction: {
     alignItems: 'center',
-    flex: 1,
     gap: 8,
+    width: 76,
   },
   quickCircle: {
     alignItems: 'center',

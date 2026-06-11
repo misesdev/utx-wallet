@@ -16,6 +16,12 @@ import { LoadUtxosUseCase } from '../../domain/usecases/wallet/LoadUtxosUseCase'
 import { SyncWalletUseCase } from '../../domain/usecases/wallet/SyncWalletUseCase';
 import { FreezeUtxoUseCase } from '../../domain/usecases/wallet/FreezeUtxoUseCase';
 import { UnfreezeUtxoUseCase } from '../../domain/usecases/wallet/UnfreezeUtxoUseCase';
+import {
+  ExportWalletKeyUseCase,
+  type ExportWalletKeyParams,
+  type ExportWalletKeyResult,
+  type WalletExportFormat,
+} from '../../domain/usecases/wallet/ExportWalletKeyUseCase';
 import type { AddressManagerService } from './AddressManagerService';
 
 export class WalletService {
@@ -33,6 +39,7 @@ export class WalletService {
     private readonly freezeUtxoUseCase: FreezeUtxoUseCase,
     private readonly unfreezeUtxoUseCase: UnfreezeUtxoUseCase,
     private readonly addressManagerService: AddressManagerService | null = null,
+    private readonly exportWalletKeyUseCase: ExportWalletKeyUseCase | null = null,
   ) {}
 
   createWallet(name: string): Promise<Wallet> {
@@ -85,5 +92,17 @@ export class WalletService {
 
   unfreezeUtxo(walletId: string, txid: string, vout: number): Promise<void> {
     return this.unfreezeUtxoUseCase.execute(walletId, txid, vout);
+  }
+
+  exportWalletKey(params: ExportWalletKeyParams): Promise<ExportWalletKeyResult> {
+    if (!this.exportWalletKeyUseCase) {
+      throw new Error('ExportWalletKeyUseCase not configured');
+    }
+    return this.exportWalletKeyUseCase.execute(params);
+  }
+
+  getExportFormats(walletId: string): Promise<WalletExportFormat[]> {
+    if (!this.exportWalletKeyUseCase) return Promise.resolve([]);
+    return this.exportWalletKeyUseCase.getAvailableFormats(walletId);
   }
 }

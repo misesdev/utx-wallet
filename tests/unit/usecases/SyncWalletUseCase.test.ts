@@ -46,6 +46,7 @@ function makeWalletRepo(wallet: Wallet | null = WALLET): jest.Mocked<WalletRepos
     findById: jest.fn().mockResolvedValue(wallet),
     rename: jest.fn(),
     retrieveSeed: jest.fn(),
+    retrieveRawKey: jest.fn(),
     delete: jest.fn(),
   };
 }

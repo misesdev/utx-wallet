@@ -24,6 +24,8 @@ jest.mock('../../../src/presentation/hooks/useWallet', () => ({
     selectedWallet: WALLET,
     renameWallet: mockRenameWallet,
     deleteWallet: mockDeleteWallet,
+    exportWalletKey: jest.fn(),
+    getExportFormats: jest.fn().mockResolvedValue([]),
   }),
 }));
 
@@ -142,6 +144,11 @@ describe('SettingsScreen', () => {
       expect(screen.getByTestId('settings-utxos')).toBeTruthy();
     });
 
+    it('renders Export item', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      expect(screen.getByTestId('settings-export')).toBeTruthy();
+    });
+
     it('navigates to ViewSeed when view seed is pressed', () => {
       const screen = renderWithTheme(<SettingsScreen />);
       fireEvent.press(screen.getByTestId('settings-view-seed'));
@@ -158,6 +165,12 @@ describe('SettingsScreen', () => {
       const screen = renderWithTheme(<SettingsScreen />);
       fireEvent.press(screen.getByTestId('settings-utxos'));
       expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.Utxos);
+    });
+
+    it('navigates to ExportWalletFormat when Export is pressed', () => {
+      const screen = renderWithTheme(<SettingsScreen />);
+      fireEvent.press(screen.getByTestId('settings-export'));
+      expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.ExportWalletFormat);
     });
   });
 

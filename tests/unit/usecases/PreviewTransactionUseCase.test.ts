@@ -114,7 +114,7 @@ describe('PreviewTransactionUseCase', () => {
 
     it('only uses confirmed UTXOs for balance calculation', async () => {
       // confirmed = 40_000, unconfirmed = 5_000_000
-      // amount 40_000 + fee (180*5=900) = 40_900 > 40_000 → insufficient
+      // amount 40_001 > confirmedSats 40_000 → fails even in SFA mode
       const useCase = makeUseCase([
         makeUtxo(40_000, true),
         makeUtxo(5_000_000, false),
@@ -124,7 +124,7 @@ describe('PreviewTransactionUseCase', () => {
         useCase.execute({
           walletId: WALLET_ID,
           toAddress: VALID_ADDRESS,
-          amountSats: 40_000,
+          amountSats: 40_001,
           feeRateSatsPerVByte: FEE_RATE,
         }),
       ).rejects.toMatchObject({ code: 'INSUFFICIENT_BALANCE' });
@@ -311,6 +311,90 @@ describe('PreviewTransactionUseCase', () => {
         feeRateSatsPerVByte: FEE_RATE,
       });
       expect(result.recipientAmountSats).toBe(100_000);
+    });
+  });
+
+  describe('SFA mode max balance (send all)', () => {
+    it('succeeds when amountSats equals full confirmed balance', async () => {
+      const balance = 50_000;
+      const useCase = makeUseCase([makeUtxo(balance)]);
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: balance,
+        feeRateSatsPerVByte: FEE_RATE,
+        subtractFeeFromAmount: true,
+      });
+      expect(result.changeSats).toBe(0);
+      expect(result.recipientAmountSats).toBe(balance - result.feeSats);
+      expect(result.subtractFeeFromAmount).toBe(true);
+    });
+
+    it('throws INSUFFICIENT_BALANCE when amountSats exceeds full balance in SFA mode', async () => {
+      const useCase = makeUseCase([makeUtxo(50_000)]);
+      await expect(
+        useCase.execute({
+          walletId: WALLET_ID,
+          toAddress: VALID_ADDRESS,
+          amountSats: 50_001,
+          feeRateSatsPerVByte: FEE_RATE,
+          subtractFeeFromAmount: true,
+        }),
+      ).rejects.toMatchObject({ code: 'INSUFFICIENT_BALANCE' });
+    });
+  });
+
+  describe('auto-drain (standard mode + max balance)', () => {
+    it('auto-switches to SFA when amount + fee exceeds balance but amount fits', async () => {
+      const balance = 50_000;
+      const useCase = makeUseCase([makeUtxo(balance)]);
+      // Standard mode: amount + fee > balance → auto-drain → SFA result
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: balance,
+        feeRateSatsPerVByte: FEE_RATE,
+      });
+      expect(result.subtractFeeFromAmount).toBe(true);
+      expect(result.changeSats).toBe(0);
+      expect(result.recipientAmountSats).toBe(balance - result.feeSats);
+    });
+
+    it('auto-drain: totalSats equals requested amountSats', async () => {
+      const balance = 50_000;
+      const useCase = makeUseCase([makeUtxo(balance)]);
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: balance,
+        feeRateSatsPerVByte: FEE_RATE,
+      });
+      expect(result.totalSats).toBe(balance);
+    });
+
+    it('standard mode stays standard when there is room for fee', async () => {
+      const balance = 200_000;
+      const useCase = makeUseCase([makeUtxo(balance)]);
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: 100_000,
+        feeRateSatsPerVByte: FEE_RATE,
+      });
+      expect(result.subtractFeeFromAmount).toBe(false);
+      expect(result.recipientAmountSats).toBe(100_000);
+    });
+
+    it('still throws INSUFFICIENT_BALANCE when amount itself exceeds balance', async () => {
+      const useCase = makeUseCase([makeUtxo(50_000)]);
+      await expect(
+        useCase.execute({
+          walletId: WALLET_ID,
+          toAddress: VALID_ADDRESS,
+          amountSats: 50_001,
+          feeRateSatsPerVByte: FEE_RATE,
+        }),
+      ).rejects.toMatchObject({ code: 'INSUFFICIENT_BALANCE' });
     });
   });
 

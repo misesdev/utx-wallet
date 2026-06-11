@@ -329,4 +329,33 @@ describe('i18n resources', () => {
     });
   });
 
+  describe('walletExport keys', () => {
+    const KEYS: Array<keyof typeof ptBR.walletExport> = [
+      'title', 'chooseFormat',
+      'formatMnemonic', 'formatMnemonicDesc',
+      'formatXpriv', 'formatXprivDesc',
+      'formatXpub', 'formatXpubDesc',
+      'formatWif', 'formatWifDesc',
+      'exportedKey', 'warningTitle', 'warningBody',
+      'copied', 'loadError', 'loading',
+    ];
+    it.each(KEYS)('pt-BR has non-empty walletExport.%s', (key) => {
+      expect(ptBR.walletExport[key]).toBeTruthy();
+    });
+    it.each(KEYS)('en-US has non-empty walletExport.%s', (key) => {
+      expect(enUS.walletExport[key]).toBeTruthy();
+    });
+  });
+
+  describe('settings export keys', () => {
+    it('pt-BR has settings.export and settings.exportDesc', () => {
+      expect(ptBR.settings.export).toBeTruthy();
+      expect(ptBR.settings.exportDesc).toBeTruthy();
+    });
+    it('en-US has settings.export and settings.exportDesc', () => {
+      expect(enUS.settings.export).toBeTruthy();
+      expect(enUS.settings.exportDesc).toBeTruthy();
+    });
+  });
+
 });

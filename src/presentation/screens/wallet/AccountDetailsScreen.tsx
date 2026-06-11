@@ -7,11 +7,14 @@ import { AppEmptyState } from '../../components/base/AppEmptyState';
 import { AppIcon } from '../../components/base/AppIcon';
 import { AppLoading } from '../../components/base/AppLoading';
 import { AppText } from '../../components/base/AppText';
+import { BalanceEyeButton } from '../../components/security/BalanceEyeButton';
+import { PinInputModal } from '../../components/security/PinInputModal';
 import { TransactionItem } from '../../components/wallet/TransactionItem';
 import { useAccountSummaries } from '../../hooks/useAccountSummaries';
 import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
+import { useTemporaryRevealBalance } from '../../hooks/useTemporaryRevealBalance';
 import { useTheme } from '../../hooks/useTheme';
 import { useWallet } from '../../hooks/useWallet';
 import type { AppStackParamList } from '../../../app/navigation/routes';
@@ -97,6 +100,9 @@ export function AccountDetailsScreen() {
   const [isRenaming, setIsRenaming] = useState(false);
   const [transactions, setTransactions] = useState<Awaited<ReturnType<typeof listTransactions>>>([]);
 
+  const { hidden, hideBalanceEnabled, toggleReveal, pinModalVisible, pinError, submitPin, cancelAuth } =
+    useTemporaryRevealBalance();
+
   const account = summaries.find(summary => summary.id === route.params.originId) ?? null;
 
   React.useEffect(() => {
@@ -125,8 +131,17 @@ export function AccountDetailsScreen() {
   const pending = account?.pendingBalanceSats ?? 0;
   const btc = useMemo(() => (confirmed / 100_000_000).toFixed(8), [confirmed]);
 
+  const HIDDEN_PLACEHOLDER = '••••••';
+
   return (
-    <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}> 
+    <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
+      <PinInputModal
+        visible={pinModalVisible}
+        step="verify"
+        error={pinError}
+        onSubmit={submitPin}
+        onCancel={cancelAuth}
+      />
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
@@ -137,15 +152,20 @@ export function AccountDetailsScreen() {
           <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
         <AppText variant="subtitle" style={styles.headerTitle} numberOfLines={1}>{title}</AppText>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('accountDetails.rename')}
-          onPress={() => setRenameVisible(true)}
-          style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
-          testID="account-rename-button"
-        >
-          <AppIcon name="edit" size={22} color={theme.colors.textMuted} />
-        </Pressable>
+        <View style={styles.headerRight}>
+          {hideBalanceEnabled && (
+            <BalanceEyeButton hidden={hidden} onPress={toggleReveal} testID="account-eye-btn" />
+          )}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('accountDetails.rename')}
+            onPress={() => setRenameVisible(true)}
+            style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+            testID="account-rename-button"
+          >
+            <AppIcon name="edit" size={22} color={theme.colors.textMuted} />
+          </Pressable>
+        </View>
       </View>
 
       {isLoading ? (
@@ -168,11 +188,11 @@ export function AccountDetailsScreen() {
             <AppText variant="label" color="muted">{t('accountDetails.balance')}</AppText>
             <View style={styles.balanceRow}>
               <AppText variant="display" style={styles.balanceValue} testID="account-balance">
-                {formatSats(confirmed)}
+                {hidden ? HIDDEN_PLACEHOLDER : formatSats(confirmed)}
               </AppText>
-              <AppText variant="subtitle" color="muted" style={styles.balanceUnit}>{t('common.sats')}</AppText>
+              {!hidden && <AppText variant="subtitle" color="muted" style={styles.balanceUnit}>{t('common.sats')}</AppText>}
             </View>
-            <AppText variant="body" color="muted">≈ {btc} BTC</AppText>
+            <AppText variant="body" color="muted">{hidden ? HIDDEN_PLACEHOLDER : `≈ ${btc} BTC`}</AppText>
             {pending > 0 && (
               <AppText variant="caption" color="warning">{t('accountDetails.pending', { sats: formatSats(pending) })}</AppText>
             )}
@@ -194,6 +214,7 @@ export function AccountDetailsScreen() {
                 <TransactionItem
                   key={tx.id}
                   transaction={tx}
+                  hidden={hidden}
                   onPress={() => navigation.navigate(AppRoutes.TransactionDetails, { txid: tx.txid ?? tx.id })}
                 />
               ))}
@@ -232,6 +253,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  headerRight: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
   },
   center: {
     alignItems: 'center',

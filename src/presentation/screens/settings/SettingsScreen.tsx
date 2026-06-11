@@ -11,7 +11,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useWallet } from '../../hooks/useWallet';
 import { AppRoutes } from '../../../app/navigation/routes';
 
-type WalletSettingsRoute = 'ViewSeed' | 'Addresses' | 'Utxos';
+type WalletSettingsRoute = 'ViewSeed' | 'Addresses' | 'Utxos' | 'ExportWalletFormat';
 
 type NavItem = {
   icon: IconName;
@@ -25,6 +25,7 @@ const WALLET_ITEMS: NavItem[] = [
   { icon: 'backup', titleKey: 'settings.viewSeed', descKey: 'settings.viewSeedDesc', route: 'ViewSeed', testID: 'settings-view-seed' },
   { icon: 'addresses', titleKey: 'settings.addresses', descKey: 'settings.addressesDesc', route: 'Addresses', testID: 'settings-addresses' },
   { icon: 'wallet', titleKey: 'settings.utxos', descKey: 'settings.utxosDesc', route: 'Utxos', testID: 'settings-utxos' },
+  { icon: 'export', titleKey: 'settings.export', descKey: 'settings.exportDesc', route: 'ExportWalletFormat', testID: 'settings-export' },
 ];
 
 type NavRowProps = {

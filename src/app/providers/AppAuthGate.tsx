@@ -1,30 +1,71 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
+import { AppError } from '../../core/application/errors/AppError';
 import { AppIcon } from '../../presentation/components/base/AppIcon';
 import { AppText } from '../../presentation/components/base/AppText';
 import { PinInputModal } from '../../presentation/components/security/PinInputModal';
 import { useAppTranslation } from '../../presentation/hooks/useAppTranslation';
-import { useReauthenticate } from '../../presentation/hooks/useReauthenticate';
 import { useTheme } from '../../presentation/hooks/useTheme';
 import { useSecurity } from './SecurityProvider';
 
 export function AppAuthGate() {
-  const { settings, isLoading } = useSecurity();
+  const { settings, biometricAvailable, isLoading, reauthenticate } = useSecurity();
   const { theme } = useTheme();
   const { t } = useAppTranslation();
-  const { requireAuth, pinModalVisible, pinError, submitPin } = useReauthenticate();
 
   const [isLocked, setIsLocked] = useState(false);
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
+  const pendingResolveRef = useRef<((ok: boolean) => void) | null>(null);
   const initializedRef = useRef(false);
   const lastBackgroundTimeRef = useRef<number | null>(null);
 
+  const submitPin = useCallback(
+    async (pin: string) => {
+      setPinError(null);
+      try {
+        const ok = await reauthenticate('pin', pin);
+        if (ok) {
+          setPinModalVisible(false);
+          pendingResolveRef.current?.(true);
+          pendingResolveRef.current = null;
+        }
+      } catch (err) {
+        setPinError(err instanceof AppError ? err.message : 'PIN incorreto');
+      }
+    },
+    [reauthenticate],
+  );
+
   const triggerAuth = useCallback(async () => {
     setIsLocked(true);
-    const ok = await requireAuth();
-    if (ok) setIsLocked(false);
-  }, [requireAuth]);
+    let ok = false;
 
-  // Authenticate on first load when settings are ready
+    // On app open: try biometric first if the device supports it.
+    // This applies when PIN is enabled so the user doesn't need to type the PIN
+    // every time; PIN remains the fallback and is used for in-flow sensitive ops.
+    if (biometricAvailable && (settings.pinEnabled || settings.biometricEnabled)) {
+      try {
+        ok = await reauthenticate('biometric');
+      } catch {
+        // biometric unavailable / cancelled — fall through to PIN
+      }
+    }
+
+    if (!ok && settings.pinEnabled) {
+      ok = await new Promise<boolean>(resolve => {
+        pendingResolveRef.current = resolve;
+        setPinError(null);
+        setPinModalVisible(true);
+      });
+    }
+
+    if (ok) {
+      setIsLocked(false);
+    }
+  }, [biometricAvailable, settings, reauthenticate]);
+
+  // Authenticate on first load once settings are ready
   useEffect(() => {
     if (isLoading || initializedRef.current) return;
     initializedRef.current = true;
@@ -33,18 +74,18 @@ export function AppAuthGate() {
     }
   }, [isLoading, settings.pinEnabled, settings.biometricEnabled, triggerAuth]);
 
-  // Re-lock when returning from background after autoLockSeconds
+  // Re-lock after autoLockSeconds in background
   useEffect(() => {
     const sub = AppState.addEventListener('change', nextState => {
       if (nextState === 'background' || nextState === 'inactive') {
         lastBackgroundTimeRef.current = Date.now();
       } else if (nextState === 'active' && lastBackgroundTimeRef.current !== null) {
-        const elapsedSeconds = (Date.now() - lastBackgroundTimeRef.current) / 1000;
+        const elapsed = (Date.now() - lastBackgroundTimeRef.current) / 1000;
         lastBackgroundTimeRef.current = null;
         const needsRelock =
           (settings.pinEnabled || settings.biometricEnabled) &&
           settings.autoLockSeconds > 0 &&
-          elapsedSeconds >= settings.autoLockSeconds;
+          elapsed >= settings.autoLockSeconds;
         if (needsRelock) {
           triggerAuth();
         }
@@ -66,7 +107,12 @@ export function AppAuthGate() {
           ]}
           testID="app-lock-overlay"
         >
-          <View style={[styles.iconWrap, { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radii.xl }]}>
+          <View
+            style={[
+              styles.iconWrap,
+              { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radii.xl },
+            ]}
+          >
             <AppIcon name="security" size={48} color={theme.colors.accent} />
           </View>
           <AppText variant="title" style={styles.lockTitle}>{t('appLock.title')}</AppText>
@@ -88,10 +134,10 @@ export function AppAuthGate() {
 const styles = StyleSheet.create({
   lockOverlay: {
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 20,
-    zIndex: 9999,
     elevation: 9999,
+    gap: 20,
+    justifyContent: 'center',
+    zIndex: 9999,
   },
   iconWrap: {
     alignItems: 'center',

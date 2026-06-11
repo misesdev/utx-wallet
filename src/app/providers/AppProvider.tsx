@@ -24,6 +24,7 @@ import { LoadUtxosUseCase } from '../../core/domain/usecases/wallet/LoadUtxosUse
 import { MarkAddressUsedUseCase } from '../../core/domain/usecases/wallet/MarkAddressUsedUseCase';
 import { RenameWalletUseCase } from '../../core/domain/usecases/wallet/RenameWalletUseCase';
 import { GetWalletSeedUseCase } from '../../core/domain/usecases/wallet/GetWalletSeedUseCase';
+import { ExportWalletKeyUseCase } from '../../core/domain/usecases/wallet/ExportWalletKeyUseCase';
 import { SelectWalletUseCase } from '../../core/domain/usecases/wallet/SelectWalletUseCase';
 import { SyncWalletUseCase } from '../../core/domain/usecases/wallet/SyncWalletUseCase';
 import { WalletImportSyncUseCase } from '../../core/domain/usecases/wallet/WalletImportSyncUseCase';
@@ -106,6 +107,12 @@ import { ThemeProvider } from './ThemeProvider';
 import { TransactionHistoryProvider } from './TransactionHistoryProvider';
 import { WalletProvider } from './WalletProvider';
 import { WalletNetworkSync } from './WalletNetworkSync';
+import { SignatureProvider } from './SignatureProvider';
+import { ScreenshotGuard } from './ScreenshotGuard';
+import { MessageSigningService } from '../../core/domain/services/MessageSigningService';
+import { WalletMessageSigner } from '../../core/infrastructure/adapters/WalletMessageSigner';
+import { SignMessageUseCase } from '../../core/domain/usecases/wallet/SignMessageUseCase';
+import { VerifyMessageUseCase } from '../../core/domain/usecases/wallet/VerifyMessageUseCase';
 
 type Dependencies = {
   walletService: WalletService;
@@ -119,6 +126,9 @@ type Dependencies = {
   getCurrentLanguage: GetCurrentLanguageUseCase;
   setLanguageUseCase: SetLanguageUseCase;
   accelerateUseCase: AccelerateTransactionUseCase;
+  signingService: MessageSigningService;
+  signMessageUseCase: SignMessageUseCase;
+  verifyMessageUseCase: VerifyMessageUseCase;
 };
 
 export function AppProvider({ children }: PropsWithChildren) {
@@ -269,6 +279,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       new FreezeUtxoUseCase(utxoRepository),
       new UnfreezeUtxoUseCase(utxoRepository),
       addressManagerService,
+      new ExportWalletKeyUseCase(walletRepository),
     );
 
     const nodeConnectionTestUseCase = new NodeConnectionTestUseCase(personalNodeAdapter);
@@ -347,6 +358,11 @@ export function AppProvider({ children }: PropsWithChildren) {
     const getCurrentLanguage = new GetCurrentLanguageUseCase(languageService, detectDeviceLanguage);
     const setLanguageUseCase = new SetLanguageUseCase(languageService);
 
+    const signingService = new MessageSigningService();
+    const walletMessageSigner = new WalletMessageSigner(walletKeyStorage, signingService);
+    const signMessageUseCase = new SignMessageUseCase(walletMessageSigner);
+    const verifyMessageUseCase = new VerifyMessageUseCase(signingService);
+
     depsRef.current = {
       walletService,
       networkService,
@@ -359,15 +375,19 @@ export function AppProvider({ children }: PropsWithChildren) {
       getCurrentLanguage,
       setLanguageUseCase,
       accelerateUseCase,
+      signingService,
+      signMessageUseCase,
+      verifyMessageUseCase,
     };
   }
 
-  const { walletService, networkService, addressService, addressManagerService, sendService, transactionHistoryService, offlineModeService, securityService, getCurrentLanguage, setLanguageUseCase, accelerateUseCase } = depsRef.current;
+  const { walletService, networkService, addressService, addressManagerService, sendService, transactionHistoryService, offlineModeService, securityService, getCurrentLanguage, setLanguageUseCase, accelerateUseCase, signingService, signMessageUseCase, verifyMessageUseCase } = depsRef.current;
 
   return (
     <LanguageProvider getCurrentLanguage={getCurrentLanguage} setLanguage={setLanguageUseCase}>
     <ThemeProvider>
       <SecurityProvider service={securityService}>
+        <ScreenshotGuard>
         <NetworkProvider networkService={networkService}>
           <WalletProvider walletService={walletService}>
             <WalletNetworkSync />
@@ -377,7 +397,13 @@ export function AppProvider({ children }: PropsWithChildren) {
                 <AccelerateProvider useCase={accelerateUseCase}>
                 <TransactionHistoryProvider service={transactionHistoryService}>
                   <OfflineModeProvider service={offlineModeService}>
+                  <SignatureProvider
+                    signMessageUseCase={signMessageUseCase}
+                    verifyMessageUseCase={verifyMessageUseCase}
+                    signingService={signingService}
+                  >
                     {children}
+                  </SignatureProvider>
                   </OfflineModeProvider>
                 </TransactionHistoryProvider>
                 </AccelerateProvider>
@@ -386,6 +412,7 @@ export function AppProvider({ children }: PropsWithChildren) {
             </AddressManagerProvider>
           </WalletProvider>
         </NetworkProvider>
+        </ScreenshotGuard>
       </SecurityProvider>
     </ThemeProvider>
     </LanguageProvider>
