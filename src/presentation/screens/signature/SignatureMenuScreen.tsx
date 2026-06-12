@@ -6,6 +6,7 @@ import { AppText } from '../../components/base/AppText';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
+import { useWallet } from '../../hooks/useWallet';
 import { AppRoutes } from '../../../app/navigation/routes';
 
 export function SignatureMenuScreen() {
@@ -13,6 +14,8 @@ export function SignatureMenuScreen() {
   const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
+  const { selectedWallet } = useWallet();
+  const isWatchOnly = selectedWallet?.status === 'watch-only';
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
@@ -56,8 +59,9 @@ export function SignatureMenuScreen() {
           <Pressable
             accessibilityRole="button"
             testID="btn-sign-content"
+            disabled={isWatchOnly}
             onPress={() => navigation.navigate(AppRoutes.SignContent)}
-            style={({ pressed }) => [styles.optionRow, { opacity: pressed ? 0.72 : 1 }]}
+            style={({ pressed }) => [styles.optionRow, { opacity: isWatchOnly ? 0.4 : pressed ? 0.72 : 1 }]}
           >
             <View
               style={[
@@ -69,7 +73,9 @@ export function SignatureMenuScreen() {
             </View>
             <View style={styles.optionBody}>
               <AppText variant="body" style={styles.optionTitle}>{t('signature.signOption')}</AppText>
-              <AppText variant="caption" color="muted" numberOfLines={2}>{t('signature.signOptionDesc')}</AppText>
+              <AppText variant="caption" color="muted" numberOfLines={2}>
+                {isWatchOnly ? t('settings.watchOnlyDisabled' as any) : t('signature.signOptionDesc')}
+              </AppText>
             </View>
             <AppIcon name="chevronRight" size={22} color={theme.colors.textMuted} />
           </Pressable>

@@ -171,6 +171,80 @@ describe('ViewSeedScreen', () => {
     });
   });
 
+  describe('extended key view (zprv / vprv wallet)', () => {
+    const ZPRV = 'zprvAWgYBBk7JR8GjxWYSsmapFJNDtLjBWAy7KFqGXWfXPFSszmNDBVFQFBD5xFJn7hLdFLzBxJRu2Yem4nVXLaFoLNexFNxMJJ5K8HgTbC3P1q';
+
+    beforeEach(() => {
+      mockGetWalletSeed.mockResolvedValue({ mnemonic: ZPRV });
+    });
+
+    it('shows QR code instead of seed grid after reveal', async () => {
+      const screen = renderWithTheme(<ViewSeedScreen />);
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('backupSeed.tapReveal'));
+      });
+      await waitFor(() => expect(screen.getByTestId('seed-qr')).toBeTruthy());
+      expect(screen.queryByTestId('seed-grid')).toBeNull();
+    });
+
+    it('shows the key value text after reveal', async () => {
+      const screen = renderWithTheme(<ViewSeedScreen />);
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('backupSeed.tapReveal'));
+      });
+      await waitFor(() => expect(screen.getByTestId('seed-key-value')).toBeTruthy());
+    });
+
+    it('shows copy button after reveal', async () => {
+      const screen = renderWithTheme(<ViewSeedScreen />);
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('backupSeed.tapReveal'));
+      });
+      await waitFor(() => expect(screen.getByTestId('btn-copy-key')).toBeTruthy());
+    });
+
+    it('shows share button after reveal', async () => {
+      const screen = renderWithTheme(<ViewSeedScreen />);
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('backupSeed.tapReveal'));
+      });
+      await waitFor(() => expect(screen.getByTestId('btn-share-key')).toBeTruthy());
+    });
+
+    it('shows extended key title after reveal', async () => {
+      const screen = renderWithTheme(<ViewSeedScreen />);
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('backupSeed.tapReveal'));
+      });
+      await waitFor(() => expect(screen.getByText('viewSeed.titleExtendedKey')).toBeTruthy());
+    });
+
+    it('does not show passphrase badge for extended key', async () => {
+      mockGetWalletSeed.mockResolvedValue({ mnemonic: ZPRV, passphrase: 'ignored' });
+      const screen = renderWithTheme(<ViewSeedScreen />);
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('backupSeed.tapReveal'));
+      });
+      await waitFor(() => expect(screen.getByTestId('seed-qr')).toBeTruthy());
+      expect(screen.queryByText('backupSeed.passphraseActive')).toBeNull();
+    });
+
+    it('hides key on app background', async () => {
+      const listeners: Array<(s: string) => void> = [];
+      jest.spyOn(AppState, 'addEventListener').mockImplementation((_, h) => {
+        listeners.push(h as (s: string) => void);
+        return { remove: jest.fn() };
+      });
+
+      const screen = renderWithTheme(<ViewSeedScreen />);
+      await act(async () => { fireEvent.press(screen.getByLabelText('backupSeed.tapReveal')); });
+      await waitFor(() => expect(screen.getByTestId('seed-qr')).toBeTruthy());
+
+      await act(async () => { listeners.forEach(l => l('background')); });
+      await waitFor(() => expect(screen.queryByTestId('seed-qr')).toBeNull());
+    });
+  });
+
   describe('app-switch privacy: seed hidden on background/inactive', () => {
     let appStateListeners: Array<(state: AppStateStatus) => void>;
     let addEventListenerSpy: jest.SpyInstance;

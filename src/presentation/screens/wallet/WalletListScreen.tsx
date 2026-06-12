@@ -48,7 +48,7 @@ function matchesTab(wallet: Wallet, tab: NetworkTab): boolean {
 
 const NETWORK_ACCENT: Record<NetworkTab, string> = {
   mainnet: '#F7931A',
-  testnet: '#8E6FE8',
+  testnet: '#178a54',
 };
 
 function walletAccent(wallet: Wallet): string {
@@ -142,48 +142,54 @@ function WalletCard({ wallet, summary, hidden, onOpen }: WalletCardProps) {
         },
       ]}
     >
+      {/* Top accent strip */}
+      <View style={[styles.accentStrip, { backgroundColor: accent, borderTopLeftRadius: theme.radii.xl, borderTopRightRadius: theme.radii.xl }]} />
+
       <View style={styles.cardBody}>
         {/* Identity row */}
         <View style={styles.identityRow}>
           <View
             style={[
               styles.walletIconWrap,
-              { backgroundColor: accent + '18', borderRadius: theme.radii.md },
+              { backgroundColor: accent + '22', borderRadius: theme.radii.md },
             ]}
           >
-            <AppIcon name="wallet" size={20} color={accent} />
+            <AppIcon name="wallet" size={22} color={accent} />
           </View>
 
           <View style={styles.identityText}>
             <AppText variant="subtitle" style={styles.walletName} numberOfLines={1}>
               {wallet.name}
             </AppText>
-            <View style={styles.metaRow}>
-              <View style={[styles.networkDot, { backgroundColor: accent }]} />
-              <AppText variant="caption" style={[styles.networkLabel, { color: accent }]}>
-                {wallet.network === 'mainnet' ? 'Mainnet' : 'Testnet'}
-              </AppText>
+
+            {/* Badge row — network + watch-only on the same row, never overflow */}
+            <View style={styles.badgeRow}>
+              <View style={[styles.networkBadge, { backgroundColor: accent + '18', borderRadius: theme.radii.sm }]}>
+                <View style={[styles.networkDot, { backgroundColor: accent }]} />
+                <AppText variant="label" style={[styles.networkLabel, { color: accent }]}>
+                  {wallet.network === 'mainnet' ? 'Mainnet' : 'Testnet'}
+                </AppText>
+              </View>
               {isWatchOnly && (
-                <>
-                  <AppText variant="caption" color="faint"> · </AppText>
-                  <View style={[styles.watchOnlyBadge, { backgroundColor: theme.colors.surfaceMuted, borderRadius: theme.radii.sm }]}>
-                    <AppText variant="label" color="muted">{t('wallet.watchOnly')}</AppText>
-                  </View>
-                </>
+                <View style={[styles.watchOnlyBadge, { backgroundColor: theme.colors.surfaceMuted, borderRadius: theme.radii.sm }]}>
+                  <AppIcon name="eye" size={11} color={theme.colors.textMuted} />
+                  <AppText variant="label" color="muted">{t('wallet.watchOnly')}</AppText>
+                </View>
               )}
-              {wallet.createdAt ? (
-                <>
-                  <AppText variant="caption" color="faint"> · </AppText>
-                  <AppText variant="caption" color="muted">{formatDate(wallet.createdAt)}</AppText>
-                </>
-              ) : null}
             </View>
+
+            {/* Date on its own line — never competes with badges */}
+            {wallet.createdAt ? (
+              <AppText variant="caption" color="faint" style={styles.dateText}>
+                {formatDate(wallet.createdAt)}
+              </AppText>
+            ) : null}
           </View>
 
           <AppIcon name="chevronRight" size={18} color={theme.colors.textMuted} />
         </View>
 
-        {/* Stats box — muted background, centered columns */}
+        {/* Stats box */}
         <View style={[styles.statsBox, { backgroundColor: theme.colors.surfaceMuted, borderRadius: theme.radii.md }]}>
           <View style={styles.statsRow}>
             <StatPill
@@ -577,6 +583,10 @@ const styles = StyleSheet.create({
   // Wallet card
   card: {
     borderWidth: 1,
+    overflow: 'hidden',
+  },
+  accentStrip: {
+    height: 3,
   },
   cardBody: {
     gap: 12,
@@ -591,35 +601,49 @@ const styles = StyleSheet.create({
   },
   walletIconWrap: {
     alignItems: 'center',
-    height: 40,
+    height: 44,
     justifyContent: 'center',
-    width: 40,
+    width: 44,
   },
   identityText: {
     flex: 1,
-    gap: 3,
+    gap: 4,
     minWidth: 0,
   },
   walletName: {
     fontWeight: '700',
   },
-  metaRow: {
+  badgeRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 5,
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  networkBadge: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
   },
   networkDot: {
     borderRadius: 3,
-    height: 6,
-    width: 6,
+    height: 5,
+    width: 5,
   },
   networkLabel: {
     fontSize: 11,
     fontWeight: '600',
   },
   watchOnlyBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  dateText: {
+    fontSize: 11,
   },
 
   // Stats box

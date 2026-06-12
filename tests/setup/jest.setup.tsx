@@ -192,3 +192,11 @@ jest.mock('react-native-vision-camera', () => {
     })),
   };
 });
+
+jest.mock('react-native-biometrics', () => {
+  const MockRNBiometrics = jest.fn().mockImplementation(() => ({
+    isSensorAvailable: jest.fn(() => Promise.resolve({ available: false, biometryType: undefined })),
+    simplePrompt: jest.fn(() => Promise.resolve({ success: false })),
+  }));
+  return { __esModule: true, default: MockRNBiometrics };
+});

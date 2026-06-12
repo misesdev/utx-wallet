@@ -47,6 +47,8 @@ export const ICON_NAMES = {
   offline: 'cloud-offline-outline',
   safeMode: 'lock-closed-outline',
   key: 'key-outline',
+  fingerprint: 'finger-print-outline',
+  faceId: 'scan-circle-outline',
 
   export: 'arrow-up-circle-outline',
   sign: 'pencil-outline',

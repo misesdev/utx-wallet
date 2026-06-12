@@ -38,9 +38,11 @@ jest.mock('../../../src/app/providers/SignatureProvider', () => ({
 
 // ─── Wallet / network context mocks ──────────────────────────────────────────
 
+let mockWalletStatus: string = 'locked';
+
 jest.mock('../../../src/presentation/hooks/useWallet', () => ({
   useWallet: () => ({
-    selectedWallet: { id: 'w1', name: 'Test Wallet', network: 'mainnet', status: 'locked', createdAt: '' },
+    selectedWallet: { id: 'w1', name: 'Test Wallet', network: 'mainnet', status: mockWalletStatus, createdAt: '' },
   }),
 }));
 
@@ -111,6 +113,33 @@ describe('SignatureMenuScreen', () => {
     const screen = renderWithTheme(<SignatureMenuScreen />);
     fireEvent.press(screen.getByLabelText('common.back'));
     expect(mockGoBack).toHaveBeenCalled();
+  });
+
+  describe('watch-only wallet', () => {
+    beforeEach(() => { mockWalletStatus = 'watch-only'; });
+    afterEach(() => { mockWalletStatus = 'locked'; });
+
+    it('sign button is disabled for watch-only wallet', () => {
+      const screen = renderWithTheme(<SignatureMenuScreen />);
+      expect(screen.getByTestId('btn-sign-content').props.accessibilityState?.disabled).toBe(true);
+    });
+
+    it('does NOT navigate to SignContent when sign option is pressed (watch-only)', () => {
+      const screen = renderWithTheme(<SignatureMenuScreen />);
+      fireEvent.press(screen.getByTestId('btn-sign-content'));
+      expect(mockNavigate).not.toHaveBeenCalledWith(AppRoutes.SignContent);
+    });
+
+    it('verify option still works for watch-only wallet', () => {
+      const screen = renderWithTheme(<SignatureMenuScreen />);
+      fireEvent.press(screen.getByTestId('btn-verify-signature'));
+      expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.VerifySignature);
+    });
+
+    it('shows watchOnlyDisabled reason for sign option', () => {
+      const screen = renderWithTheme(<SignatureMenuScreen />);
+      expect(screen.getByText('settings.watchOnlyDisabled')).toBeTruthy();
+    });
   });
 });
 

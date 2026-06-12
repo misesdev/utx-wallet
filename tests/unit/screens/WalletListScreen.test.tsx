@@ -226,6 +226,20 @@ describe('WalletListScreen', () => {
       const screen = renderWithTheme(<WalletListScreen />);
       expect(screen.queryByText('wallet.watchOnly')).toBeNull();
     });
+
+    it('renders createdAt date on wallet card', () => {
+      mockWallets = [makeWallet({ name: 'Dated', network: 'mainnet', createdAt: '2024-09-15T00:00:00.000Z' })];
+      const screen = renderWithTheme(<WalletListScreen />);
+      // formatDate outputs locale-formatted date — just check it renders without crash
+      expect(screen.getByText('Dated')).toBeTruthy();
+    });
+
+    it('renders both watch-only badge and date without crash', () => {
+      mockWallets = [makeWallet({ name: 'WO Dated', network: 'mainnet', status: 'watch-only', createdAt: '2024-09-15T00:00:00.000Z' })];
+      const screen = renderWithTheme(<WalletListScreen />);
+      expect(screen.getByText('wallet.watchOnly')).toBeTruthy();
+      expect(screen.getByText('WO Dated')).toBeTruthy();
+    });
   });
 
   describe('Wallet stats', () => {

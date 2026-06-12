@@ -272,7 +272,7 @@ export function SettingsScreen() {
             ]}
           >
             {WALLET_ITEMS.map((item, idx) => {
-              const itemDisabled = isWatchOnly && (item.route === 'ViewSeed' || item.route === 'ExportWalletFormat');
+              const itemDisabled = isWatchOnly && item.route === 'ViewSeed';
               return (
                 <NavRow
                   key={item.route}

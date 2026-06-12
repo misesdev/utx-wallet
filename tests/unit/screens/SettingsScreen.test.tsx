@@ -198,10 +198,10 @@ describe('SettingsScreen', () => {
       expect(mockNavigate).not.toHaveBeenCalledWith(AppRoutes.ViewSeed);
     });
 
-    it('does NOT navigate to ExportWalletFormat when pressed (disabled for watch-only)', () => {
+    it('DOES navigate to ExportWalletFormat when pressed (watch-only can still export zpub)', () => {
       const screen = renderWithTheme(<SettingsScreen />);
       fireEvent.press(screen.getByTestId('settings-export'));
-      expect(mockNavigate).not.toHaveBeenCalledWith(AppRoutes.ExportWalletFormat);
+      expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.ExportWalletFormat);
     });
 
     it('still navigates to Addresses for watch-only wallet', () => {

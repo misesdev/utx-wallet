@@ -655,7 +655,8 @@
     "deleteWalletDesc": "Permanently removes this wallet from the device"
   },
   "viewSeed": {
-    "title": "Seed Phrase"
+    "title": "Seed Phrase",
+    "titleExtendedKey": "Extended Private Key"
   },
   "walletPolicy": {
     "title": "Wallet Policy",
@@ -746,5 +747,13 @@
     "errorPubkeyRequired": "Public key is required.",
     "errorSigRequired": "Signature is required.",
     "errorSignFailed": "Failed to sign content. Please try again."
+  },
+  "appLock": {
+    "title": "Wallet Locked",
+    "subtitle": "Authenticate to access your wallet",
+    "biometricButton": "Unlock with Biometrics",
+    "biometricPending": "Authenticating...",
+    "pinFallback": "Enter PIN",
+    "retryBiometric": "Try Again"
   }
 }

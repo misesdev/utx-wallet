@@ -655,7 +655,8 @@
     "deleteWalletDesc": "Remove permanentemente esta carteira do dispositivo"
   },
   "viewSeed": {
-    "title": "Seed Phrase"
+    "title": "Seed Phrase",
+    "titleExtendedKey": "Chave Privada Estendida"
   },
   "walletPolicy": {
     "title": "Política da Carteira",
@@ -746,5 +747,13 @@
     "errorPubkeyRequired": "A chave pública é obrigatória.",
     "errorSigRequired": "A assinatura é obrigatória.",
     "errorSignFailed": "Falha ao assinar conteúdo. Tente novamente."
+  },
+  "appLock": {
+    "title": "Carteira Bloqueada",
+    "subtitle": "Autentique-se para acessar sua carteira",
+    "biometricButton": "Desbloquear com Biometria",
+    "biometricPending": "Autenticando...",
+    "pinFallback": "Inserir PIN",
+    "retryBiometric": "Tentar Novamente"
   }
 }

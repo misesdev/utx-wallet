@@ -66,7 +66,7 @@ import { MultiNodeBlockchainProvider } from '../../core/infrastructure/adapters/
 import { WalletKeyAddressProvider } from '../../core/infrastructure/adapters/WalletKeyAddressProvider';
 import { WalletTransactionSigner } from '../../core/infrastructure/adapters/WalletTransactionSigner';
 import { MempoolExplorerAdapter } from '../../core/infrastructure/adapters/MempoolExplorerAdapter';
-import { NoopBiometricAuthAdapter } from '../../core/infrastructure/adapters/BiometricAuthAdapter';
+import { NativeBiometricAuthAdapter } from '../../core/infrastructure/adapters/BiometricAuthAdapter';
 import { WebCryptoPinHasher } from '../../core/infrastructure/adapters/PinHasherAdapter';
 import { GetTransactionDetailUseCase } from '../../core/domain/usecases/transaction/GetTransactionDetailUseCase';
 import { TransactionHistoryService } from '../../core/application/services/TransactionHistoryService';
@@ -342,7 +342,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     const securitySettingsStorage = new SecuritySettingsStorage(secureStorage);
     const securitySettingsRepository = new SecuritySettingsRepositoryImpl(securitySettingsStorage);
     const pinHasher = new WebCryptoPinHasher();
-    const biometricProvider = new NoopBiometricAuthAdapter();
+    const biometricProvider = new NativeBiometricAuthAdapter();
     const verifyPinUseCase = new VerifyPinUseCase(securitySettingsRepository, pinHasher);
     const securityService = new SecurityService(
       new LoadSecuritySettingsUseCase(securitySettingsRepository),
