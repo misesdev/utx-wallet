@@ -37,16 +37,22 @@ jobs:
 
       # ── Android keystore ──────────────────────────────────────────────────
       - name: Decode keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d \
+          echo "$KEYSTORE_BASE64" | tr -d ' \r' | base64 -d \
             > android/app/utxwallet-release.keystore
 
       - name: Write keystore.properties
+        env:
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          echo "UTXWALLET_UPLOAD_STORE_FILE=utxwallet-release.keystore" > android/keystore.properties
-          echo "UTXWALLET_UPLOAD_KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> android/keystore.properties
-          echo "UTXWALLET_UPLOAD_STORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> android/keystore.properties
-          echo "UTXWALLET_UPLOAD_KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> android/keystore.properties
+          printf '%s=%s\n' "UTXWALLET_UPLOAD_STORE_FILE"     "utxwallet-release.keystore" >  android/keystore.properties
+          printf '%s=%s\n' "UTXWALLET_UPLOAD_KEY_ALIAS"      "$KEY_ALIAS"                 >> android/keystore.properties
+          printf '%s=%s\n' "UTXWALLET_UPLOAD_STORE_PASSWORD" "$KEYSTORE_PASSWORD"         >> android/keystore.properties
+          printf '%s=%s\n' "UTXWALLET_UPLOAD_KEY_PASSWORD"   "$KEY_PASSWORD"              >> android/keystore.properties
 
       # ── Build signed release APK ──────────────────────────────────────────
       - name: Grant Gradle execute permission
