@@ -34,10 +34,11 @@ export function TransactionItem({ transaction, onPress, hidden: hiddenProp }: Tr
   const globalHideBalance = useHideBalance();
   const hideBalance = hiddenProp !== undefined ? hiddenProp : globalHideBalance;
   const isIncoming = transaction.direction === 'incoming';
+  const isConfirmed = transaction.status === 'confirmed';
 
-  const accentColor = isIncoming ? theme.colors.success : theme.colors.text;
-  const iconBg = isIncoming ? theme.colors.successMuted : theme.colors.surfaceMuted;
-  const iconColor = isIncoming ? theme.colors.success : theme.colors.textMuted;
+  const accentColor = isIncoming && isConfirmed ? theme.colors.success : theme.colors.text;
+  const iconBg = isIncoming && isConfirmed ? theme.colors.successMuted : theme.colors.surfaceMuted;
+  const iconColor = isIncoming && isConfirmed ? theme.colors.success : theme.colors.textMuted;
 
   const statusColor: Record<Transaction['status'], string> = {
     confirmed: theme.colors.success,

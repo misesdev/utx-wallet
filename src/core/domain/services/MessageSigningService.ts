@@ -12,8 +12,38 @@ import type { SignedMessage } from '../entities/SignedMessage';
 
 const MESSAGE_PREFIX = 'UTXWallet Signed Message:\n';
 
+function utf8Encode(input: string): Uint8Array {
+  const bytes: number[] = [];
+  for (const char of input) {
+    const codePoint = char.codePointAt(0);
+    if (codePoint === undefined) continue;
+    if (codePoint <= 0x7f) {
+      bytes.push(codePoint);
+    } else if (codePoint <= 0x7ff) {
+      bytes.push(
+        0xc0 + Math.floor(codePoint / 0x40),
+        0x80 + (codePoint % 0x40),
+      );
+    } else if (codePoint <= 0xffff) {
+      bytes.push(
+        0xe0 + Math.floor(codePoint / 0x1000),
+        0x80 + (Math.floor(codePoint / 0x40) % 0x40),
+        0x80 + (codePoint % 0x40),
+      );
+    } else {
+      bytes.push(
+        0xf0 + Math.floor(codePoint / 0x40000),
+        0x80 + (Math.floor(codePoint / 0x1000) % 0x40),
+        0x80 + (Math.floor(codePoint / 0x40) % 0x40),
+        0x80 + (codePoint % 0x40),
+      );
+    }
+  }
+  return Uint8Array.from(bytes);
+}
+
 function messageHash(content: string): Uint8Array {
-  const encoded = new TextEncoder().encode(MESSAGE_PREFIX + content);
+  const encoded = utf8Encode(MESSAGE_PREFIX + content);
   return sha256(sha256(encoded));
 }
 

@@ -30,9 +30,27 @@ export function useAccountSummaries() {
     }
   }, [selectedWallet, getOrigins, listAddresses, listUtxos]);
 
+  // Refresh summaries without triggering the loading spinner — avoids balance flash
+  const silentReload = useCallback(async () => {
+    if (!selectedWallet) {
+      setSummaries([]);
+      return;
+    }
+    try {
+      const [origins, addresses, utxos] = await Promise.all([
+        getOrigins(selectedWallet.id),
+        listAddresses(selectedWallet.id),
+        listUtxos(selectedWallet.id),
+      ]);
+      setSummaries(calculateAccountSummaries(origins, addresses, utxos));
+    } catch {
+      // silent — caller can decide to show error if needed
+    }
+  }, [selectedWallet, getOrigins, listAddresses, listUtxos]);
+
   useEffect(() => {
     reload().catch(() => undefined);
   }, [reload]);
 
-  return { summaries, isLoading, reload };
+  return { summaries, isLoading, reload, silentReload };
 }

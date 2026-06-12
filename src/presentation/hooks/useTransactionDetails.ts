@@ -41,7 +41,7 @@ export function useTransactionDetails(): UseTransactionDetailsState {
       );
 
       const results = await Promise.allSettled(
-        rawTxs.map(tx => getDetail(tx, selectedWallet.network)),
+        rawTxs.map(tx => getDetail(tx, selectedWallet.network, selectedWallet.id)),
       );
 
       setTransactions(

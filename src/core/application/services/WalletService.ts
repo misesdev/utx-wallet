@@ -3,6 +3,9 @@ import type { Transaction } from '../../domain/entities/Transaction';
 import type { Utxo } from '../../domain/entities/Utxo';
 import type { BitcoinNetwork } from '../../domain/entities/Network';
 import type { SyncResult } from '../../domain/usecases/wallet/SyncWalletUseCase';
+import type { SyncAccountResult } from '../../domain/usecases/wallet/SyncAccountUseCase';
+import type { SyncAddressResult } from '../../domain/usecases/wallet/SyncAddressUseCase';
+import type { OnSyncProgress } from '../../domain/usecases/wallet/SyncProgress';
 import { AppError } from '../errors/AppError';
 import { CreateWalletUseCase } from '../../domain/usecases/wallet/CreateWalletUseCase';
 import { ImportWalletUseCase } from '../../domain/usecases/wallet/ImportWalletUseCase';
@@ -14,6 +17,8 @@ import { GetWalletSeedUseCase } from '../../domain/usecases/wallet/GetWalletSeed
 import { LoadTransactionsUseCase } from '../../domain/usecases/wallet/LoadTransactionsUseCase';
 import { LoadUtxosUseCase } from '../../domain/usecases/wallet/LoadUtxosUseCase';
 import { SyncWalletUseCase } from '../../domain/usecases/wallet/SyncWalletUseCase';
+import { SyncAccountUseCase } from '../../domain/usecases/wallet/SyncAccountUseCase';
+import { SyncAddressUseCase } from '../../domain/usecases/wallet/SyncAddressUseCase';
 import { FreezeUtxoUseCase } from '../../domain/usecases/wallet/FreezeUtxoUseCase';
 import { UnfreezeUtxoUseCase } from '../../domain/usecases/wallet/UnfreezeUtxoUseCase';
 import {
@@ -40,6 +45,8 @@ export class WalletService {
     private readonly unfreezeUtxoUseCase: UnfreezeUtxoUseCase,
     private readonly addressManagerService: AddressManagerService | null = null,
     private readonly exportWalletKeyUseCase: ExportWalletKeyUseCase | null = null,
+    private readonly syncAccountUseCase: SyncAccountUseCase | null = null,
+    private readonly syncAddressUseCase: SyncAddressUseCase | null = null,
   ) {}
 
   createWallet(name: string): Promise<Wallet> {
@@ -82,8 +89,8 @@ export class WalletService {
     return this.loadUtxosUseCase.execute(walletId);
   }
 
-  syncWallet(walletId: string): Promise<SyncResult> {
-    return this.syncWalletUseCase.execute(walletId);
+  syncWallet(walletId: string, onProgress?: OnSyncProgress): Promise<SyncResult> {
+    return this.syncWalletUseCase.execute(walletId, onProgress);
   }
 
   freezeUtxo(walletId: string, txid: string, vout: number): Promise<void> {
@@ -104,5 +111,19 @@ export class WalletService {
   getExportFormats(walletId: string): Promise<WalletExportFormat[]> {
     if (!this.exportWalletKeyUseCase) return Promise.resolve([]);
     return this.exportWalletKeyUseCase.getAvailableFormats(walletId);
+  }
+
+  syncAccount(walletId: string, originId: string, onProgress?: OnSyncProgress): Promise<SyncAccountResult> {
+    if (!this.syncAccountUseCase) {
+      throw new AppError('SyncAccountUseCase not configured', 'NOT_CONFIGURED');
+    }
+    return this.syncAccountUseCase.execute(walletId, originId, onProgress);
+  }
+
+  syncAddress(walletId: string, address: string, onProgress?: OnSyncProgress): Promise<SyncAddressResult> {
+    if (!this.syncAddressUseCase) {
+      throw new AppError('SyncAddressUseCase not configured', 'NOT_CONFIGURED');
+    }
+    return this.syncAddressUseCase.execute(walletId, address, onProgress);
   }
 }

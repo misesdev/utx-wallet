@@ -33,6 +33,10 @@ export class SyncAddressStatusUseCase {
     for (const walletAddr of addresses) {
       if (walletAddr.status === 'archived') continue;
 
+      // When a prefetch map is provided, skip addresses absent from it.
+      // Prevents N extra blockchain calls when only a subset of addresses are being synced.
+      if (prefetchedTransactions && !prefetchedTransactions.has(walletAddr.address)) continue;
+
       const txs = prefetchedTransactions?.get(walletAddr.address)
         ?? await this.blockchainProvider.getTransactions(walletAddr.address, network);
 

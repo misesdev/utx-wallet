@@ -6,7 +6,25 @@ import { renderWithTheme } from '../../mocks/renderWithProviders';
 
 const mockReauthenticate = jest.fn();
 
-const DEFAULT_SECURITY = {
+type MockSecurity = {
+  settings: {
+    pinEnabled: boolean;
+    biometricEnabled: boolean;
+    autoLockSeconds: number;
+    hideBalance: boolean;
+    blockScreenshots: boolean;
+  };
+  biometricAvailable: boolean;
+  biometricType: 'none' | 'fingerprint' | 'face-id';
+  isLoading: boolean;
+  updateSettings: jest.Mock;
+  setupPin: jest.Mock;
+  validatePin: jest.Mock;
+  removePin: jest.Mock;
+  reauthenticate: jest.Mock;
+};
+
+const DEFAULT_SECURITY: MockSecurity = {
   settings: {
     pinEnabled: false,
     biometricEnabled: false,
@@ -15,7 +33,7 @@ const DEFAULT_SECURITY = {
     blockScreenshots: true,
   },
   biometricAvailable: false,
-  biometricType: 'none' as const,
+  biometricType: 'none',
   isLoading: false,
   updateSettings: jest.fn(),
   setupPin: jest.fn(),
@@ -24,7 +42,7 @@ const DEFAULT_SECURITY = {
   reauthenticate: mockReauthenticate,
 };
 
-let mockSecurity = { ...DEFAULT_SECURITY };
+let mockSecurity: MockSecurity = { ...DEFAULT_SECURITY };
 
 jest.mock('../../../src/app/providers/SecurityProvider', () => ({
   ...jest.requireActual('../../../src/app/providers/SecurityProvider'),
@@ -98,7 +116,7 @@ describe('AppAuthGate', () => {
         ...DEFAULT_SECURITY,
         settings: { ...DEFAULT_SECURITY.settings, pinEnabled: true, biometricEnabled: true },
         biometricAvailable: true,
-        biometricType: 'fingerprint' as const,
+        biometricType: 'fingerprint',
       };
     });
 
@@ -165,7 +183,7 @@ describe('AppAuthGate', () => {
         ...DEFAULT_SECURITY,
         settings: { ...DEFAULT_SECURITY.settings, pinEnabled: false, biometricEnabled: true },
         biometricAvailable: true,
-        biometricType: 'face-id' as const,
+        biometricType: 'face-id',
       };
     });
 

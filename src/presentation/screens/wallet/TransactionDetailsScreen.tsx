@@ -45,9 +45,10 @@ function TxCard({ tx }: TxCardProps) {
   const navigation = useAppNavigation();
 
   const isIncoming = tx.direction === 'incoming';
-  const accentColor = isIncoming ? theme.colors.success : theme.colors.text;
-  const iconBg = isIncoming ? theme.colors.successMuted : theme.colors.surfaceMuted;
-  const iconColor = isIncoming ? theme.colors.success : theme.colors.textMuted;
+  const isConfirmed = tx.isConfirmed;
+  const accentColor = isIncoming && isConfirmed ? theme.colors.success : theme.colors.text;
+  const iconBg = isIncoming && isConfirmed ? theme.colors.successMuted : theme.colors.surfaceMuted;
+  const iconColor = isIncoming && isConfirmed ? theme.colors.success : theme.colors.textMuted;
 
   const statusColors: Record<string, string> = {
     confirmed: theme.colors.success,

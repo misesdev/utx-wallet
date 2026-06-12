@@ -8,7 +8,7 @@ export class TransactionHistoryService {
     private readonly getDetailUseCase: GetTransactionDetailUseCase,
   ) {}
 
-  getDetail(transaction: Transaction, network: BitcoinNetwork): Promise<TransactionDetail> {
-    return this.getDetailUseCase.execute({ transaction, network });
+  getDetail(transaction: Transaction, network: BitcoinNetwork, walletId?: string): Promise<TransactionDetail> {
+    return this.getDetailUseCase.execute({ transaction, network, walletId });
   }
 }

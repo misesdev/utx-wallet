@@ -66,7 +66,7 @@ describe('useWalletSync', () => {
     it('calls syncWallet with the selected wallet id', async () => {
       const { result } = renderHook(() => useWalletSync());
       await act(async () => { await result.current.sync(); });
-      expect(mockSyncWallet).toHaveBeenCalledWith(WALLET.id);
+      expect(mockSyncWallet).toHaveBeenCalledWith(WALLET.id, expect.any(Function));
     });
 
     it('sets lastSyncAt to syncedAt from result', async () => {

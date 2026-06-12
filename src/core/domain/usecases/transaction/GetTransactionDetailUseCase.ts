@@ -3,25 +3,29 @@ import type { Transaction } from '../../entities/Transaction';
 import type { TransactionDetail } from '../../entities/TransactionDetail';
 import type { BlockchainProvider } from '../../repositories/BlockchainProvider';
 import type { BlockchainExplorer } from '../../repositories/BlockchainExplorer';
+import type { TransactionRepository } from '../../repositories/TransactionRepository';
 
 export type GetTransactionDetailParams = {
   transaction: Transaction;
   network: BitcoinNetwork;
+  walletId?: string;
 };
 
 export class GetTransactionDetailUseCase {
   constructor(
     private readonly blockchainProvider: BlockchainProvider,
     private readonly explorer: BlockchainExplorer,
+    private readonly transactionRepository: TransactionRepository | null = null,
   ) {}
 
   async execute(params: GetTransactionDetailParams): Promise<TransactionDetail> {
-    const { transaction, network } = params;
+    const { transaction, network, walletId } = params;
 
     let blockHeight: number | undefined;
     let blockTime: number | undefined;
     let confirmations: number | undefined;
     let isConfirmed = transaction.status === 'confirmed';
+    let statusChanged = false;
 
     if (transaction.txid) {
       try {
@@ -29,7 +33,9 @@ export class GetTransactionDetailUseCase {
           this.blockchainProvider.getTransactionStatus(transaction.txid),
           this.blockchainProvider.getCurrentBlockHeight(),
         ]);
+        const wasConfirmed = transaction.status === 'confirmed';
         isConfirmed = status.confirmed;
+        statusChanged = !wasConfirmed && isConfirmed;
         blockHeight = status.blockHeight;
         blockTime = status.blockTime;
         if (status.confirmed && status.blockHeight !== undefined) {
@@ -40,12 +46,19 @@ export class GetTransactionDetailUseCase {
       }
     }
 
+    // Persist status change (pending → confirmed) so the home screen reflects it immediately.
+    if (statusChanged && walletId && this.transactionRepository) {
+      const updated: Transaction = { ...transaction, status: 'confirmed' };
+      await this.transactionRepository.upsertAll(walletId, [updated]).catch(() => {});
+    }
+
     const explorerUrl = transaction.txid
       ? this.explorer.getExplorerUrl(transaction.txid, network)
       : '';
 
     return {
       ...transaction,
+      status: isConfirmed ? 'confirmed' : transaction.status,
       blockHeight,
       blockTime,
       confirmations,

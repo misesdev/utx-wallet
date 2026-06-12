@@ -4,6 +4,7 @@ import type { BitcoinNetwork } from '../../entities/Network';
 import type { Transaction } from '../../entities/Transaction';
 import type { WalletAddress } from '../../entities/WalletAddress';
 import { delay } from '../../../../shared/utils/asyncUtils';
+import type { OnSyncProgress } from './SyncProgress';
 
 export type SyncTransactionsResult = {
   newCount: number;
@@ -22,12 +23,14 @@ export class SyncTransactionsUseCase {
     addresses: string[],
     network: BitcoinNetwork,
     addressMetadata: Map<string, Pick<WalletAddress, 'originId' | 'originName'>> = new Map(),
+    onProgress?: OnSyncProgress,
   ): Promise<SyncTransactionsResult> {
     const localTxs = await this.transactionRepository.list(walletId);
 
     const fetchedTransactions = new Map<string, Transaction[]>();
     for (let i = 0; i < addresses.length; i++) {
       const address = addresses[i];
+      onProgress?.({ currentAddress: address, currentIndex: i, totalAddresses: addresses.length, phase: 'transactions' });
       const metadata = addressMetadata.get(address);
       const txs = (await this.blockchainProvider.getTransactions(address, network)).map(tx => ({
         ...tx,

@@ -141,17 +141,17 @@ describe('SyncAddressStatusUseCase', () => {
       );
     });
 
-    it('falls back to network for addresses absent from pre-fetched map', async () => {
+    it('skips addresses absent from pre-fetched map without calling the network', async () => {
       const addr = makeWalletAddress(ADDRESS_A);
       const walletAddressRepo = makeWalletAddressRepo([addr]);
       const provider = makeProvider();
-      provider.getTransactions.mockResolvedValue([]);
       const prefetched = new Map<string, Transaction[]>(); // ADDRESS_A not in map
 
       const useCase = createUseCase({ walletAddressRepo, provider });
       await useCase.execute(WALLET_ID, NETWORK, prefetched);
 
-      expect(provider.getTransactions).toHaveBeenCalledWith(ADDRESS_A, NETWORK);
+      expect(provider.getTransactions).not.toHaveBeenCalled();
+      expect(walletAddressRepo.updateSyncData).not.toHaveBeenCalled();
     });
   });
 

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton } from '../../components/base/AppButton';
@@ -19,6 +19,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useWallet } from '../../hooks/useWallet';
 import type { AppStackParamList } from '../../../app/navigation/routes';
 import { AppRoutes } from '../../../app/navigation/routes';
+import type { SyncProgress } from '../../../core/domain/usecases/wallet/SyncProgress';
 
 type AccountDetailsRoute = RouteProp<AppStackParamList, typeof AppRoutes.AccountDetails>;
 
@@ -92,12 +93,15 @@ export function AccountDetailsScreen() {
   const navigation = useAppNavigation();
   const insets = useSafeAreaInsets();
   const route = useRoute<AccountDetailsRoute>();
-  const { selectedWallet, listTransactions } = useWallet();
+  const { selectedWallet, listTransactions, syncAccount } = useWallet();
   const { renameAddressOrigin } = useAddressManager();
-  const { summaries, isLoading, reload } = useAccountSummaries();
+  const { summaries, isLoading, reload, silentReload } = useAccountSummaries();
   const [renameVisible, setRenameVisible] = useState(false);
   const [renameError, setRenameError] = useState('');
   const [isRenaming, setIsRenaming] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null);
   const [transactions, setTransactions] = useState<Awaited<ReturnType<typeof listTransactions>>>([]);
 
   const { hidden, hideBalanceEnabled, toggleReveal, pinModalVisible, pinError, submitPin, cancelAuth } =
@@ -111,6 +115,24 @@ export function AccountDetailsScreen() {
       .then(list => setTransactions(list.filter(tx => tx.originId === route.params.originId)))
       .catch(() => setTransactions([]));
   }, [selectedWallet, listTransactions, route.params.originId]);
+
+  async function handleSync() {
+    if (!selectedWallet || isSyncing) return;
+    setIsSyncing(true);
+    setSyncError(null);
+    setSyncProgress(null);
+    try {
+      await syncAccount(selectedWallet.id, route.params.originId, setSyncProgress);
+      await silentReload();
+      const list = await listTransactions(selectedWallet.id);
+      setTransactions(list.filter(tx => tx.originId === route.params.originId));
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : t('accountDetails.syncError'));
+    } finally {
+      setIsSyncing(false);
+      setSyncProgress(null);
+    }
+  }
 
   async function handleRename(name: string) {
     setIsRenaming(true);
@@ -158,6 +180,19 @@ export function AccountDetailsScreen() {
           )}
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel={t('accountDetails.sync')}
+            onPress={handleSync}
+            disabled={isSyncing}
+            style={({ pressed }) => [styles.backBtn, { opacity: isSyncing ? 0.5 : pressed ? 0.6 : 1 }]}
+            testID="account-sync-button"
+          >
+            {isSyncing
+              ? <ActivityIndicator size="small" color={theme.colors.accent} />
+              : <AppIcon name="sync" size={22} color={theme.colors.accent} />
+            }
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
             accessibilityLabel={t('accountDetails.rename')}
             onPress={() => setRenameVisible(true)}
             style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
@@ -167,6 +202,24 @@ export function AccountDetailsScreen() {
           </Pressable>
         </View>
       </View>
+
+      {isSyncing && syncProgress && (
+        <View
+          style={[
+            styles.progressBanner,
+            { backgroundColor: theme.colors.surfaceMuted, borderBottomColor: theme.colors.border },
+          ]}
+        >
+          <ActivityIndicator size="small" color={theme.colors.accent} style={styles.progressSpinner} />
+          <AppText variant="caption" color="muted" numberOfLines={1} style={styles.progressText}>
+            {t('accountDetails.syncingAddress', {
+              index: syncProgress.currentIndex + 1,
+              total: syncProgress.totalAddresses,
+              address: `${syncProgress.currentAddress.slice(0, 8)}…${syncProgress.currentAddress.slice(-6)}`,
+            })}
+          </AppText>
+        </View>
+      )}
 
       {isLoading ? (
         <View style={styles.center}><AppLoading label={t('common.loadingAccounts')} /></View>
@@ -197,6 +250,10 @@ export function AccountDetailsScreen() {
               <AppText variant="caption" color="warning">{t('accountDetails.pending', { sats: formatSats(pending) })}</AppText>
             )}
           </View>
+
+          {syncError ? (
+            <AppText variant="caption" color="danger" style={styles.syncError}>{syncError}</AppText>
+          ) : null}
 
           <View style={styles.sectionHeader}>
             <AppText variant="subtitle">{t('accountDetails.transactions')}</AppText>
@@ -287,6 +344,23 @@ const styles = StyleSheet.create({
   },
   balanceUnit: {
     marginBottom: 8,
+  },
+  syncError: {
+    textAlign: 'center',
+  },
+  progressBanner: {
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  progressSpinner: {
+    flexShrink: 0,
+  },
+  progressText: {
+    flex: 1,
   },
   sectionHeader: {
     paddingHorizontal: 2,

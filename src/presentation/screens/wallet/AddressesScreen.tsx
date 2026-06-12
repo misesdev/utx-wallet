@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, InteractionManager, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppEmptyState } from '../../components/base/AppEmptyState';
 import { AppIcon } from '../../components/base/AppIcon';
@@ -18,10 +18,13 @@ const STATUS_COLOR: Record<AddressStatus, 'muted' | 'success' | 'warning' | 'dan
   reserved: 'accent',
   received: 'success',
   spent_once: 'warning',
-  change: 'muted',
+  change: 'warning',
   archived: 'muted',
   inconsistent: 'danger',
 };
+
+// Addresses that are permanently spent/used — syncing them serves no purpose.
+const USED_STATUSES = new Set<AddressStatus>(['spent_once', 'change', 'archived']);
 
 function truncate(addr: string): string {
   return `${addr.slice(0, 10)}…${addr.slice(-8)}`;
@@ -29,60 +32,74 @@ function truncate(addr: string): string {
 
 type AddressRowProps = {
   address: WalletAddress;
+  onSync: (address: string) => void;
+  isSyncing: boolean;
 };
 
-function AddressRow({ address }: AddressRowProps) {
+const AddressRow = React.memo(function AddressRowMemo({ address, onSync, isSyncing }: AddressRowProps) {
   const { theme } = useTheme();
   const { t } = useAppTranslation();
   const statusColor = STATUS_COLOR[address.status];
+  const isUsed = USED_STATUSES.has(address.status);
   const STATUS_TRANSLATIONS: Record<AddressStatus, string> = {
     fresh: t('addresses.statusFresh'),
     reserved: t('addresses.statusReserved'),
     received: t('addresses.statusReceived'),
     spent_once: t('addresses.statusSpent'),
-    change: t('addresses.statusChange'),
+    change: t('addresses.statusSpent'),
     archived: t('addresses.statusArchived'),
     inconsistent: t('addresses.statusInconsistent'),
   };
 
   return (
-    <View
-      style={[
-        styles.row,
-        {
-          backgroundColor: theme.colors.surfaceRaised,
-          borderColor: theme.colors.border,
-          borderRadius: theme.radii.md,
-        },
-      ]}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={isUsed ? STATUS_TRANSLATIONS[address.status] : t('addresses.syncAddress')}
+      onPress={isUsed ? undefined : () => onSync(address.address)}
+      disabled={isSyncing || isUsed}
+      testID={`address-row-${address.address}`}
+      style={({ pressed }) => [{ opacity: isSyncing ? 0.5 : (!isUsed && pressed) ? 0.75 : 1 }]}
     >
-      <View style={styles.rowLeft}>
-        <AppText variant="body" style={styles.address}>{truncate(address.address)}</AppText>
-        <View style={styles.meta}>
-          <AppText variant="caption" color={statusColor}>{STATUS_TRANSLATIONS[address.status]}</AppText>
-          <AppText variant="caption" color="faint">·</AppText>
-          <AppText variant="caption" color="muted">{address.chain === 'change' ? t('addresses.chainChange') : t('addresses.chainReceive')}</AppText>
-          <AppText variant="caption" color="faint">·</AppText>
-          <AppText variant="caption" color="muted">#{address.index}</AppText>
+      <View
+        style={[
+          styles.row,
+          {
+            backgroundColor: theme.colors.surfaceRaised,
+            borderColor: theme.colors.border,
+            borderRadius: theme.radii.md,
+          },
+        ]}
+      >
+        <View style={styles.rowLeft}>
+          <AppText variant="body" style={styles.address}>{truncate(address.address)}</AppText>
+          <View style={styles.meta}>
+            <AppText variant="caption" color={statusColor}>{STATUS_TRANSLATIONS[address.status]}</AppText>
+            <AppText variant="caption" color="faint">·</AppText>
+            <AppText variant="caption" color="muted">{address.chain === 'change' ? t('addresses.chainChange') : t('addresses.chainReceive')}</AppText>
+            <AppText variant="caption" color="faint">·</AppText>
+            <AppText variant="caption" color="muted">#{address.index}</AppText>
+          </View>
+        </View>
+        <View style={styles.rowRight}>
+          {isSyncing ? (
+            <ActivityIndicator size="small" color={theme.colors.accent} />
+          ) : address.txCount > 0 ? (
+            <>
+              <AppText variant="caption" color="muted">{t('addresses.txCount', { count: address.txCount })}</AppText>
+              {address.totalReceivedSats > 0 ? (
+                <AppText variant="caption" color="muted">
+                  {address.totalReceivedSats.toLocaleString()} sats
+                </AppText>
+              ) : null}
+            </>
+          ) : (
+            <AppIcon name="sync" size={16} color={theme.colors.textFaint} />
+          )}
         </View>
       </View>
-      <View style={styles.rowRight}>
-        {address.txCount > 0 ? (
-          <>
-            <AppText variant="caption" color="muted">{t('addresses.txCount', { count: address.txCount })}</AppText>
-            {address.totalReceivedSats > 0 ? (
-              <AppText variant="caption" color="muted">
-                {address.totalReceivedSats.toLocaleString()} sats
-              </AppText>
-            ) : null}
-          </>
-        ) : (
-          <AppText variant="caption" color="faint">—</AppText>
-        )}
-      </View>
-    </View>
+    </Pressable>
   );
-}
+});
 
 type GroupedAddresses = {
   originId: string;
@@ -113,9 +130,11 @@ function groupByOrigin(addresses: WalletAddress[]): GroupedAddresses[] {
 
 type SectionProps = {
   group: GroupedAddresses;
+  onSync: (address: string) => void;
+  syncingAddress: string | null;
 };
 
-function OriginSection({ group }: SectionProps) {
+const OriginSection = React.memo(function OriginSectionMemo({ group, onSync, syncingAddress }: SectionProps) {
   const { theme } = useTheme();
   const { t } = useAppTranslation();
   return (
@@ -136,7 +155,14 @@ function OriginSection({ group }: SectionProps) {
         <View style={styles.chainGroup}>
           <AppText variant="label" color="muted" style={styles.chainLabel}>{t('addresses.chainReceive')}</AppText>
           <View style={styles.addressList}>
-            {group.receive.map(a => <AddressRow key={a.id} address={a} />)}
+            {group.receive.map(a => (
+              <AddressRow
+                key={a.id}
+                address={a}
+                onSync={onSync}
+                isSyncing={syncingAddress === a.address}
+              />
+            ))}
           </View>
         </View>
       )}
@@ -145,13 +171,20 @@ function OriginSection({ group }: SectionProps) {
         <View style={styles.chainGroup}>
           <AppText variant="label" color="muted" style={styles.chainLabel}>{t('addresses.chainChange')}</AppText>
           <View style={styles.addressList}>
-            {group.change.map(a => <AddressRow key={a.id} address={a} />)}
+            {group.change.map(a => (
+              <AddressRow
+                key={a.id}
+                address={a}
+                onSync={onSync}
+                isSyncing={syncingAddress === a.address}
+              />
+            ))}
           </View>
         </View>
       )}
     </View>
   );
-}
+});
 
 export function AddressesScreen() {
   const { theme } = useTheme();
@@ -159,10 +192,11 @@ export function AddressesScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
   const { listAddresses } = useAddressManager();
-  const { selectedWallet } = useWallet();
+  const { selectedWallet, syncAddress } = useWallet();
 
   const [addresses, setAddresses] = useState<WalletAddress[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [syncingAddress, setSyncingAddress] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!selectedWallet) return;
@@ -176,6 +210,32 @@ export function AddressesScreen() {
       setIsLoading(false);
     }
   }, [selectedWallet, listAddresses]);
+
+  // Refresh without showing the loading spinner — prevents list flicker after per-address sync
+  const silentLoad = useCallback(async () => {
+    if (!selectedWallet) return;
+    try {
+      const list = await listAddresses(selectedWallet.id);
+      setAddresses(list);
+    } catch {
+      // silent
+    }
+  }, [selectedWallet, listAddresses]);
+
+  const handleSyncAddress = useCallback(async (address: string) => {
+    if (!selectedWallet || syncingAddress) return;
+    setSyncingAddress(address);
+    // Yield to the React scheduler so the loader appears before async work begins.
+    await new Promise<void>(resolve => InteractionManager.runAfterInteractions(() => resolve()));
+    try {
+      await syncAddress(selectedWallet.id, address);
+      await silentLoad();
+    } catch {
+      // silent — address sync errors are not critical
+    } finally {
+      setSyncingAddress(null);
+    }
+  }, [selectedWallet, syncAddress, syncingAddress, silentLoad]);
 
   useEffect(() => {
     load().catch(() => undefined);
@@ -216,7 +276,14 @@ export function AddressesScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 28 }]}
         >
-          {groups.map(g => <OriginSection key={g.originId} group={g} />)}
+          {groups.map(g => (
+            <OriginSection
+              key={g.originId}
+              group={g}
+              onSync={handleSyncAddress}
+              syncingAddress={syncingAddress}
+            />
+          ))}
         </ScrollView>
       )}
     </View>

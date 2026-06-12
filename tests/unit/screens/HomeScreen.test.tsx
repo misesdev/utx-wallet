@@ -1,6 +1,10 @@
 import React from 'react';
 import { fireEvent, waitFor } from '@testing-library/react-native';
-import { HomeScreen } from '../../../src/presentation/screens/home/HomeScreen';
+import {
+  accountSyncFormat,
+  addressSyncFormat,
+  HomeScreen,
+} from '../../../src/presentation/screens/home/HomeScreen';
 import { renderWithTheme } from '../../mocks/renderWithProviders';
 import { AppRoutes } from '../../../src/app/navigation/routes';
 import type { HomeWalletState } from '../../../src/presentation/hooks/useHomeWallet';
@@ -38,6 +42,7 @@ const SYNC_STATE: WalletSyncState = {
   lastSyncAt: null,
   syncResult: null,
   syncError: null,
+  syncProgress: null,
   sync: mockSync,
 };
 
@@ -214,6 +219,21 @@ describe('HomeScreen', () => {
     });
   });
 
+  describe('Sync progress formatters', () => {
+    it('keeps short account names visible', () => {
+      expect(accountSyncFormat('BIPA')).toBe('BIPA');
+    });
+
+    it('keeps short addresses visible', () => {
+      expect(addressSyncFormat('abc123')).toBe('abc123');
+    });
+
+    it('truncates long account names and addresses predictably', () => {
+      expect(accountSyncFormat('Default')).toBe('Defa..');
+      expect(addressSyncFormat('bc1qexampleaddress')).toBe('bc..ress');
+    });
+  });
+
   describe('Sync button', () => {
     it('renders the Tap to sync button when idle with no prior sync', () => {
       const screen = renderWithTheme(<HomeScreen />);
@@ -226,7 +246,8 @@ describe('HomeScreen', () => {
       await waitFor(() => {
         expect(mockSync).toHaveBeenCalledTimes(1);
         expect(mockRefresh).toHaveBeenCalledTimes(1);
-        expect(mockReloadAccounts).toHaveBeenCalledTimes(1);
+        // reloadAccounts is called on focus (useFocusEffect) AND after manual sync
+        expect(mockReloadAccounts).toHaveBeenCalled();
       });
     });
 

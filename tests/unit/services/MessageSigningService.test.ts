@@ -1,4 +1,4 @@
-import { ECPairKey } from 'bitcoin-tx-lib';
+import { ECPairKey, hexToBytes } from 'bitcoin-tx-lib';
 import { MessageSigningService } from '../../../src/core/domain/services/MessageSigningService';
 
 const service = new MessageSigningService();
@@ -130,7 +130,7 @@ describe('MessageSigningService', () => {
 
     it('sig field is valid DER hex', () => {
       const signed = service.sign('der check', PRIVATE_KEY);
-      const sigBytes = Buffer.from(signed.sig, 'hex');
+      const sigBytes = hexToBytes(signed.sig);
       // DER sequence starts with 0x30
       expect(sigBytes[0]).toBe(0x30);
       // Total length matches DER length byte

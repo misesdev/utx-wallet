@@ -60,6 +60,32 @@ describe('SyncUtxosUseCase', () => {
       const result = await useCase.execute(WALLET_ID, [ADDRESS], NETWORK);
       expect(result.newCount).toBe(1);
     });
+
+    it('preserves local frozen state for refreshed UTXOs with the same txid and vout', async () => {
+      const local = [{ ...makeUtxo('tx1'), isFrozen: true }];
+      const fresh = [makeUtxo('tx1')];
+      const repo = makeRepo(local);
+      const useCase = new SyncUtxosUseCase(repo, makeProvider(fresh));
+
+      await useCase.execute(WALLET_ID, [ADDRESS], NETWORK);
+
+      expect(repo.replaceAll).toHaveBeenCalledWith(WALLET_ID, [
+        expect.objectContaining({ txid: 'tx1', vout: 0, isFrozen: true }),
+      ]);
+    });
+
+    it('does not copy frozen state to a different vout from the same txid', async () => {
+      const local = [{ ...makeUtxo('tx1', 0), isFrozen: true }];
+      const fresh = [makeUtxo('tx1', 1)];
+      const repo = makeRepo(local);
+      const useCase = new SyncUtxosUseCase(repo, makeProvider(fresh));
+
+      await useCase.execute(WALLET_ID, [ADDRESS], NETWORK);
+
+      expect(repo.replaceAll).toHaveBeenCalledWith(WALLET_ID, [
+        expect.objectContaining({ txid: 'tx1', vout: 1, isFrozen: undefined }),
+      ]);
+    });
   });
 
   describe('spent UTXOs', () => {

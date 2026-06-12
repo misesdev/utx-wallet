@@ -1,43 +1,56 @@
-UTX Wallet v1.4
+UTX Wallet v2.0
 
 ── WHAT'S NEW ──────────────────────────────────────────────
 
+• New layered wallet sync
+  Wallet sync now runs through explicit address, account,
+  wallet, and import sync layers. This keeps sync work
+  scoped, easier to test, and avoids unnecessary duplicate
+  blockchain requests when transaction data was already
+  fetched.
+
+• Per-account sync
+  Each account can now be synced independently from the
+  account details screen. The home sync also shows which
+  account and address are currently being processed, making
+  larger wallets easier to follow during synchronization.
+
+• Per-address sync with safer rules
+  Address rows can be tapped to refresh a single active
+  address. Spent, change, and archived addresses are blocked
+  from manual sync, and address sync now validates that the
+  address belongs to the selected wallet before any network
+  or persistence work is performed.
+
+• Better address pool handling
+  Sync refreshes address status using prefetched transaction
+  data and replenishes receive/change pools after status
+  changes. This keeps the wallet aligned with the no-address-
+  reuse policy while reducing extra API calls.
+
+• Safer partial UTXO refreshes
+  Partial syncs now preserve UTXOs from addresses that were
+  not part of the current sync run. Existing frozen UTXO
+  state is also preserved when the same txid:vout is refreshed
+  from the blockchain provider.
+
+• Improved transaction status updates
+  Opening transaction details can refresh pending/confirmed
+  status and persist confirmed updates so the transaction list
+  and home screen reflect the latest known state.
+
+• UI refinements
+  Account balances refresh with less flicker after sync,
+  sync progress labels no longer disappear for short account
+  names or addresses, and the Android launcher label now
+  displays "UTX Wallet".
+
+── PREVIOUS RELEASE (v1.4) ─────────────────────────────────
+
 • BIP84 zpub / vpub export per account
-  Export the extended public key for any individual account.
-  An account picker shows all derived accounts with their
-  BIP84 derivation paths before exporting. Each account
-  produces its own unique zpub (mainnet) or vpub (testnet)
-  at m/84'/coin_type'/account', ready to import into any
-  watch-only wallet (Sparrow, Electrum, Ledger Live, etc.).
-
 • Watch-only wallet indicators
-  Wallets imported via zpub/vpub are now clearly labelled
-  "Watch Only" on the wallet list and home screen header.
-  The account segregation screen and wallet settings
-  disable features that require the private key (new
-  accounts, seed backup, key export) and explain why.
-
 • Watch-only sync fixed to a single account
-  A zpub/vpub covers exactly one BIP84 account. The import
-  and discovery flows now respect this: address scanning
-  stops after account 0 for watch-only wallets, preventing
-  the infinite multi-account discovery loop that occurred
-  when all account indices resolved to the same key.
-
 • Correct BIP84 key labels (zprv / zpub)
-  The export format screen now displays the proper BIP84
-  key names — zprv / vprv for the extended private key and
-  zpub / vpub for the extended public key — instead of the
-  generic xpriv / xpub labels.
-
-── PREVIOUS RELEASE (v1.3) ─────────────────────────────────
-
-• Message signing
-• Balance privacy eye button
-• Biometric unlock on app open
-• Screenshot prevention (Android FLAG_SECURE)
-• Seed auto-hides on app switch
-• Navigation param hardening
 
 ── ABOUT UTX WALLET ────────────────────────────────────────
 

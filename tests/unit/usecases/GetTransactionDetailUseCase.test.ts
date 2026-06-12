@@ -56,11 +56,23 @@ function makeExplorer(): jest.Mocked<BlockchainExplorer> {
   };
 }
 
+function makeTransactionRepository() {
+  return {
+    list: jest.fn().mockResolvedValue([]),
+    upsertAll: jest.fn().mockResolvedValue(undefined),
+    build: jest.fn(),
+    sign: jest.fn(),
+    broadcast: jest.fn(),
+    deleteByWallet: jest.fn(),
+  };
+}
+
 function makeUseCase(
   provider = makeProvider(),
   explorer = makeExplorer(),
+  transactionRepo?: ReturnType<typeof makeTransactionRepository>,
 ) {
-  return new GetTransactionDetailUseCase(provider, explorer);
+  return new GetTransactionDetailUseCase(provider, explorer, transactionRepo ?? null);
 }
 
 describe('GetTransactionDetailUseCase', () => {
@@ -172,6 +184,57 @@ describe('GetTransactionDetailUseCase', () => {
       const tx = makeTx({ txid: undefined });
       const result = await makeUseCase().execute({ transaction: tx, network: 'mainnet' });
       expect(result.explorerUrl).toBe('');
+    });
+  });
+
+  describe('transaction status persistence', () => {
+    it('persists status change to repository when pending tx becomes confirmed', async () => {
+      const tx = makeTx({ status: 'pending' });
+      const provider = makeProvider(makeConfirmedStatus());
+      const repo = makeTransactionRepository();
+      const useCase = makeUseCase(provider, makeExplorer(), repo);
+      await useCase.execute({ transaction: tx, network: 'mainnet', walletId: 'wallet-1' });
+      expect(repo.upsertAll).toHaveBeenCalledWith(
+        'wallet-1',
+        expect.arrayContaining([expect.objectContaining({ status: 'confirmed' })]),
+      );
+    });
+
+    it('does not persist when status did not change (already confirmed)', async () => {
+      const tx = makeTx({ status: 'confirmed' });
+      const provider = makeProvider(makeConfirmedStatus());
+      const repo = makeTransactionRepository();
+      const useCase = makeUseCase(provider, makeExplorer(), repo);
+      await useCase.execute({ transaction: tx, network: 'mainnet', walletId: 'wallet-1' });
+      expect(repo.upsertAll).not.toHaveBeenCalled();
+    });
+
+    it('does not persist when no walletId provided', async () => {
+      const tx = makeTx({ status: 'pending' });
+      const provider = makeProvider(makeConfirmedStatus());
+      const repo = makeTransactionRepository();
+      const useCase = makeUseCase(provider, makeExplorer(), repo);
+      await useCase.execute({ transaction: tx, network: 'mainnet' });
+      expect(repo.upsertAll).not.toHaveBeenCalled();
+    });
+
+    it('does not throw when persistence fails', async () => {
+      const tx = makeTx({ status: 'pending' });
+      const provider = makeProvider(makeConfirmedStatus());
+      const repo = makeTransactionRepository();
+      repo.upsertAll.mockRejectedValue(new Error('DB error'));
+      const useCase = makeUseCase(provider, makeExplorer(), repo);
+      await expect(
+        useCase.execute({ transaction: tx, network: 'mainnet', walletId: 'wallet-1' }),
+      ).resolves.toBeDefined();
+    });
+
+    it('returns updated status in the detail even if no repo is provided', async () => {
+      const tx = makeTx({ status: 'pending' });
+      const provider = makeProvider(makeConfirmedStatus());
+      const result = await makeUseCase(provider).execute({ transaction: tx, network: 'mainnet' });
+      expect(result.status).toBe('confirmed');
+      expect(result.isConfirmed).toBe(true);
     });
   });
 

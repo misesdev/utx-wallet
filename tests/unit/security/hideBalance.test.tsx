@@ -99,6 +99,7 @@ jest.mock('../../../src/presentation/hooks/useWalletSync', () => ({
     lastSyncAt: null,
     syncResult: null,
     syncError: null,
+    syncProgress: null,
     sync: jest.fn(),
   }),
 }));
@@ -122,6 +123,7 @@ jest.mock('../../../src/presentation/hooks/useSendBitcoin', () => ({
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: jest.fn(), goBack: jest.fn() }),
   useRoute: () => ({ params: {} }),
+  useFocusEffect: (cb: () => void) => { cb(); },
 }));
 
 // ─── HomeScreen: hideBalance ──────────────────────────────────────────────────

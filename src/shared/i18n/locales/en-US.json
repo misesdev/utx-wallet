@@ -38,6 +38,8 @@
     "balance": "Balance",
     "pending": "Pending",
     "syncing": "Syncing…",
+    "syncingAddress": "Syncing {{index}}/{{total}}…",
+    "syncingAccount": "Syncing {{account}} {{address}}",
     "tapToSync": "Tap to sync",
     "lastSync": "Last sync: {{time}}",
     "recentActivity": "Recent Activity",
@@ -297,7 +299,11 @@
     "statusInconsistent": "Inconsistent",
     "chainReceive": "Receive",
     "chainChange": "Change",
-    "txCount": "{{count}} tx"
+    "txCount": "{{count}} tx",
+    "syncAddress": "Sync this address",
+    "syncing": "Syncing…",
+    "syncDone": "Synced",
+    "syncError": "Sync failed"
   },
   "segregation": {
     "title": "Segregation",
@@ -326,7 +332,11 @@
     "pending": "+{{sats}} sats pending",
     "transactions": "Transactions",
     "noTransactions": "No transactions",
-    "noTransactionsDesc": "Transactions for this account will appear here."
+    "noTransactionsDesc": "Transactions for this account will appear here.",
+    "sync": "Sync account",
+    "syncing": "Syncing…",
+    "syncingAddress": "{{index}}/{{total}}: {{address}}",
+    "syncError": "Sync failed"
   },
   "walletDetails": {
     "title": "Wallet details",

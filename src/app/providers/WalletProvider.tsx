@@ -5,6 +5,9 @@ import type { Transaction } from '../../core/domain/entities/Transaction';
 import type { Utxo } from '../../core/domain/entities/Utxo';
 import type { BitcoinNetwork } from '../../core/domain/entities/Network';
 import type { SyncResult } from '../../core/domain/usecases/wallet/SyncWalletUseCase';
+import type { SyncAccountResult } from '../../core/domain/usecases/wallet/SyncAccountUseCase';
+import type { SyncAddressResult } from '../../core/domain/usecases/wallet/SyncAddressUseCase';
+import type { OnSyncProgress } from '../../core/domain/usecases/wallet/SyncProgress';
 import type {
   ExportWalletKeyParams,
   ExportWalletKeyResult,
@@ -24,7 +27,9 @@ type WalletContextValue = {
   reloadWallets: () => Promise<void>;
   listTransactions: (walletId: string) => Promise<Transaction[]>;
   listUtxos: (walletId: string) => Promise<Utxo[]>;
-  syncWallet: (walletId: string) => Promise<SyncResult>;
+  syncWallet: (walletId: string, onProgress?: OnSyncProgress) => Promise<SyncResult>;
+  syncAccount: (walletId: string, originId: string, onProgress?: OnSyncProgress) => Promise<SyncAccountResult>;
+  syncAddress: (walletId: string, address: string, onProgress?: OnSyncProgress) => Promise<SyncAddressResult>;
   freezeUtxo: (walletId: string, txid: string, vout: number) => Promise<void>;
   unfreezeUtxo: (walletId: string, txid: string, vout: number) => Promise<void>;
   exportWalletKey: (params: ExportWalletKeyParams) => Promise<ExportWalletKeyResult>;
@@ -90,11 +95,15 @@ export function WalletProvider({ children, walletService }: WalletProviderProps)
       reloadWallets,
       listTransactions: (walletId: string) => walletService.listTransactions(walletId),
       listUtxos: (walletId: string) => walletService.listUtxos(walletId),
-      syncWallet: async (walletId: string) => {
-        const result = await walletService.syncWallet(walletId);
+      syncWallet: async (walletId: string, onProgress?: OnSyncProgress) => {
+        const result = await walletService.syncWallet(walletId, onProgress);
         await reloadWallets();
         return result;
       },
+      syncAccount: (walletId: string, originId: string, onProgress?: OnSyncProgress) =>
+        walletService.syncAccount(walletId, originId, onProgress),
+      syncAddress: (walletId: string, address: string, onProgress?: OnSyncProgress) =>
+        walletService.syncAddress(walletId, address, onProgress),
       freezeUtxo: (walletId, txid, vout) => walletService.freezeUtxo(walletId, txid, vout),
       unfreezeUtxo: (walletId, txid, vout) => walletService.unfreezeUtxo(walletId, txid, vout),
       exportWalletKey: (params) => walletService.exportWalletKey(params),

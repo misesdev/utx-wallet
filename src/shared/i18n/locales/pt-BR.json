@@ -38,6 +38,8 @@
     "balance": "Saldo",
     "pending": "Pendente",
     "syncing": "Sincronizando…",
+    "syncingAddress": "Sincronizando {{index}}/{{total}}…",
+    "syncingAccount": "Sincronizando {{account}}.. {{address}}",
     "tapToSync": "Toque para sincronizar",
     "lastSync": "Última sincronização: {{time}}",
     "recentActivity": "Atividade recente",
@@ -297,7 +299,11 @@
     "statusInconsistent": "Inconsistente",
     "chainReceive": "Recebimento",
     "chainChange": "Troco",
-    "txCount": "{{count}} tx"
+    "txCount": "{{count}} tx",
+    "syncAddress": "Sincronizar este endereço",
+    "syncing": "Sincronizando…",
+    "syncDone": "Sincronizado",
+    "syncError": "Falha na sincronização"
   },
   "segregation": {
     "title": "Segregação",
@@ -326,7 +332,11 @@
     "pending": "+{{sats}} sats pendentes",
     "transactions": "Transações",
     "noTransactions": "Sem transações",
-    "noTransactionsDesc": "As transações desta conta aparecerão aqui."
+    "noTransactionsDesc": "As transações desta conta aparecerão aqui.",
+    "sync": "Sincronizar conta",
+    "syncing": "Sincronizando…",
+    "syncingAddress": "{{index}}/{{total}}: {{address}}",
+    "syncError": "Falha na sincronização"
   },
   "walletDetails": {
     "title": "Detalhes da carteira",

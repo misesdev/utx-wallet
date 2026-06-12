@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBottomDock } from '../../components/base/AppBottomDock';
@@ -19,6 +20,7 @@ import { useTemporaryRevealBalance } from '../../hooks/useTemporaryRevealBalance
 import { useTheme } from '../../hooks/useTheme';
 import { AppRoutes } from '../../../app/navigation/routes';
 import type { AccountSummary } from '../../../core/domain/services/AccountSummaryService';
+import type { SyncProgress } from '../../../core/domain/usecases/wallet/SyncProgress';
 
 const SATS_PER_BTC = 100_000_000;
 const HIDDEN_PLACEHOLDER = '••••••';
@@ -110,23 +112,42 @@ function BalanceHero({ confirmedSats, pendingSats, hidden, onPress }: BalanceHer
 
 // ─── Sync pill ────────────────────────────────────────────────────────────────
 
+export function addressSyncFormat(address: string): string {
+  if (address.length <= 6) return address;
+  return `${address.slice(0, 2)}..${address.slice(-4)}`;
+}
+
+export function accountSyncFormat(account: string): string {
+  if (account.length <= 4) return account;
+  return `${account.slice(0, 4)}..`;
+}
+
 type SyncPillProps = {
   isSyncing: boolean;
   lastSyncAt: string | null;
   syncError: string | null;
+  syncProgress: SyncProgress | null;
   onSync: () => void;
 };
 
-function SyncPill({ isSyncing, lastSyncAt, syncError, onSync }: SyncPillProps) {
+function SyncPill({ isSyncing, lastSyncAt, syncError, syncProgress, onSync }: SyncPillProps) {
   const { theme } = useTheme();
   const { t } = useAppTranslation();
-  const label = isSyncing
-    ? t('home.syncing')
-    : syncError
-      ? syncError
-      : lastSyncAt
-        ? t('home.lastSync', { time: new Date(lastSyncAt).toLocaleTimeString() })
-        : t('home.tapToSync');
+  let label: string;
+  if (isSyncing && syncProgress?.accountName && syncProgress?.currentAddress) {
+    label = t('home.syncingAccount', {
+      account: accountSyncFormat(syncProgress.accountName),
+      address: addressSyncFormat(syncProgress.currentAddress),
+    });
+  } else if (isSyncing) {
+    label = t('home.syncing');
+  } else if (syncError) {
+    label = syncError;
+  } else if (lastSyncAt) {
+    label = t('home.lastSync', { time: new Date(lastSyncAt).toLocaleTimeString() });
+  } else {
+    label = t('home.tapToSync');
+  }
 
   return (
     <Pressable
@@ -261,7 +282,13 @@ export function HomeScreen() {
     refresh,
   } = useHomeWallet();
 
-  const { isSyncing, lastSyncAt, syncError, sync } = useWalletSync();
+  const { isSyncing, lastSyncAt, syncError, syncProgress, sync } = useWalletSync();
+
+  useFocusEffect(
+    useCallback(() => {
+      reloadAccounts();
+    }, [reloadAccounts]),
+  );
 
   const handleSync = useCallback(async () => {
     await sync();
@@ -325,6 +352,7 @@ export function HomeScreen() {
           isSyncing={isSyncing}
           lastSyncAt={lastSyncAt}
           syncError={syncError}
+          syncProgress={syncProgress}
           onSync={handleSync}
         />
 

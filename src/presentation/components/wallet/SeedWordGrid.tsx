@@ -34,10 +34,14 @@ export function SeedWordGrid({ words, testID }: Props) {
                   },
                 ]}
               >
-                <AppText variant="caption" color="muted" style={styles.index}>
+                <AppText
+                  variant="caption"
+                  color="muted"
+                  style={styles.index}
+                >
                   {idx + 1}
                 </AppText>
-                <AppText variant="body" style={styles.word} numberOfLines={1}>
+                <AppText style={[styles.word, { color: theme.colors.text }]}>
                   {word}
                 </AppText>
               </View>
@@ -55,33 +59,35 @@ export function SeedWordGrid({ words, testID }: Props) {
 
 const styles = StyleSheet.create({
   grid: {
-    gap: 8,
-    padding: 16,
+    gap: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 8,
   },
   row: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   cell: {
     alignItems: 'center',
     borderWidth: 1,
     flex: 1,
     flexDirection: 'row',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    gap: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 9,
   },
   cellPad: {
     flex: 1,
   },
   index: {
     fontWeight: '700',
-    minWidth: 16,
+    minWidth: 14,
     textAlign: 'right',
   },
   word: {
     flex: 1,
+    fontSize: 13,
     fontWeight: '600',
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
   },
 });

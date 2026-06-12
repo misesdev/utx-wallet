@@ -27,6 +27,8 @@ import { GetWalletSeedUseCase } from '../../core/domain/usecases/wallet/GetWalle
 import { ExportWalletKeyUseCase } from '../../core/domain/usecases/wallet/ExportWalletKeyUseCase';
 import { SelectWalletUseCase } from '../../core/domain/usecases/wallet/SelectWalletUseCase';
 import { SyncWalletUseCase } from '../../core/domain/usecases/wallet/SyncWalletUseCase';
+import { SyncAccountUseCase } from '../../core/domain/usecases/wallet/SyncAccountUseCase';
+import { SyncAddressUseCase } from '../../core/domain/usecases/wallet/SyncAddressUseCase';
 import { WalletImportSyncUseCase } from '../../core/domain/usecases/wallet/WalletImportSyncUseCase';
 import { SyncUtxosUseCase } from '../../core/domain/usecases/wallet/SyncUtxosUseCase';
 import { SyncTransactionsUseCase } from '../../core/domain/usecases/wallet/SyncTransactionsUseCase';
@@ -96,6 +98,7 @@ import { UtxoStorage } from '../../core/infrastructure/storage/UtxoStorage';
 import { WalletKeyStorage } from '../../core/infrastructure/storage/WalletKeyStorage';
 import { WalletStorage } from '../../core/infrastructure/storage/WalletStorage';
 import { DEFAULT_NETWORK } from '../../shared/constants/networks';
+import { SYNC_REQUEST_DELAY_MS } from '../../shared/config/syncConfig';
 import { AccelerateProvider } from './AccelerateProvider';
 import { AddressManagerProvider } from './AddressManagerProvider';
 import { AddressProvider } from './AddressProvider';
@@ -204,17 +207,24 @@ export function AppProvider({ children }: PropsWithChildren) {
     );
 
     const syncBalance = new SyncBalanceUseCase(utxoRepository);
-    const walletImportSyncUseCase = new WalletImportSyncUseCase(
-      walletAddressProvider,
-      nodeRepository,
-      transactionRepository,
-      utxoRepository,
+    const syncUtxos = new SyncUtxosUseCase(utxoRepository, nodeRepository, SYNC_REQUEST_DELAY_MS);
+    const syncTransactions = new SyncTransactionsUseCase(transactionRepository, nodeRepository, SYNC_REQUEST_DELAY_MS);
+
+    const syncAccountUseCase = new SyncAccountUseCase(
+      walletRepository,
       walletAddressRepository,
+      syncUtxos,
+      syncTransactions,
+      syncBalance,
+      syncStateStorage,
+      syncAddressStatus,
+    );
+
+    const walletImportSyncUseCase = new WalletImportSyncUseCase(
+      walletRepository,
       addressOriginRepository,
       createAddressOriginUseCase,
-      syncBalance,
-      syncAddressStatus,
-      walletRepository,
+      syncAccountUseCase,
     );
 
     const addressManagerService = new AddressManagerService(
@@ -243,19 +253,11 @@ export function AppProvider({ children }: PropsWithChildren) {
       new MarkAddressUsedUseCase(addressRepository),
     );
 
-    const SYNC_REQUEST_DELAY_MS = 200;
-    const syncUtxos = new SyncUtxosUseCase(utxoRepository, nodeRepository, SYNC_REQUEST_DELAY_MS);
-    const syncTransactions = new SyncTransactionsUseCase(transactionRepository, nodeRepository, SYNC_REQUEST_DELAY_MS);
     const syncWalletUseCase = new SyncWalletUseCase(
       walletRepository,
-      addressRepository,
-      generateReceiveAddressUseCase,
-      syncUtxos,
-      syncTransactions,
-      syncBalance,
+      addressOriginRepository,
+      syncAccountUseCase,
       syncStateStorage,
-      walletAddressRepository,
-      syncAddressStatus,
       addressManagerService,
     );
 
@@ -282,6 +284,15 @@ export function AppProvider({ children }: PropsWithChildren) {
       new UnfreezeUtxoUseCase(utxoRepository),
       addressManagerService,
       new ExportWalletKeyUseCase(walletRepository),
+      syncAccountUseCase,
+      new SyncAddressUseCase(
+        walletRepository,
+        walletAddressRepository,
+        syncUtxos,
+        syncTransactions,
+        syncBalance,
+        syncAddressStatus,
+      ),
     );
 
     const nodeConnectionTestUseCase = new NodeConnectionTestUseCase(personalNodeAdapter);
@@ -298,7 +309,7 @@ export function AppProvider({ children }: PropsWithChildren) {
 
     const explorerAdapter = new MempoolExplorerAdapter();
     const transactionHistoryService = new TransactionHistoryService(
-      new GetTransactionDetailUseCase(nodeRepository, explorerAdapter),
+      new GetTransactionDetailUseCase(nodeRepository, explorerAdapter, transactionRepository),
     );
 
     const buildTransactionUseCase = new BuildTransactionUseCase(

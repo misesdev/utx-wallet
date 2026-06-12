@@ -1,0 +1,102 @@
+import type { WalletRepository } from '../../repositories/WalletRepository';
+import type { WalletAddressRepository } from '../../repositories/WalletAddressRepository';
+import type { SyncStateRepository } from '../../repositories/SyncStateRepository';
+import { AppError } from '../../../application/errors/AppError';
+import { SyncUtxosUseCase } from './SyncUtxosUseCase';
+import { SyncTransactionsUseCase } from './SyncTransactionsUseCase';
+import { SyncBalanceUseCase } from './SyncBalanceUseCase';
+import type { SyncAddressStatusUseCase } from '../address/SyncAddressStatusUseCase';
+import type { OnSyncProgress, SyncProgress } from './SyncProgress';
+
+export type SyncAccountResult = {
+  newUtxos: number;
+  spentUtxos: number;
+  newTransactions: number;
+  syncedAt: string;
+  hasActivity: boolean;
+};
+
+const MAX_DISCOVER_ITERATIONS = 20;
+
+export class SyncAccountUseCase {
+  constructor(
+    private readonly walletRepository: WalletRepository,
+    private readonly walletAddressRepository: WalletAddressRepository,
+    private readonly syncUtxos: SyncUtxosUseCase,
+    private readonly syncTransactions: SyncTransactionsUseCase,
+    private readonly syncBalance: SyncBalanceUseCase,
+    private readonly syncStateRepository: SyncStateRepository,
+    private readonly syncAddressStatus: SyncAddressStatusUseCase | null = null,
+  ) {}
+
+  async execute(walletId: string, originId: string, onProgress?: OnSyncProgress): Promise<SyncAccountResult> {
+    const wallet = await this.walletRepository.findById(walletId);
+    if (!wallet) {
+      throw new AppError('Wallet not found', 'WALLET_NOT_FOUND');
+    }
+
+    const syncedThisRun = new Set<string>();
+    let totalNewUtxos = 0;
+    let totalSpentUtxos = 0;
+    let totalNewTransactions = 0;
+    let hasActivity = false;
+
+    for (let iteration = 0; iteration < MAX_DISCOVER_ITERATIONS; iteration++) {
+      const [receivePool, changePool] = await Promise.all([
+        this.walletAddressRepository.findFreshByChain(walletId, originId, 'receive', ['received']),
+        this.walletAddressRepository.findFreshByChain(walletId, originId, 'change'),
+      ]);
+
+      const poolAddresses = [...receivePool, ...changePool].filter(
+        a => !syncedThisRun.has(a.address),
+      );
+
+      if (poolAddresses.length === 0) break;
+
+      const addresses = poolAddresses.map(a => a.address);
+      const addressMetadata = new Map(
+        poolAddresses.map(a => [a.address, { originId: a.originId, originName: a.originName }]),
+      );
+
+      const utxoProgress: OnSyncProgress | undefined = onProgress
+        ? (p: SyncProgress) => onProgress({ ...p, phase: 'utxos' })
+        : undefined;
+      const txProgress: OnSyncProgress | undefined = onProgress
+        ? (p: SyncProgress) => onProgress({ ...p, phase: 'transactions' })
+        : undefined;
+
+      const utxoResult = await this.syncUtxos.execute(walletId, addresses, wallet.network, utxoProgress);
+      const txResult = await this.syncTransactions.execute(walletId, addresses, wallet.network, addressMetadata, txProgress);
+
+      for (const txs of txResult.fetchedTransactions.values()) {
+        if (txs.length > 0) {
+          hasActivity = true;
+          break;
+        }
+      }
+
+      for (const addr of addresses) syncedThisRun.add(addr);
+
+      totalNewUtxos += utxoResult.newCount;
+      totalSpentUtxos += utxoResult.spentCount;
+      totalNewTransactions += txResult.newCount;
+
+      await this.syncBalance.execute(walletId);
+
+      if (this.syncAddressStatus) {
+        await this.syncAddressStatus.execute(walletId, wallet.network, txResult.fetchedTransactions);
+      }
+    }
+
+    const syncedAt = new Date().toISOString();
+    await this.syncStateRepository.saveLastSyncAt(walletId, syncedAt);
+
+    return {
+      newUtxos: totalNewUtxos,
+      spentUtxos: totalSpentUtxos,
+      newTransactions: totalNewTransactions,
+      syncedAt,
+      hasActivity,
+    };
+  }
+}
