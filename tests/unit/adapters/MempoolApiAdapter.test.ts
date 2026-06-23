@@ -383,31 +383,15 @@ describe('MempoolApiAdapter — BlockchainProvider', () => {
       );
     });
 
-    it('uses personalNodeUrl when nodeMode is personal-node', async () => {
-      const configStorage = new NetworkConfigStorage(createSecureStorageMock());
-      const httpClient = createMockHttpClient();
-      const personalNodeUrl = 'http://192.168.1.10:8999/api';
-      const adapter = new MempoolApiAdapter(httpClient, configStorage, {
-        network: 'testnet4',
-        connectivityMode: 'online',
-        nodeMode: 'personal-node',
-        personalNodeUrl,
-      });
-      httpClient.get.mockResolvedValue([]);
-      await adapter.getUtxos(ADDRESS, 'testnet4');
-      expect(httpClient.get).toHaveBeenCalledWith(
-        expect.stringContaining(personalNodeUrl),
-        expect.any(Object),
-      );
-    });
-
-    it('falls back to public URL when personalNodeUrl is absent', async () => {
+    it('always uses public mempool URL — personal node routing is handled by NodeProviderSelector', async () => {
+      // MempoolApiAdapter is the public-API implementation; it should NEVER route to a personal
+      // node. NodeProviderSelector is responsible for selecting the correct provider.
       const configStorage = new NetworkConfigStorage(createSecureStorageMock());
       const httpClient = createMockHttpClient();
       const adapter = new MempoolApiAdapter(httpClient, configStorage, {
         network: 'testnet4',
         connectivityMode: 'online',
-        nodeMode: 'personal-node',
+        nodeMode: 'personal-node', // even if nodeMode is personal-node, this adapter is public-only
       });
       httpClient.get.mockResolvedValue([]);
       await adapter.getUtxos(ADDRESS, 'testnet4');

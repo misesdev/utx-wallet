@@ -2,6 +2,7 @@ import { DEFAULT_ORIGIN_NAME } from '../../entities/AddressOrigin';
 import type { AddressOrigin } from '../../entities/AddressOrigin';
 import type { BitcoinNetwork } from '../../entities/Network';
 import type { AddressOriginRepository } from '../../repositories/AddressOriginRepository';
+import type { WalletAddressRepository } from '../../repositories/WalletAddressRepository';
 import type { WalletRepository } from '../../repositories/WalletRepository';
 import type { CreateAddressOriginUseCase } from '../address/CreateAddressOriginUseCase';
 import type { SyncAccountUseCase } from './SyncAccountUseCase';
@@ -30,6 +31,7 @@ export class WalletImportSyncUseCase {
     private readonly originRepository: AddressOriginRepository,
     private readonly createOriginUseCase: CreateAddressOriginUseCase,
     private readonly syncAccount: SyncAccountUseCase,
+    private readonly walletAddressRepository: WalletAddressRepository | null = null,
   ) {}
 
   async execute(
@@ -64,9 +66,11 @@ export class WalletImportSyncUseCase {
       const result = await this.syncAccount.execute(walletId, origin.id, adaptedProgress);
 
       // An account with no activity is only the break signal (BIP44 gap limit).
-      // Archive it from the DB so it doesn't appear as a wallet account, and stop discovery.
+      // Archive the origin and purge its addresses — they are ephemeral probe data and
+      // must not pollute the address screen or inflate getMaxAccountIndex.
       if (!result.hasActivity && accountIndex > 0) {
         await this.originRepository.archive(origin.id);
+        await this.walletAddressRepository?.deleteByOrigin(walletId, origin.id);
         break;
       }
 

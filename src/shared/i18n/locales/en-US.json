@@ -209,7 +209,10 @@
     "payFee": "Deduct fee from amount",
     "payFeeHint": "Fee is added on top of the amount",
     "noPayFeeHint": "Fee is deducted from the amount you send",
-    "recipientReceives": "Recipient receives"
+    "recipientReceives": "Recipient receives",
+    "inputs": "Inputs",
+    "outputs": "Outputs",
+    "changeOutput": "Your wallet (change)"
   },
   "txReview": {
     "title": "Confirm send",

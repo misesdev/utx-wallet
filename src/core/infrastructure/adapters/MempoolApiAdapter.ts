@@ -98,9 +98,6 @@ export class MempoolApiAdapter implements NodeRepository, BlockchainProvider {
   // ── Private helpers ─────────────────────────────────────────────────────────
 
   private clientFor(network: BitcoinNetwork): MempoolApiClient {
-    if (this.cachedConfig.nodeMode === 'personal-node' && this.cachedConfig.personalNodeUrl) {
-      return new MempoolApiClient(this.httpClient, this.cachedConfig.personalNodeUrl);
-    }
     return MempoolApiClient.forNetwork(this.httpClient, network);
   }
 

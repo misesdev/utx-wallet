@@ -9,46 +9,35 @@ name: UTX Wallet
 summary: Self-custodial Bitcoin wallet with personal node and full UTXO control
 
 description: |
-  UTX Wallet is a self-custodial Bitcoin wallet for users who take sovereignty
-  seriously. Your keys never leave your device, your transactions stay private,
-  and you choose which node validates your data.
+  Self-custodial Bitcoin wallet for Mainnet and Testnet4. Your keys never
+  leave your device. Connect to your own node. Full UTXO control.
 
   YOUR KEYS, YOUR BITCOIN
 
-  Seeds and private keys are stored exclusively on your device using encrypted
-  storage and are never transmitted anywhere. Create a wallet from a fresh
-  BIP39 mnemonic or import any 12/24-word seed phrase with optional passphrase
-  (25th word). Watch-only wallets via xpub or output descriptor are supported.
+  Keys stay on-device in encrypted storage, never transmitted. Create a
+  wallet from a BIP39 mnemonic (12/24 words) with optional passphrase, or
+  import via xpub/output descriptor for watch-only use.
 
   PERSONAL NODE — TRUE PRIVACY
 
-  Connect to your own self-hosted Mempool.space instance. Configure multiple
-  nodes with custom priority ordering and automatic failover. Public API
-  fallback is off by default.
+  Connect to your own Mempool.space instance. All operations (sync, broadcast,
+  fee estimation, wallet discovery) route through your node automatically once
+  configured. Multiple nodes with priority ordering and optional public fallback.
 
   FULL UTXO CONTROL
 
-  View every UTXO with value, address, and confirmation status. Freeze
-  individual UTXOs to exclude them from coin selection. Address-grouped coin
-  selection and Replace-By-Fee (RBF) for stuck transactions.
-
-  MESSAGE SIGNING
-
-  Sign any text with your wallet key and share the result as a compact QR
-  code. Verify signatures from other wallets directly in-app.
+  View every UTXO with value, address, and confirmation status. Freeze coins
+  to exclude them from coin selection. RBF acceleration for stuck transactions.
+  Send preview shows inputs and outputs Electrum-style.
 
   SECURITY
 
   • Biometric unlock on app open with PIN fallback
-  • Screenshot prevention (Android FLAG_SECURE)
-  • Seed auto-hides when switching apps
+  • Screenshot prevention (FLAG_SECURE)
   • PIN + biometric auto-lock with configurable timeout
   • Balance hidden across all screens with eye-button reveal
-  • Navigation state never contains seeds or private keys
 
-  OPEN SOURCE
-
-  Free, open source, no ads, no analytics, no telemetry.
+  OPEN SOURCE — no ads, no analytics, no telemetry.
 
   Source: https://github.com/misesdev/utx-wallet
 

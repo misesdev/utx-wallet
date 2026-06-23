@@ -1,5 +1,16 @@
 export type FeeRateTier = 'economy' | 'normal' | 'fast' | 'custom';
 
+export type TxPreviewInput = {
+  address: string;
+  valueSats: number;
+};
+
+export type TxPreviewOutput = {
+  address: string;
+  amountSats: number;
+  isChange: boolean;
+};
+
 export type TransactionPreview = {
   toAddress: string;
   amountSats: number;            // user-requested amount
@@ -10,4 +21,6 @@ export type TransactionPreview = {
   feeRateSatsPerVByte: number;
   estimatedVBytes: number;
   subtractFeeFromAmount: boolean;
+  inputs: TxPreviewInput[];
+  outputs: TxPreviewOutput[];
 };

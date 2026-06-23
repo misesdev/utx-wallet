@@ -519,4 +519,130 @@ describe('PreviewTransactionUseCase', () => {
       expect(result.amountSats).toBe(400_000);
     });
   });
+
+  describe('inputs and outputs (Electrum-style preview)', () => {
+    it('returns at least one input selected from confirmed UTXOs', async () => {
+      const useCase = makeUseCase([makeUtxo(1_000_000)]);
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: 100_000,
+        feeRateSatsPerVByte: FEE_RATE,
+      });
+      expect(result.inputs.length).toBeGreaterThan(0);
+      expect(result.inputs[0].valueSats).toBe(1_000_000);
+    });
+
+    it('includes a recipient output with the correct amount', async () => {
+      const useCase = makeUseCase([makeUtxo(1_000_000)]);
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: 100_000,
+        feeRateSatsPerVByte: FEE_RATE,
+      });
+      const recipient = result.outputs.find(o => !o.isChange);
+      expect(recipient).toBeDefined();
+      expect(recipient!.address).toBe(VALID_ADDRESS);
+      expect(recipient!.amountSats).toBe(100_000);
+    });
+
+    it('includes a change output when change is above dust threshold', async () => {
+      const useCase = makeUseCase([makeUtxo(1_000_000)]);
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: 100_000,
+        feeRateSatsPerVByte: FEE_RATE,
+      });
+      const change = result.outputs.find(o => o.isChange);
+      expect(change).toBeDefined();
+      expect(change!.amountSats).toBe(result.changeSats);
+      expect(change!.isChange).toBe(true);
+    });
+
+    it('does not include a change output when change is absorbed into fee', async () => {
+      const fee = 180;
+      const dustChange = DUST_THRESHOLD_SATS - 1;
+      const balance = 100_000 + fee + dustChange;
+      const useCase = makeUseCase([makeUtxo(balance)]);
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: 100_000,
+        feeRateSatsPerVByte: 1,
+      });
+      expect(result.changeSats).toBe(0);
+      const changeOutput = result.outputs.find(o => o.isChange);
+      expect(changeOutput).toBeUndefined();
+    });
+
+    it('selects multiple UTXOs when one is not enough', async () => {
+      function makeUtxoAt(valueSats: number, address: string): Utxo {
+        return { txid: 'x', vout: 0, valueSats, address, isConfirmed: true };
+      }
+      const repo = makeRepo([
+        makeUtxoAt(60_000, 'addr-a'),
+        makeUtxoAt(80_000, 'addr-b'),
+      ]);
+      const useCase = new PreviewTransactionUseCase(repo);
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: 100_000,
+        feeRateSatsPerVByte: FEE_RATE,
+      });
+      // Need both UTXOs to cover 100k + fee
+      expect(result.inputs.length).toBe(2);
+    });
+
+    it('selects inputs in descending value order', async () => {
+      function makeUtxoAt(valueSats: number, address: string): Utxo {
+        return { txid: 'x', vout: 0, valueSats, address, isConfirmed: true };
+      }
+      const repo = makeRepo([
+        makeUtxoAt(20_000, 'small'),
+        makeUtxoAt(500_000, 'large'),
+      ]);
+      const useCase = new PreviewTransactionUseCase(repo);
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: 100_000,
+        feeRateSatsPerVByte: FEE_RATE,
+      });
+      // One large UTXO is enough — should pick it first
+      expect(result.inputs.length).toBe(1);
+      expect(result.inputs[0].valueSats).toBe(500_000);
+    });
+
+    it('does not include unconfirmed UTXOs in inputs', async () => {
+      const repo = makeRepo([
+        { txid: 'a', vout: 0, valueSats: 200_000, address: 'addr-unconfirmed', isConfirmed: false },
+        { txid: 'b', vout: 0, valueSats: 500_000, address: 'addr-confirmed', isConfirmed: true },
+      ]);
+      const useCase = new PreviewTransactionUseCase(repo);
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: 100_000,
+        feeRateSatsPerVByte: FEE_RATE,
+      });
+      expect(result.inputs.every(i => i.address !== 'addr-unconfirmed')).toBe(true);
+    });
+
+    it('SFA mode: recipient output has fee deducted', async () => {
+      const useCase = makeUseCase([makeUtxo(1_000_000)]);
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: 100_000,
+        feeRateSatsPerVByte: FEE_RATE,
+        subtractFeeFromAmount: true,
+      });
+      const recipient = result.outputs.find(o => !o.isChange);
+      expect(recipient!.amountSats).toBe(result.recipientAmountSats);
+      expect(recipient!.amountSats).toBeLessThan(100_000);
+    });
+  });
 });

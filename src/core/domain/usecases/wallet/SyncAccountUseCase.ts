@@ -2,6 +2,8 @@ import type { WalletRepository } from '../../repositories/WalletRepository';
 import type { WalletAddressRepository } from '../../repositories/WalletAddressRepository';
 import type { SyncStateRepository } from '../../repositories/SyncStateRepository';
 import type { SyncSettingsRepository } from '../../repositories/SyncSettingsRepository';
+import type { NodeRepository } from '../../repositories/NodeRepository';
+import type { BitcoinNetwork } from '../../entities/Network';
 import { AppError } from '../../../application/errors/AppError';
 import { SyncUtxosUseCase } from './SyncUtxosUseCase';
 import { SyncTransactionsUseCase } from './SyncTransactionsUseCase';
@@ -30,6 +32,7 @@ export class SyncAccountUseCase {
     private readonly syncStateRepository: SyncStateRepository,
     private readonly syncAddressStatus: SyncAddressStatusUseCase | null = null,
     private readonly syncSettingsRepository: SyncSettingsRepository | null = null,
+    private readonly nodeRepository: NodeRepository | null = null,
   ) {}
 
   async execute(walletId: string, originId: string, onProgress?: OnSyncProgress): Promise<SyncAccountResult> {
@@ -41,8 +44,13 @@ export class SyncAccountUseCase {
     let syncOpts: { parallel: boolean; requestDelayMs?: number } = { parallel: false };
     if (this.syncSettingsRepository) {
       const syncSettings = (await this.syncSettingsRepository.load()) ?? DEFAULT_SYNC_SETTINGS;
+      // Parallel sync is only safe when the wallet's network is backed by a personal node.
+      // Firing concurrent requests at the public Mempool API causes HTTP 429 rate limiting.
+      const parallelAllowed =
+        syncSettings.parallelSync &&
+        (await this.hasPersonalNodeForNetwork(wallet.network as BitcoinNetwork));
       syncOpts = {
-        parallel: syncSettings.parallelSync,
+        parallel: parallelAllowed,
         requestDelayMs: Math.floor(1000 / syncSettings.maxRequestsPerSecond),
       };
     }
@@ -110,5 +118,12 @@ export class SyncAccountUseCase {
       syncedAt,
       hasActivity,
     };
+  }
+
+  private async hasPersonalNodeForNetwork(network: BitcoinNetwork): Promise<boolean> {
+    if (!this.nodeRepository) return false;
+    const config = await this.nodeRepository.getNetworkConfig();
+    if (config.nodeMode !== 'personal-node') return false;
+    return (config.personalNodes ?? []).some(n => n.network === network);
   }
 }

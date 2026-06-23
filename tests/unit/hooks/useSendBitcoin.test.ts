@@ -32,6 +32,8 @@ const PREVIEW: TransactionPreview = {
   feeRateSatsPerVByte: 5,
   estimatedVBytes: 180,
   subtractFeeFromAmount: false,
+  inputs: [],
+  outputs: [],
 };
 const UTXO: Utxo = {
   txid: 'abc',

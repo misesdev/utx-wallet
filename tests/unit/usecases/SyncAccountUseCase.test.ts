@@ -5,8 +5,10 @@ import { SyncBalanceUseCase } from '../../../src/core/domain/usecases/wallet/Syn
 import type { WalletRepository } from '../../../src/core/domain/repositories/WalletRepository';
 import type { WalletAddressRepository } from '../../../src/core/domain/repositories/WalletAddressRepository';
 import type { SyncStateRepository } from '../../../src/core/domain/repositories/SyncStateRepository';
+import type { NodeRepository } from '../../../src/core/domain/repositories/NodeRepository';
 import type { SyncAddressStatusUseCase } from '../../../src/core/domain/usecases/address/SyncAddressStatusUseCase';
 import type { WalletAddress } from '../../../src/core/domain/entities/WalletAddress';
+import type { NetworkConfig } from '../../../src/core/domain/entities/Network';
 import type { OnSyncProgress } from '../../../src/core/domain/usecases/wallet/SyncProgress';
 
 const WALLET_ID = 'wallet-1';
@@ -392,6 +394,20 @@ describe('SyncAccountUseCase with SyncSettingsRepository', () => {
     };
   }
 
+  function makeNodeRepo(config: Partial<NetworkConfig> = {}): jest.Mocked<NodeRepository> {
+    const defaults: NetworkConfig = {
+      network: 'testnet',
+      connectivityMode: 'online',
+      nodeMode: 'public-api',
+      ...config,
+    };
+    return {
+      getNetworkConfig: jest.fn().mockResolvedValue(defaults),
+      setNetworkConfig: jest.fn().mockResolvedValue(undefined),
+      ping: jest.fn().mockResolvedValue(true),
+    };
+  }
+
   it('uses default settings when no repository is provided', async () => {
     const receiveAddr = makeAddress('addr-A', 'receive');
     const addressRepo = makeAddressRepo([receiveAddr], []);
@@ -414,7 +430,7 @@ describe('SyncAccountUseCase with SyncSettingsRepository', () => {
     );
   });
 
-  it('reads settings from repository and passes opts to syncUtxos', async () => {
+  it('reads settings from repository but keeps parallel:false when no node repository', async () => {
     const receiveAddr = makeAddress('addr-A', 'receive');
     const addressRepo = makeAddressRepo([receiveAddr], []);
     const syncUtxos = makeSyncUtxos();
@@ -428,6 +444,7 @@ describe('SyncAccountUseCase with SyncSettingsRepository', () => {
       makeSyncStateRepo(),
       null,
       settingsRepo,
+      // no nodeRepository → parallel is not safe (no way to verify personal node)
     );
     await useCase.execute(WALLET_ID, ORIGIN_ID);
     expect(settingsRepo.load).toHaveBeenCalled();
@@ -436,7 +453,7 @@ describe('SyncAccountUseCase with SyncSettingsRepository', () => {
       expect.any(Array),
       expect.any(String),
       undefined,
-      expect.objectContaining({ parallel: true, requestDelayMs: 200 }),
+      expect.objectContaining({ parallel: false, requestDelayMs: 200 }),
     );
   });
 
@@ -463,5 +480,128 @@ describe('SyncAccountUseCase with SyncSettingsRepository', () => {
       undefined,
       { parallel: false, requestDelayMs: 1000 },
     );
+  });
+
+  describe('parallel sync — personal node guard', () => {
+    it('enables parallel when personal node is configured for the wallet network', async () => {
+      const receiveAddr = makeAddress('addr-A', 'receive');
+      const addressRepo = makeAddressRepo([receiveAddr], []);
+      const syncUtxos = makeSyncUtxos();
+      const settingsRepo = makeSyncSettingsRepo({ maxRequestsPerSecond: 5, parallelSync: true });
+      const nodeRepo = makeNodeRepo({
+        nodeMode: 'personal-node',
+        personalNodes: [{ id: 'n1', label: 'Node', url: 'http://node:8081', network: 'testnet', priority: 1 }],
+      });
+      const useCase = new SyncAccountUseCase(
+        makeWalletRepo(), // wallet.network = 'testnet'
+        addressRepo,
+        syncUtxos,
+        makeSyncTransactions(),
+        makeSyncBalance(),
+        makeSyncStateRepo(),
+        null,
+        settingsRepo,
+        nodeRepo,
+      );
+      await useCase.execute(WALLET_ID, ORIGIN_ID);
+      expect(syncUtxos.execute).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(Array),
+        expect.any(String),
+        undefined,
+        expect.objectContaining({ parallel: true, requestDelayMs: 200 }),
+      );
+    });
+
+    it('keeps parallel:false when personal node is only for a different network', async () => {
+      const receiveAddr = makeAddress('addr-A', 'receive');
+      const addressRepo = makeAddressRepo([receiveAddr], []);
+      const syncUtxos = makeSyncUtxos();
+      const settingsRepo = makeSyncSettingsRepo({ maxRequestsPerSecond: 5, parallelSync: true });
+      // Node is for testnet4, but wallet.network = 'testnet' (different)
+      const nodeRepo = makeNodeRepo({
+        nodeMode: 'personal-node',
+        personalNodes: [{ id: 'n1', label: 'Node', url: 'http://node:8081', network: 'testnet4', priority: 1 }],
+      });
+      const useCase = new SyncAccountUseCase(
+        makeWalletRepo(), // wallet.network = 'testnet'
+        addressRepo,
+        syncUtxos,
+        makeSyncTransactions(),
+        makeSyncBalance(),
+        makeSyncStateRepo(),
+        null,
+        settingsRepo,
+        nodeRepo,
+      );
+      await useCase.execute(WALLET_ID, ORIGIN_ID);
+      expect(syncUtxos.execute).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(Array),
+        expect.any(String),
+        undefined,
+        expect.objectContaining({ parallel: false }),
+      );
+    });
+
+    it('keeps parallel:false when nodeMode is public-api even with personal nodes', async () => {
+      const receiveAddr = makeAddress('addr-A', 'receive');
+      const addressRepo = makeAddressRepo([receiveAddr], []);
+      const syncUtxos = makeSyncUtxos();
+      const settingsRepo = makeSyncSettingsRepo({ maxRequestsPerSecond: 5, parallelSync: true });
+      const nodeRepo = makeNodeRepo({
+        nodeMode: 'public-api', // safe mode not activated
+        personalNodes: [{ id: 'n1', label: 'Node', url: 'http://node:8081', network: 'testnet', priority: 1 }],
+      });
+      const useCase = new SyncAccountUseCase(
+        makeWalletRepo(), // wallet.network = 'testnet'
+        addressRepo,
+        syncUtxos,
+        makeSyncTransactions(),
+        makeSyncBalance(),
+        makeSyncStateRepo(),
+        null,
+        settingsRepo,
+        nodeRepo,
+      );
+      await useCase.execute(WALLET_ID, ORIGIN_ID);
+      expect(syncUtxos.execute).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(Array),
+        expect.any(String),
+        undefined,
+        expect.objectContaining({ parallel: false }),
+      );
+    });
+
+    it('keeps parallel:false when parallelSync setting is false, even with a personal node', async () => {
+      const receiveAddr = makeAddress('addr-A', 'receive');
+      const addressRepo = makeAddressRepo([receiveAddr], []);
+      const syncUtxos = makeSyncUtxos();
+      const settingsRepo = makeSyncSettingsRepo({ maxRequestsPerSecond: 5, parallelSync: false });
+      const nodeRepo = makeNodeRepo({
+        nodeMode: 'personal-node',
+        personalNodes: [{ id: 'n1', label: 'Node', url: 'http://node:8081', network: 'testnet', priority: 1 }],
+      });
+      const useCase = new SyncAccountUseCase(
+        makeWalletRepo(),
+        addressRepo,
+        syncUtxos,
+        makeSyncTransactions(),
+        makeSyncBalance(),
+        makeSyncStateRepo(),
+        null,
+        settingsRepo,
+        nodeRepo,
+      );
+      await useCase.execute(WALLET_ID, ORIGIN_ID);
+      expect(syncUtxos.execute).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(Array),
+        expect.any(String),
+        undefined,
+        expect.objectContaining({ parallel: false }),
+      );
+    });
   });
 });

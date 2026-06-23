@@ -49,14 +49,31 @@ export class NetworkService {
     const config = await this.getConfig();
     const nodes = config.personalNodes ?? [];
     const node: PersonalNode = { ...input, id: generateNodeId() };
-    await this.setConfig({ ...config, personalNodes: [...nodes, node] });
+    const updatedNodes = [...nodes, node];
+    // Auto-activate personal-node mode when the first node is added for the active network
+    const alreadyHasNodeForActiveNetwork = nodes.some(n => n.network === config.network);
+    const isNewNodeForActiveNetwork = input.network === config.network;
+    const nodeMode =
+      !alreadyHasNodeForActiveNetwork && isNewNodeForActiveNetwork
+        ? 'personal-node'
+        : config.nodeMode;
+    await this.setConfig({ ...config, personalNodes: updatedNodes, nodeMode });
     return node;
   }
 
   async removePersonalNode(nodeId: string): Promise<void> {
     const config = await this.getConfig();
-    const nodes = (config.personalNodes ?? []).filter(n => n.id !== nodeId);
-    await this.setConfig({ ...config, personalNodes: nodes });
+    const existingNodes = config.personalNodes ?? [];
+    const removedNode = existingNodes.find(n => n.id === nodeId);
+    const nodes = existingNodes.filter(n => n.id !== nodeId);
+    // Auto-deactivate only when removing a node for the active network leaves no remaining nodes for it
+    const removingActiveNetworkNode = removedNode?.network === config.network;
+    const stillHasNodeForActiveNetwork = nodes.some(n => n.network === config.network);
+    const nodeMode =
+      removingActiveNetworkNode && !stillHasNodeForActiveNetwork && config.nodeMode === 'personal-node'
+        ? 'public-api'
+        : config.nodeMode;
+    await this.setConfig({ ...config, personalNodes: nodes, nodeMode });
   }
 
   async updatePersonalNode(node: PersonalNode): Promise<void> {

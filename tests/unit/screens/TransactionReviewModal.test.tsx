@@ -16,6 +16,8 @@ const PREVIEW: TransactionPreview = {
   feeRateSatsPerVByte: 5,
   estimatedVBytes: 180,
   subtractFeeFromAmount: false,
+  inputs: [],
+  outputs: [],
 };
 
 const mockOnConfirm = jest.fn();

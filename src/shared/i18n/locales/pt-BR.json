@@ -209,7 +209,10 @@
     "payFee": "Deduzir taxa do valor",
     "payFeeHint": "A taxa é somada ao valor enviado",
     "noPayFeeHint": "A taxa é deduzida do valor enviado",
-    "recipientReceives": "Destinatário recebe"
+    "recipientReceives": "Destinatário recebe",
+    "inputs": "Entradas",
+    "outputs": "Saídas",
+    "changeOutput": "Sua carteira (troco)"
   },
   "txReview": {
     "title": "Confirmar envio",

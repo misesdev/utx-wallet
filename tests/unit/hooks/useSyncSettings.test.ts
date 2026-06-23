@@ -2,10 +2,17 @@ import { act, renderHook } from '@testing-library/react-native';
 import { useSyncSettings } from '../../../src/presentation/hooks/useSyncSettings';
 import { DEFAULT_SYNC_SETTINGS } from '../../../src/core/domain/entities/SyncSettings';
 import type { SyncSettings } from '../../../src/core/domain/entities/SyncSettings';
+import type { PersonalNode } from '../../../src/core/domain/entities/PersonalNode';
+import type { NetworkConfig } from '../../../src/core/domain/entities/Network';
 
 const mockSave = jest.fn<Promise<void>, [SyncSettings]>().mockResolvedValue(undefined);
 let mockSettings: SyncSettings = { ...DEFAULT_SYNC_SETTINGS };
-let mockHasPersonalNode = false;
+let mockNodes: PersonalNode[] = [];
+let mockNetworkConfig: NetworkConfig = {
+  network: 'testnet4',
+  connectivityMode: 'online',
+  nodeMode: 'public-api',
+};
 
 jest.mock('../../../src/app/providers/SyncSettingsProvider', () => ({
   useSyncSettingsContext: () => ({
@@ -16,16 +23,33 @@ jest.mock('../../../src/app/providers/SyncSettingsProvider', () => ({
 }));
 
 jest.mock('../../../src/presentation/hooks/usePersonalNodes', () => ({
-  usePersonalNodes: () => ({
-    nodes: mockHasPersonalNode ? [{ id: 'n1', label: 'Node', url: 'http://n.local', network: 'mainnet', priority: 1 }] : [],
-  }),
+  usePersonalNodes: () => ({ nodes: mockNodes }),
 }));
+
+jest.mock('../../../src/presentation/hooks/useNetwork', () => ({
+  useNetwork: () => ({ networkConfig: mockNetworkConfig }),
+}));
+
+const TESTNET4_NODE: PersonalNode = {
+  id: 'n1',
+  label: 'Node',
+  url: 'http://n.local',
+  network: 'testnet4',
+  priority: 1,
+};
+
+const PERSONAL_NODE_CONFIG: NetworkConfig = {
+  network: 'testnet4',
+  connectivityMode: 'online',
+  nodeMode: 'personal-node',
+};
 
 describe('useSyncSettings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSettings = { ...DEFAULT_SYNC_SETTINGS };
-    mockHasPersonalNode = false;
+    mockNodes = [];
+    mockNetworkConfig = { network: 'testnet4', connectivityMode: 'online', nodeMode: 'public-api' };
   });
 
   it('returns the current settings', () => {
@@ -39,20 +63,37 @@ describe('useSyncSettings', () => {
   });
 
   it('hasPersonalNode is true when a node is configured', () => {
-    mockHasPersonalNode = true;
+    mockNodes = [TESTNET4_NODE];
     const { result } = renderHook(() => useSyncSettings());
     expect(result.current.hasPersonalNode).toBe(true);
   });
 
-  it('canEnableParallelSync is false without personal nodes', () => {
-    const { result } = renderHook(() => useSyncSettings());
-    expect(result.current.canEnableParallelSync).toBe(false);
-  });
+  describe('canEnableParallelSync', () => {
+    it('is false when no nodes are configured', () => {
+      const { result } = renderHook(() => useSyncSettings());
+      expect(result.current.canEnableParallelSync).toBe(false);
+    });
 
-  it('canEnableParallelSync is true when a node is configured', () => {
-    mockHasPersonalNode = true;
-    const { result } = renderHook(() => useSyncSettings());
-    expect(result.current.canEnableParallelSync).toBe(true);
+    it('is false when nodes exist but nodeMode is public-api', () => {
+      mockNodes = [TESTNET4_NODE];
+      mockNetworkConfig = { ...PERSONAL_NODE_CONFIG, nodeMode: 'public-api' };
+      const { result } = renderHook(() => useSyncSettings());
+      expect(result.current.canEnableParallelSync).toBe(false);
+    });
+
+    it('is false when nodeMode is personal-node but node is for a different network', () => {
+      mockNodes = [{ ...TESTNET4_NODE, network: 'mainnet' }];
+      mockNetworkConfig = PERSONAL_NODE_CONFIG; // active network is testnet4
+      const { result } = renderHook(() => useSyncSettings());
+      expect(result.current.canEnableParallelSync).toBe(false);
+    });
+
+    it('is true when nodeMode is personal-node AND node matches active network', () => {
+      mockNodes = [TESTNET4_NODE];
+      mockNetworkConfig = PERSONAL_NODE_CONFIG;
+      const { result } = renderHook(() => useSyncSettings());
+      expect(result.current.canEnableParallelSync).toBe(true);
+    });
   });
 
   describe('setMaxRequestsPerSecond', () => {
@@ -90,7 +131,7 @@ describe('useSyncSettings', () => {
   });
 
   describe('toggleParallelSync', () => {
-    it('does not enable parallel sync when no personal node is configured', async () => {
+    it('does not enable parallel sync when no personal node is configured for active network', async () => {
       const { result } = renderHook(() => useSyncSettings());
       await act(async () => {
         await result.current.toggleParallelSync();
@@ -98,8 +139,19 @@ describe('useSyncSettings', () => {
       expect(mockSave).not.toHaveBeenCalled();
     });
 
-    it('enables parallel sync when a personal node is configured', async () => {
-      mockHasPersonalNode = true;
+    it('does not enable parallel sync when nodeMode is public-api even with nodes', async () => {
+      mockNodes = [TESTNET4_NODE];
+      mockNetworkConfig = { ...PERSONAL_NODE_CONFIG, nodeMode: 'public-api' };
+      const { result } = renderHook(() => useSyncSettings());
+      await act(async () => {
+        await result.current.toggleParallelSync();
+      });
+      expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it('enables parallel sync when personal node is active for the current network', async () => {
+      mockNodes = [TESTNET4_NODE];
+      mockNetworkConfig = PERSONAL_NODE_CONFIG;
       const { result } = renderHook(() => useSyncSettings());
       await act(async () => {
         await result.current.toggleParallelSync();
@@ -107,7 +159,7 @@ describe('useSyncSettings', () => {
       expect(mockSave).toHaveBeenCalledWith({ ...DEFAULT_SYNC_SETTINGS, parallelSync: true });
     });
 
-    it('can disable parallel sync even without a personal node', async () => {
+    it('can disable parallel sync even without a personal node for current network', async () => {
       mockSettings = { maxRequestsPerSecond: 1, parallelSync: true };
       const { result } = renderHook(() => useSyncSettings());
       await act(async () => {

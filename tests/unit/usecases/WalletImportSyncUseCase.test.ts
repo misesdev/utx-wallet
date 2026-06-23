@@ -1,6 +1,7 @@
 import type { BitcoinNetwork } from '../../../src/core/domain/entities/Network';
 import type { AddressOrigin } from '../../../src/core/domain/entities/AddressOrigin';
 import type { AddressOriginRepository } from '../../../src/core/domain/repositories/AddressOriginRepository';
+import type { WalletAddressRepository } from '../../../src/core/domain/repositories/WalletAddressRepository';
 import type { WalletRepository, RawWalletKey } from '../../../src/core/domain/repositories/WalletRepository';
 import type { CreateAddressOriginUseCase } from '../../../src/core/domain/usecases/address/CreateAddressOriginUseCase';
 import type { SyncAccountUseCase, SyncAccountResult } from '../../../src/core/domain/usecases/wallet/SyncAccountUseCase';
@@ -56,6 +57,12 @@ function makeOriginRepo(existing: AddressOrigin[] = []): jest.Mocked<AddressOrig
   } as unknown as jest.Mocked<AddressOriginRepository>;
 }
 
+function makeWalletAddressRepo(): jest.Mocked<WalletAddressRepository> {
+  return {
+    deleteByOrigin: jest.fn().mockResolvedValue(undefined),
+  } as unknown as jest.Mocked<WalletAddressRepository>;
+}
+
 function makeCreateOrigin(
   factory?: (name: string) => AddressOrigin,
 ): jest.Mocked<CreateAddressOriginUseCase> {
@@ -88,13 +95,17 @@ function makeUseCase(opts: {
   originRepo?: jest.Mocked<AddressOriginRepository>;
   createOrigin?: jest.Mocked<CreateAddressOriginUseCase>;
   syncAccount?: jest.Mocked<SyncAccountUseCase>;
+  walletAddressRepo?: jest.Mocked<WalletAddressRepository> | null;
 } = {}) {
   const walletRepo = opts.walletRepo ?? makeWalletRepo();
   const originRepo = opts.originRepo ?? makeOriginRepo();
   const createOrigin = opts.createOrigin ?? makeCreateOrigin();
   const syncAccount = opts.syncAccount ?? makeSyncAccount();
-  const useCase = new WalletImportSyncUseCase(walletRepo, originRepo, createOrigin, syncAccount);
-  return { useCase, walletRepo, originRepo, createOrigin, syncAccount };
+  const walletAddressRepo = opts.walletAddressRepo !== undefined
+    ? opts.walletAddressRepo
+    : makeWalletAddressRepo();
+  const useCase = new WalletImportSyncUseCase(walletRepo, originRepo, createOrigin, syncAccount, walletAddressRepo);
+  return { useCase, walletRepo, originRepo, createOrigin, syncAccount, walletAddressRepo };
 }
 
 describe('WalletImportSyncUseCase', () => {
@@ -205,6 +216,102 @@ describe('WalletImportSyncUseCase', () => {
       // Account 2 (no activity) archived; only Default + Account 1 imported
       expect(result.origins.map(o => o.name)).toEqual([DEFAULT_ORIGIN_NAME, 'Account 1']);
       expect(originRepo.archive).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('probe address cleanup on archive', () => {
+    it('deletes probe account addresses from wallet_addresses when archiving', async () => {
+      const syncAccount = makeSyncAccount([
+        makeAccountResult({ hasActivity: true }),
+        makeAccountResult({ hasActivity: false }),
+      ]);
+      const createOrigin = makeCreateOrigin(name => makeOrigin(name, name === DEFAULT_ORIGIN_NAME ? 0 : 1));
+      const originRepo = makeOriginRepo();
+      const walletAddressRepo = makeWalletAddressRepo();
+      const { useCase } = makeUseCase({ syncAccount, createOrigin, originRepo, walletAddressRepo });
+
+      await useCase.execute(WALLET_ID, NETWORK);
+
+      // The probe origin (account 1, id='origin-1') must have its addresses deleted
+      expect(walletAddressRepo.deleteByOrigin).toHaveBeenCalledWith(WALLET_ID, 'origin-1');
+    });
+
+    it('does NOT delete addresses for account 0 even when it has no activity', async () => {
+      // Account 0 is always kept; no archive happens for index 0, so deleteByOrigin must not be called
+      const syncAccount = makeSyncAccount([makeAccountResult({ hasActivity: false })]);
+      const walletAddressRepo = makeWalletAddressRepo();
+      const { useCase } = makeUseCase({ syncAccount, walletAddressRepo });
+
+      await useCase.execute(WALLET_ID, NETWORK);
+
+      expect(walletAddressRepo.deleteByOrigin).not.toHaveBeenCalled();
+    });
+
+    it('works without a walletAddressRepo (optional param) — gracefully skips cleanup', async () => {
+      const syncAccount = makeSyncAccount([
+        makeAccountResult({ hasActivity: true }),
+        makeAccountResult({ hasActivity: false }),
+      ]);
+      const { useCase } = makeUseCase({ syncAccount, walletAddressRepo: null });
+
+      // Should not throw even without walletAddressRepo
+      await expect(useCase.execute(WALLET_ID, NETWORK)).resolves.toBeDefined();
+    });
+  });
+
+  describe('index gap prevention (re-import safety)', () => {
+    it('archives and purges probe so getMaxAccountIndex only sees active accounts', async () => {
+      // Scenario: after a fresh import, account 0 has activity → kept.
+      // Account 1 is a probe with no activity → archived AND its addresses purged.
+      // Result: the next user-created account should derive at index 1, not index 2.
+      // This test verifies that deleteByOrigin is called for the probe (index 1),
+      // which allows AddressOriginStorage.getMaxAccountIndex (filtered by !archived_at)
+      // to return 0 and assign accountIndex=1 to the next user account.
+      const probeOrigin = makeOrigin('Account 1', 1);
+      const createOrigin = makeCreateOrigin(name =>
+        name === DEFAULT_ORIGIN_NAME ? makeOrigin(name, 0) : probeOrigin,
+      );
+      const syncAccount = makeSyncAccount([
+        makeAccountResult({ hasActivity: true }),
+        makeAccountResult({ hasActivity: false }),
+      ]);
+      const originRepo = makeOriginRepo();
+      const walletAddressRepo = makeWalletAddressRepo();
+      const { useCase } = makeUseCase({ syncAccount, createOrigin, originRepo, walletAddressRepo });
+
+      await useCase.execute(WALLET_ID, NETWORK);
+
+      expect(originRepo.archive).toHaveBeenCalledWith(probeOrigin.id);
+      expect(walletAddressRepo.deleteByOrigin).toHaveBeenCalledWith(WALLET_ID, probeOrigin.id);
+    });
+
+    it('deletes probe addresses even when multiple active accounts were discovered', async () => {
+      // Account 0 and 1 active, account 2 is probe
+      const probeOrigin = makeOrigin('Account 2', 2);
+      const createOrigin = jest.fn().mockImplementation(async (_wid: string, name: string) => {
+        if (name === DEFAULT_ORIGIN_NAME) return makeOrigin(name, 0);
+        if (name === 'Account 1') return makeOrigin(name, 1);
+        return probeOrigin;
+      });
+      const syncAccount = makeSyncAccount([
+        makeAccountResult({ hasActivity: true }),
+        makeAccountResult({ hasActivity: true }),
+        makeAccountResult({ hasActivity: false }),
+      ]);
+      const originRepo = makeOriginRepo();
+      const walletAddressRepo = makeWalletAddressRepo();
+      const { useCase } = makeUseCase({
+        syncAccount,
+        createOrigin: { execute: createOrigin } as unknown as jest.Mocked<CreateAddressOriginUseCase>,
+        originRepo,
+        walletAddressRepo,
+      });
+
+      await useCase.execute(WALLET_ID, NETWORK);
+
+      expect(originRepo.archive).toHaveBeenCalledWith(probeOrigin.id);
+      expect(walletAddressRepo.deleteByOrigin).toHaveBeenCalledWith(WALLET_ID, probeOrigin.id);
+      expect(walletAddressRepo.deleteByOrigin).toHaveBeenCalledTimes(1);
     });
   });
 

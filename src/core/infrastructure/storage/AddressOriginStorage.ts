@@ -40,7 +40,7 @@ export class AddressOriginStorage {
 
   async getMaxAccountIndex(walletId: string): Promise<number> {
     const rows = await this.db.execute<OriginRow>(
-      'SELECT account_index FROM address_origins WHERE wallet_id = ?',
+      'SELECT account_index FROM address_origins WHERE wallet_id = ? AND archived_at IS NULL',
       [walletId],
     );
     if (rows.length === 0) return -1;

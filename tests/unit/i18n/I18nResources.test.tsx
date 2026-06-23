@@ -229,6 +229,16 @@ describe('i18n resources', () => {
     });
   });
 
+  describe('fees inputs/outputs (Electrum-style preview) keys', () => {
+    const KEYS: Array<keyof typeof ptBR.fees> = ['inputs', 'outputs', 'changeOutput'];
+    it.each(KEYS)('pt-BR has non-empty fees.%s', (key) => {
+      expect(ptBR.fees[key]).toBeTruthy();
+    });
+    it.each(KEYS)('en-US has non-empty fees.%s', (key) => {
+      expect(enUS.fees[key]).toBeTruthy();
+    });
+  });
+
   describe('send.errorInsufficientBalance key', () => {
     it('pt-BR has non-empty send.errorInsufficientBalance', () => {
       expect(ptBR.send.errorInsufficientBalance).toBeTruthy();

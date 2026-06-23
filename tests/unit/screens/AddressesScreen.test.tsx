@@ -125,25 +125,41 @@ describe('AddressesScreen', () => {
     });
   });
 
-  describe('address sync — used addresses (spent_once, change)', () => {
-    it('spent_once address row is disabled (no sync)', async () => {
+  describe('address sync — spent_once and change (now syncable)', () => {
+    it('spent_once address row is enabled and can be synced', async () => {
       mockListAddresses.mockResolvedValue([
         makeAddress({ address: 'bc1qspent', status: 'spent_once', txCount: 2 }),
       ]);
       const screen = renderWithTheme(<AddressesScreen />);
-      await waitFor(() => expect(screen.getByTestId('address-row-bc1qspent')).toBeTruthy());
-      const row = screen.getByTestId('address-row-bc1qspent');
-      expect(row.props.accessibilityState?.disabled).toBe(true);
+      await waitFor(() => expect(screen.getByLabelText('addresses.syncAddress')).toBeTruthy());
     });
 
-    it('change address row is disabled (no sync)', async () => {
+    it('calls syncAddress when a spent_once row is pressed', async () => {
+      mockListAddresses.mockResolvedValue([
+        makeAddress({ address: 'bc1qspent', status: 'spent_once', txCount: 2 }),
+      ]);
+      const screen = renderWithTheme(<AddressesScreen />);
+      await waitFor(() => expect(screen.getByLabelText('addresses.syncAddress')).toBeTruthy());
+      fireEvent.press(screen.getByLabelText('addresses.syncAddress'));
+      await waitFor(() => expect(mockSyncAddress).toHaveBeenCalledWith('w1', 'bc1qspent'));
+    });
+
+    it('change address row is enabled and can be synced', async () => {
       mockListAddresses.mockResolvedValue([
         makeAddress({ address: 'bc1qchange', chain: 'change', status: 'change', txCount: 1 }),
       ]);
       const screen = renderWithTheme(<AddressesScreen />);
-      await waitFor(() => expect(screen.getByTestId('address-row-bc1qchange')).toBeTruthy());
-      const row = screen.getByTestId('address-row-bc1qchange');
-      expect(row.props.accessibilityState?.disabled).toBe(true);
+      await waitFor(() => expect(screen.getByLabelText('addresses.syncAddress')).toBeTruthy());
+    });
+
+    it('calls syncAddress when a change row is pressed', async () => {
+      mockListAddresses.mockResolvedValue([
+        makeAddress({ address: 'bc1qchange', chain: 'change', status: 'change', txCount: 1 }),
+      ]);
+      const screen = renderWithTheme(<AddressesScreen />);
+      await waitFor(() => expect(screen.getByLabelText('addresses.syncAddress')).toBeTruthy());
+      fireEvent.press(screen.getByLabelText('addresses.syncAddress'));
+      await waitFor(() => expect(mockSyncAddress).toHaveBeenCalledWith('w1', 'bc1qchange'));
     });
 
     it('shows spent status label for spent_once address', async () => {
@@ -160,6 +176,16 @@ describe('AddressesScreen', () => {
       ]);
       const screen = renderWithTheme(<AddressesScreen />);
       await waitFor(() => expect(screen.getByText('addresses.statusSpent')).toBeTruthy());
+    });
+
+    it('archived address row is disabled (cannot be synced)', async () => {
+      mockListAddresses.mockResolvedValue([
+        makeAddress({ address: 'bc1qarchived', status: 'archived' }),
+      ]);
+      const screen = renderWithTheme(<AddressesScreen />);
+      await waitFor(() => expect(screen.getByTestId('address-row-bc1qarchived')).toBeTruthy());
+      const row = screen.getByTestId('address-row-bc1qarchived');
+      expect(row.props.accessibilityState?.disabled).toBe(true);
     });
   });
 });

@@ -175,6 +175,13 @@ export class WalletAddressStorage {
     return Math.max(...rows.map(r => r.index_num));
   }
 
+  async deleteByOrigin(walletId: string, originId: string): Promise<void> {
+    await this.db.execute(
+      'DELETE FROM wallet_addresses WHERE wallet_id = ? AND origin_id = ?',
+      [walletId, originId],
+    );
+  }
+
   async deleteByWallet(walletId: string): Promise<void> {
     await this.db.execute('DELETE FROM wallet_addresses WHERE wallet_id = ?', [walletId]);
   }

@@ -58,7 +58,7 @@ import { AuthenticateWithBiometricUseCase } from '../../core/domain/usecases/sec
 import { ReauthenticateUseCase } from '../../core/domain/usecases/security/ReauthenticateUseCase';
 import { FetchHttpClient } from '../../core/infrastructure/api/HttpClient';
 import { MempoolApiAdapter } from '../../core/infrastructure/adapters/MempoolApiAdapter';
-import { MempoolAddressActivityChecker } from '../../core/infrastructure/adapters/MempoolAddressActivityChecker';
+import { BlockchainAddressActivityChecker } from '../../core/infrastructure/adapters/BlockchainAddressActivityChecker';
 import { WalletDiscoveryUseCase } from '../../core/domain/usecases/wallet/WalletDiscoveryUseCase';
 import { ChangeNetworkUseCase } from '../../core/domain/usecases/network/ChangeNetworkUseCase';
 import { NodeConnectionTestUseCase } from '../../core/domain/usecases/network/NodeConnectionTestUseCase';
@@ -204,7 +204,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       walletAddressRepository,
       walletAddressProvider,
     );
-    const activityChecker = new MempoolAddressActivityChecker(httpClient);
+    const activityChecker = new BlockchainAddressActivityChecker(nodeRepository);
     const walletDiscoveryUseCase = new WalletDiscoveryUseCase(
       walletAddressProvider,
       activityChecker,
@@ -231,6 +231,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       syncStateStorage,
       syncAddressStatus,
       syncSettingsRepository,
+      nodeRepository,
     );
 
     const walletImportSyncUseCase = new WalletImportSyncUseCase(
@@ -238,6 +239,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       addressOriginRepository,
       createAddressOriginUseCase,
       syncAccountUseCase,
+      walletAddressRepository,
     );
 
     const addressManagerService = new AddressManagerService(
@@ -323,6 +325,7 @@ export function AppProvider({ children }: PropsWithChildren) {
     const explorerAdapter = new MempoolExplorerAdapter();
     const transactionHistoryService = new TransactionHistoryService(
       new GetTransactionDetailUseCase(nodeRepository, explorerAdapter, transactionRepository),
+      nodeRepository,
     );
 
     const buildTransactionUseCase = new BuildTransactionUseCase(

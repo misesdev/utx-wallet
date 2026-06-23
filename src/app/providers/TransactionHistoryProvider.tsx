@@ -2,10 +2,12 @@ import React, { createContext, PropsWithChildren, useContext } from 'react';
 import type { BitcoinNetwork } from '../../core/domain/entities/Network';
 import type { Transaction } from '../../core/domain/entities/Transaction';
 import type { TransactionDetail } from '../../core/domain/entities/TransactionDetail';
+import type { RawTransaction } from '../../core/domain/repositories/BlockchainProvider';
 import { TransactionHistoryService } from '../../core/application/services/TransactionHistoryService';
 
 type TransactionHistoryContextValue = {
   getDetail: (tx: Transaction, network: BitcoinNetwork, walletId?: string) => Promise<TransactionDetail>;
+  getRawTransaction: (txid: string) => Promise<RawTransaction>;
 };
 
 const TransactionHistoryContext = createContext<TransactionHistoryContextValue | null>(null);
@@ -17,6 +19,7 @@ type TransactionHistoryProviderProps = PropsWithChildren<{
 export function TransactionHistoryProvider({ children, service }: TransactionHistoryProviderProps) {
   const value: TransactionHistoryContextValue = {
     getDetail: (tx, network, walletId) => service.getDetail(tx, network, walletId),
+    getRawTransaction: (txid) => service.getRawTransaction(txid),
   };
   return (
     <TransactionHistoryContext.Provider value={value}>

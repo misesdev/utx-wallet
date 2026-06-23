@@ -170,4 +170,92 @@ describe('Integration: Safe Mode (Network Config)', () => {
     expect(config.network).toBe('mainnet');
     expect(config.nodeMode).toBe('public-api');
   });
+
+  describe('addPersonalNode — auto-activation', () => {
+    it('auto-activates personal-node mode when adding first node for active network', async () => {
+      const { service } = makeNetworkService();
+      // Active network is testnet4 (from DEFAULT_CONFIG)
+      await service.addPersonalNode({
+        label: 'My Node',
+        url: 'http://192.168.1.100:8081',
+        network: 'testnet4',
+        priority: 1,
+      });
+
+      const config = await service.getConfig();
+      expect(config.nodeMode).toBe('personal-node');
+    });
+
+    it('does NOT change nodeMode when adding node for a different network', async () => {
+      const { service } = makeNetworkService();
+      // Active network is testnet4 (from DEFAULT_CONFIG), but node is for mainnet
+      await service.addPersonalNode({
+        label: 'Mainnet Node',
+        url: 'http://192.168.1.100:8081',
+        network: 'mainnet',
+        priority: 1,
+      });
+
+      const config = await service.getConfig();
+      expect(config.nodeMode).toBe('public-api');
+    });
+
+    it('does NOT change nodeMode when adding a second node for the active network (already active)', async () => {
+      const { service } = makeNetworkService();
+      await service.addPersonalNode({ label: 'Node 1', url: 'http://node1:8081', network: 'testnet4', priority: 1 });
+      // nodeMode is now personal-node; add a second node — should not revert or re-activate
+      await service.addPersonalNode({ label: 'Node 2', url: 'http://node2:8081', network: 'testnet4', priority: 2 });
+
+      const config = await service.getConfig();
+      expect(config.nodeMode).toBe('personal-node');
+      expect(config.personalNodes).toHaveLength(2);
+    });
+  });
+
+  describe('removePersonalNode — auto-deactivation', () => {
+    it('auto-deactivates personal-node mode when last node for active network is removed', async () => {
+      const { service } = makeNetworkService();
+      const node = await service.addPersonalNode({
+        label: 'My Node',
+        url: 'http://192.168.1.100:8081',
+        network: 'testnet4',
+        priority: 1,
+      });
+      expect((await service.getConfig()).nodeMode).toBe('personal-node');
+
+      await service.removePersonalNode(node.id);
+      const config = await service.getConfig();
+      expect(config.nodeMode).toBe('public-api');
+      expect(config.personalNodes).toHaveLength(0);
+    });
+
+    it('keeps personal-node mode when a second node still exists for active network', async () => {
+      const { service } = makeNetworkService();
+      const node1 = await service.addPersonalNode({ label: 'N1', url: 'http://n1:8081', network: 'testnet4', priority: 1 });
+      await service.addPersonalNode({ label: 'N2', url: 'http://n2:8081', network: 'testnet4', priority: 2 });
+
+      await service.removePersonalNode(node1.id);
+      const config = await service.getConfig();
+      expect(config.nodeMode).toBe('personal-node');
+      expect(config.personalNodes).toHaveLength(1);
+    });
+
+    it('does NOT change nodeMode when removing a node for a different network', async () => {
+      const { service } = makeNetworkService();
+      // Add a mainnet node (no auto-activate since active network is testnet4)
+      const mainnetNode = await service.addPersonalNode({
+        label: 'Mainnet',
+        url: 'http://n1:8081',
+        network: 'mainnet',
+        priority: 1,
+      });
+      // Manually activate for this test
+      await service.setConfig({ ...(await service.getConfig()), nodeMode: 'personal-node' });
+
+      // Remove the mainnet node — should not deactivate because active network is testnet4
+      await service.removePersonalNode(mainnetNode.id);
+      const config = await service.getConfig();
+      expect(config.nodeMode).toBe('personal-node');
+    });
+  });
 });

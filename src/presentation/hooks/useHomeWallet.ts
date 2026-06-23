@@ -39,7 +39,7 @@ export function useHomeWallet(): HomeWalletState {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [confirmedBalanceSats, setConfirmedBalanceSats] = useState(0);
   const [pendingBalanceSats, setPendingBalanceSats] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -47,6 +47,7 @@ export function useHomeWallet(): HomeWalletState {
       setTransactions([]);
       setConfirmedBalanceSats(0);
       setPendingBalanceSats(0);
+      setIsLoading(false);
       return;
     }
 
@@ -57,7 +58,10 @@ export function useHomeWallet(): HomeWalletState {
         listTransactions(selectedWallet.id),
         listUtxos(selectedWallet.id),
       ]);
-      setTransactions(txs);
+      const sorted = [...txs].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+      setTransactions(sorted);
       setConfirmedBalanceSats(
         utxos.filter(u => u.isConfirmed).reduce((acc, u) => acc + u.valueSats, 0),
       );

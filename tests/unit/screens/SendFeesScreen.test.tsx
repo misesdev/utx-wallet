@@ -40,6 +40,11 @@ const PREVIEW: TransactionPreview = {
   feeRateSatsPerVByte: 5,
   estimatedVBytes: 180,
   subtractFeeFromAmount: false,
+  inputs: [{ address: 'bc1qinput000', valueSats: 1_000_000 }],
+  outputs: [
+    { address: VALID_ADDRESS, amountSats: 99_100, isChange: false },
+    { address: '', amountSats: 899_100, isChange: true },
+  ],
 };
 
 const mockReviewTransaction = jest.fn().mockResolvedValue(undefined);

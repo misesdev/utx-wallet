@@ -59,6 +59,10 @@ export class WalletAddressRepositoryImpl implements WalletAddressRepository {
     return this.storage.getMaxIndexByChain(walletId, originId, chain);
   }
 
+  deleteByOrigin(walletId: string, originId: string): Promise<void> {
+    return this.storage.deleteByOrigin(walletId, originId);
+  }
+
   deleteByWallet(walletId: string): Promise<void> {
     return this.storage.deleteByWallet(walletId);
   }

@@ -370,6 +370,56 @@ describe('SyncTransactionsUseCase', () => {
     });
   });
 
+  describe('recipient address preservation (RBF fix)', () => {
+    it('preserves recipient address in outgoing tx when syncing with scanning address', async () => {
+      const TXID = 'rbf-test-txid';
+      const RECIPIENT = 'bc1qexternal';
+      const SCANNING_ADDR = 'bc1qmywallet';
+
+      const localTx: Transaction = {
+        id: TXID, txid: TXID, amountSats: 100_000, direction: 'outgoing',
+        status: 'pending', createdAt: '2026-06-10T00:00:00.000Z', address: RECIPIENT,
+      };
+      const freshTx: Transaction = {
+        id: TXID, txid: TXID, amountSats: 100_000, direction: 'outgoing',
+        status: 'pending', createdAt: '2026-06-10T00:00:00.000Z',
+        // address will be set to SCANNING_ADDR by the sync loop
+      };
+
+      const repo = makeRepo([localTx]);
+      const useCase = new SyncTransactionsUseCase(repo, makeProvider([freshTx]));
+      await useCase.execute(WALLET_ID, [SCANNING_ADDR], NETWORK);
+
+      const [, savedTxs] = (repo.upsertAll as jest.Mock).mock.calls[0] as [string, Transaction[]];
+      const saved = savedTxs.find(tx => tx.txid === TXID)!;
+      expect(saved.address).toBe(RECIPIENT);
+    });
+
+    it('does not clobber address when local outgoing tx has no stored address', async () => {
+      const TXID = 'no-address-txid';
+      const SCANNING_ADDR = 'bc1qmywallet';
+
+      const localTx: Transaction = {
+        id: TXID, txid: TXID, amountSats: 50_000, direction: 'outgoing',
+        status: 'pending', createdAt: '2026-06-10T00:00:00.000Z',
+        // address is undefined
+      };
+      const freshTx: Transaction = {
+        id: TXID, txid: TXID, amountSats: 50_000, direction: 'outgoing',
+        status: 'confirmed', createdAt: '2026-06-10T00:00:00.000Z',
+      };
+
+      const repo = makeRepo([localTx]);
+      const useCase = new SyncTransactionsUseCase(repo, makeProvider([freshTx]));
+      await useCase.execute(WALLET_ID, [SCANNING_ADDR], NETWORK);
+
+      const [, savedTxs] = (repo.upsertAll as jest.Mock).mock.calls[0] as [string, Transaction[]];
+      const saved = savedTxs.find(tx => tx.txid === TXID)!;
+      // Without a stored address, the scanning address is used (no preservation)
+      expect(saved.address).toBe(SCANNING_ADDR);
+    });
+  });
+
   describe('replaced transaction preservation', () => {
     it('preserves replaced status for locally-replaced transactions even when blockchain returns them as pending', async () => {
       const TXID = 'replaced-txid';

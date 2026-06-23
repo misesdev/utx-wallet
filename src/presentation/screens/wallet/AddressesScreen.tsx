@@ -23,8 +23,10 @@ const STATUS_COLOR: Record<AddressStatus, 'muted' | 'success' | 'warning' | 'dan
   inconsistent: 'danger',
 };
 
-// Addresses that are permanently spent/used — syncing them serves no purpose.
-const USED_STATUSES = new Set<AddressStatus>(['spent_once', 'change', 'archived']);
+// Archived addresses belong to a deactivated origin — syncing them is pointless.
+// spent_once and change addresses can receive new transactions (address reuse, etc.)
+// so pressing them triggers a fresh sync.
+const USED_STATUSES = new Set<AddressStatus>(['archived']);
 
 function truncate(addr: string): string {
   return `${addr.slice(0, 10)}…${addr.slice(-8)}`;

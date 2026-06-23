@@ -1,5 +1,6 @@
-import type { TransactionPreview } from '../../entities/TransactionPreview';
+import type { TransactionPreview, TxPreviewInput, TxPreviewOutput } from '../../entities/TransactionPreview';
 import type { UtxoRepository } from '../../repositories/UtxoRepository';
+import type { Utxo } from '../../entities/Utxo';
 import { BitcoinAddress } from '../../value-objects/BitcoinAddress';
 import { AppError } from '../../../application/errors/AppError';
 import { calcSubtractFeeAmounts } from '../../services/FeeSubtractionService';
@@ -16,6 +17,18 @@ export type PreviewTransactionParams = {
   /** Restrict balance check to UTXOs at these addresses (account isolation) */
   allowedAddresses?: string[];
 };
+
+function selectPreviewInputs(confirmedUtxos: Utxo[], targetSats: number): TxPreviewInput[] {
+  const sorted = [...confirmedUtxos].sort((a, b) => b.valueSats - a.valueSats);
+  const inputs: TxPreviewInput[] = [];
+  let total = 0;
+  for (const u of sorted) {
+    if (total >= targetSats) break;
+    inputs.push({ address: u.address, valueSats: u.valueSats });
+    total += u.valueSats;
+  }
+  return inputs;
+}
 
 export class PreviewTransactionUseCase {
   constructor(private readonly utxoRepository: UtxoRepository) {}
@@ -40,20 +53,21 @@ export class PreviewTransactionUseCase {
     const eligibleUtxos = params.allowedAddresses?.length
       ? utxos.filter(u => !u.isFrozen && params.allowedAddresses!.includes(u.address))
       : utxos.filter(u => !u.isFrozen);
-    const confirmedSats = eligibleUtxos
-      .filter(u => u.isConfirmed)
-      .reduce((sum, u) => sum + u.valueSats, 0);
+    const confirmedUtxos = eligibleUtxos.filter(u => u.isConfirmed);
+    const confirmedSats = confirmedUtxos.reduce((sum, u) => sum + u.valueSats, 0);
 
-    // In standard mode, if amount + fee exceeds the balance but amount alone
-    // fits, auto-switch to SFA (drain) so the full balance can be swept.
     const requestedSubtractFee = params.subtractFeeFromAmount ?? false;
     const effectiveSubtractFee =
       !requestedSubtractFee && params.amountSats + feeSats > confirmedSats && params.amountSats <= confirmedSats
         ? true
         : requestedSubtractFee;
 
+    let recipientAmountSats: number;
+    let changeSats: number;
+    let finalFeeSats: number;
+    let totalSats: number;
+
     if (effectiveSubtractFee) {
-      // SFA mode: fee is deducted from the amount going to the recipient
       if (params.amountSats > confirmedSats) {
         throw new AppError('Saldo insuficiente', 'INSUFFICIENT_BALANCE');
       }
@@ -68,54 +82,54 @@ export class PreviewTransactionUseCase {
         );
       }
 
-      let changeSats = confirmedSats - params.amountSats;
-      let finalFeeSats = feeSats;
-      let recipientAmountSats = initialRecipient;
+      changeSats = confirmedSats - params.amountSats;
+      finalFeeSats = feeSats;
+      recipientAmountSats = initialRecipient;
 
-      // Absorb dust change into fee (and reduce recipient amount)
       if (changeSats > 0 && changeSats < DUST_THRESHOLD_SATS) {
         finalFeeSats += changeSats;
         recipientAmountSats -= changeSats;
         changeSats = 0;
       }
 
-      return {
-        toAddress: params.toAddress,
-        amountSats: params.amountSats,
-        recipientAmountSats,
-        feeSats: finalFeeSats,
-        totalSats: params.amountSats,
-        changeSats,
-        feeRateSatsPerVByte: feeRate,
-        estimatedVBytes: ESTIMATED_VBYTES,
-        subtractFeeFromAmount: true,
-      };
+      totalSats = params.amountSats;
     } else {
-      // Standard mode: fee is paid from sender's change
       if (params.amountSats + feeSats > confirmedSats) {
         throw new AppError('Saldo insuficiente', 'INSUFFICIENT_BALANCE');
       }
 
-      let changeSats = confirmedSats - params.amountSats - feeSats;
-      let finalFeeSats = feeSats;
+      changeSats = confirmedSats - params.amountSats - feeSats;
+      finalFeeSats = feeSats;
 
-      // absorb dust change into fee
       if (changeSats > 0 && changeSats < DUST_THRESHOLD_SATS) {
         finalFeeSats += changeSats;
         changeSats = 0;
       }
 
-      return {
-        toAddress: params.toAddress,
-        amountSats: params.amountSats,
-        recipientAmountSats: params.amountSats,
-        feeSats: finalFeeSats,
-        totalSats: params.amountSats + finalFeeSats,
-        changeSats,
-        feeRateSatsPerVByte: feeRate,
-        estimatedVBytes: ESTIMATED_VBYTES,
-        subtractFeeFromAmount: false,
-      };
+      recipientAmountSats = params.amountSats;
+      totalSats = params.amountSats + finalFeeSats;
     }
+
+    const inputs = selectPreviewInputs(confirmedUtxos, totalSats);
+    const outputs: TxPreviewOutput[] = [
+      { address: params.toAddress, amountSats: recipientAmountSats, isChange: false },
+    ];
+    if (changeSats > 0) {
+      outputs.push({ address: '', amountSats: changeSats, isChange: true });
+    }
+
+    return {
+      toAddress: params.toAddress,
+      amountSats: params.amountSats,
+      recipientAmountSats,
+      feeSats: finalFeeSats,
+      totalSats,
+      changeSats,
+      feeRateSatsPerVByte: feeRate,
+      estimatedVBytes: ESTIMATED_VBYTES,
+      subtractFeeFromAmount: effectiveSubtractFee,
+      inputs,
+      outputs,
+    };
   }
 }

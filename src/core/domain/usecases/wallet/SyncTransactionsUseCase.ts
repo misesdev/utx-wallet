@@ -107,6 +107,13 @@ export class SyncTransactionsUseCase {
             : outgoing.status;
         return { ...outgoing, amountSats: Math.max(0, outgoing.amountSats - incoming.amountSats), status: bestStatus };
       }
+      // BroadcastTransactionUseCase stores the recipient address in Transaction.address.
+      // The sync loop sets `address` to the scanning address (the wallet's own address),
+      // which would overwrite the recipient — breaking RBF recipient identification.
+      // Preserve the locally stored recipient address for outgoing transactions.
+      if (localTx?.direction === 'outgoing' && localTx.address && freshTx.direction === 'outgoing') {
+        return { ...freshTx, address: localTx.address };
+      }
       return freshTx;
     });
 

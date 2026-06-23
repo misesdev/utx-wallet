@@ -31,6 +31,7 @@ function makeAddressRepo(): jest.Mocked<WalletAddressRepository> {
     updateSyncData: jest.fn(),
     countFreshByChain: jest.fn(),
     getMaxIndexByChain: jest.fn(),
+    deleteByOrigin: jest.fn(),
     deleteByWallet: jest.fn(),
   };
 }

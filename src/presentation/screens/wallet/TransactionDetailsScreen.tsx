@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -13,7 +13,9 @@ import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
 import { useTransactionDetails } from '../../hooks/useTransactionDetails';
+import { useTransactionHistory } from '../../../app/providers/TransactionHistoryProvider';
 import type { TransactionDetail } from '../../../core/domain/entities/TransactionDetail';
+import type { RawTransaction } from '../../../core/domain/repositories/BlockchainProvider';
 import type { AppStackParamList } from '../../../app/navigation/routes';
 import { AppRoutes } from '../../../app/navigation/routes';
 
@@ -37,9 +39,9 @@ function truncateTxid(txid: string, chars = 8): string {
   return `${txid.slice(0, chars)}…${txid.slice(-chars)}`;
 }
 
-type TxCardProps = { tx: TransactionDetail };
+type TxCardProps = { tx: TransactionDetail; rawTx?: RawTransaction | null };
 
-function TxCard({ tx }: TxCardProps) {
+function TxCard({ tx, rawTx }: TxCardProps) {
   const { theme } = useTheme();
   const { t } = useAppTranslation();
   const navigation = useAppNavigation();
@@ -187,6 +189,49 @@ function TxCard({ tx }: TxCardProps) {
         )}
       </View>
 
+      {/* Inputs / Outputs — shown when raw tx data is available */}
+      {rawTx && (rawTx.inputs.length > 0 || rawTx.outputs.length > 0) && (
+        <>
+          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+          <View style={styles.ioSection}>
+            {rawTx.inputs.length > 0 && (
+              <View style={styles.ioGroup}>
+                <AppText variant="label" color="muted" style={styles.ioLabel}>
+                  {t('fees.inputs')}
+                </AppText>
+                {rawTx.inputs.map((inp, i) => (
+                  <View key={i} style={styles.ioRow}>
+                    <AppText variant="caption" color="muted" style={styles.ioAddress} numberOfLines={1}>
+                      {inp.prevoutAddress}
+                    </AppText>
+                    <AppText variant="caption" color="muted">
+                      {inp.prevoutValue.toLocaleString('pt-BR')} sats
+                    </AppText>
+                  </View>
+                ))}
+              </View>
+            )}
+            {rawTx.outputs.length > 0 && (
+              <View style={styles.ioGroup}>
+                <AppText variant="label" color="muted" style={styles.ioLabel}>
+                  {t('fees.outputs')}
+                </AppText>
+                {rawTx.outputs.map((out, i) => (
+                  <View key={i} style={styles.ioRow}>
+                    <AppText variant="caption" color="muted" style={styles.ioAddress} numberOfLines={1}>
+                      {out.address}
+                    </AppText>
+                    <AppText variant="caption" color="muted">
+                      {out.valueSats.toLocaleString('pt-BR')} sats
+                    </AppText>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        </>
+      )}
+
       {/* Accelerate button — pending outgoing only (not replaced) */}
       {tx.direction === 'outgoing' && tx.status === 'pending' && tx.txid && (
         <Pressable
@@ -250,12 +295,21 @@ export function TransactionDetailsScreen() {
   const navigation = useAppNavigation();
   const route = useRoute<RouteProp<AppStackParamList, 'TransactionDetails'>>();
   const { transactions, isLoading, error, refresh } = useTransactionDetails();
+  const { getRawTransaction } = useTransactionHistory();
 
   const selectedTxid = route.params?.txid;
   const visible = selectedTxid
     ? transactions.filter(tx => tx.txid === selectedTxid || tx.id === selectedTxid)
     : transactions;
   const sorted = [...visible].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const [rawTx, setRawTx] = useState<RawTransaction | null>(null);
+
+  useEffect(() => {
+    if (!selectedTxid) return;
+    setRawTx(null);
+    getRawTransaction(selectedTxid).then(setRawTx).catch(() => { /* non-critical */ });
+  }, [selectedTxid, getRawTransaction]);
 
   const title = selectedTxid ? t('txDetails.title') : t('txDetails.history');
 
@@ -310,7 +364,13 @@ export function TransactionDetailsScreen() {
           { paddingBottom: Math.max(insets.bottom, 16) + 24 },
         ]}
       >
-        {sorted.map(tx => <TxCard key={tx.id} tx={tx} />)}
+        {sorted.map(tx => (
+          <TxCard
+            key={tx.id}
+            tx={tx}
+            rawTx={(tx.txid === selectedTxid || tx.id === selectedTxid) ? rawTx : null}
+          />
+        ))}
 
         {sorted.length > 0 && (
           <AppButton
@@ -438,6 +498,32 @@ const styles = StyleSheet.create({
   txidText: {
     fontFamily: 'monospace',
     letterSpacing: 0.4,
+  },
+
+  // Inputs / Outputs
+  ioSection: {
+    gap: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  ioGroup: {
+    gap: 8,
+  },
+  ioLabel: {
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  ioRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'space-between',
+  },
+  ioAddress: {
+    flex: 1,
+    fontFamily: 'monospace',
+    fontSize: 11,
+    letterSpacing: 0.2,
   },
 
   // Accelerate

@@ -1,50 +1,50 @@
-UTX Wallet v2.3
+UTX Wallet v2.4
 
 ── WHAT'S NEW ──────────────────────────────────────────────
 
-• Wallet balance no longer zeroes after a send
-  The change address allocated during a transaction was being
-  silently excluded from sync, making the wallet appear empty
-  until a full re-discovery. The sync engine now includes
-  reserved change addresses in every iteration so the returning
-  balance appears immediately after a send confirms.
+• Personal node now used for all blockchain operations
+  Configuring a personal node now automatically activates it
+  for every operation — balance sync, UTXO sync, transaction
+  queries, fee estimation, broadcast, and wallet discovery.
+  Previously the node was silently ignored unless "Safe Mode"
+  was enabled separately. The wallet also no longer leaks
+  addresses to the public Mempool API during import discovery.
 
-• Frozen UTXOs excluded from available balance
-  Coins marked as frozen are now correctly excluded from the
-  spendable balance shown on the send screen, the account
-  summary, and the transaction preview. Previously the app
-  would show a higher-than-real balance and then fail at
-  broadcast time when the coin selection skipped the frozen
-  inputs.
+• Parallel sync restricted to personal-node wallets
+  The parallel sync option in Sync Settings now applies only
+  to wallets whose network is backed by a personal node.
+  Enabling it for public-API wallets was causing HTTP 429
+  rate-limit errors. The toggle in the settings screen now
+  correctly reflects whether the active network qualifies.
 
-• Accelerate transaction requires authentication
-  The "Confirm acceleration" button on the RBF screen now
-  requires PIN or biometric verification before broadcasting,
-  consistent with the send flow.
+• Transaction inputs and outputs shown in send preview
+  The fee review screen now lists the UTXOs selected as
+  inputs and the resulting outputs (recipient + change),
+  matching the Electrum-style breakdown familiar to advanced
+  users. The same detail view appears in Transaction Details.
 
-• Replaced transactions no longer stay pending forever
-  When a transaction is accelerated via RBF the original
-  transaction is immediately marked as Replaced in local
-  storage. Subsequent syncs preserve that status so the old
-  transaction never reappears as pending. The transaction
-  detail screen shows the replacement txid so you can track
-  the new transaction.
+• RBF acceleration no longer shows false "ineligible"
+  Transactions with sufficient change were sometimes flagged
+  as ineligible for acceleration. The root cause was the sync
+  engine overwriting the stored recipient address on every
+  scan; the recipient address is now preserved so the RBF
+  check finds the correct output.
 
-• Personal node used for address status sync
-  Address status lookups (used to advance the HD address pool
-  after a receive) now go through the personal node when one
-  is configured, instead of always falling back to the public
-  Mempool API.
+• Transactions sorted correctly by date
+  Same-day transactions were appearing out of order on the
+  home screen. The list is now sorted by timestamp descending
+  in all cases.
 
-• Pending status corrected after cross-iteration sync
-  When a spend and its change address are discovered in
-  different sync iterations, the merged transaction record
-  now correctly reflects a confirmed status as soon as either
-  side confirms on-chain.
+• Spent and change addresses can be re-synced
+  The address list previously blocked manual sync on
+  spent_once and change addresses. These addresses can
+  receive new transactions, so the restriction has been
+  lifted. Only archived addresses remain non-syncable.
 
 ── ABOUT UTX WALLET ────────────────────────────────────────
 
 Self-custodial Bitcoin wallet. Your keys never leave your
 device. Connect to your own node. Full UTXO control.
+Mainnet and Testnet4 supported.
 
 Open source — https://github.com/misesdev/utx-wallet

@@ -25,5 +25,6 @@ export interface WalletAddressRepository {
   ): Promise<void>;
   countFreshByChain(walletId: string, originId: string, chain: AddressChain, additionalStatuses?: AddressStatus[]): Promise<number>;
   getMaxIndexByChain(walletId: string, originId: string, chain: AddressChain): Promise<number>;
+  deleteByOrigin(walletId: string, originId: string): Promise<void>;
   deleteByWallet(walletId: string): Promise<void>;
 }

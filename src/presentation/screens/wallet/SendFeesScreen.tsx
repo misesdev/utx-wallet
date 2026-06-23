@@ -277,6 +277,36 @@ export function SendFeesScreen() {
               <AppText testID="preview-fee-rate">{`${preview.feeRateSatsPerVByte} sat/vB`}</AppText>
             </View>
 
+            {/* Electrum-style inputs / outputs */}
+            {preview.inputs.length > 0 && (
+              <>
+                <View style={styles.separator} />
+                <AppText variant="label" color="muted">{t('fees.inputs')}</AppText>
+                {preview.inputs.map((inp, i) => (
+                  <View key={i} style={styles.ioRow}>
+                    <AppText variant="caption" color="muted" style={styles.ioAddress} numberOfLines={1}>
+                      {truncateAddress(inp.address, 8)}
+                    </AppText>
+                    <AppText variant="caption">{`${formatSats(inp.valueSats)} sats`}</AppText>
+                  </View>
+                ))}
+              </>
+            )}
+            {preview.outputs.length > 0 && (
+              <>
+                <View style={styles.separator} />
+                <AppText variant="label" color="muted">{t('fees.outputs')}</AppText>
+                {preview.outputs.map((out, i) => (
+                  <View key={i} style={styles.ioRow}>
+                    <AppText variant="caption" color={out.isChange ? 'muted' : 'default'} style={styles.ioAddress} numberOfLines={1}>
+                      {out.isChange ? t('fees.changeOutput') : truncateAddress(out.address, 8)}
+                    </AppText>
+                    <AppText variant="caption">{`${formatSats(out.amountSats)} sats`}</AppText>
+                  </View>
+                ))}
+              </>
+            )}
+
             <AppButton
               title={t('fees.confirmSend')}
               size="md"
@@ -393,6 +423,17 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     maxWidth: '60%',
     textAlign: 'right',
+  },
+  ioRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  ioAddress: {
+    flex: 1,
+    fontFamily: 'monospace',
+    fontSize: 11,
   },
   center: {
     textAlign: 'center',
