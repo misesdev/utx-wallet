@@ -49,7 +49,8 @@ describe('GlobalSettingsScreen', () => {
     // Version label key is rendered (i18n mock returns key)
     expect(screen.getByText('globalSettings.version')).toBeTruthy();
     // Actual semver string from package.json
-    //expect(screen.getByText('2.2.0')).toBeTruthy();
+    const { version } = require("../../../package.json")
+    expect(screen.getByText(version)).toBeTruthy();
   });
 
   it('navigates to donation screen', () => {
