@@ -4,6 +4,7 @@ import { AccelerateTransactionScreen } from '../../../src/presentation/screens/w
 import { renderWithTheme } from '../../mocks/renderWithProviders';
 import type { UseAccelerateState } from '../../../src/presentation/hooks/useAccelerateTransaction';
 import type { RbfInfo } from '../../../src/core/domain/entities/RbfInfo';
+import type { UseReauthenticateState } from '../../../src/presentation/hooks/useReauthenticate';
 
 const TXID = 'aaaa' + '00'.repeat(30);
 const TO_ADDRESS = 'tb1qrecipient000000000000000000000000000';
@@ -31,6 +32,9 @@ const INELIGIBLE_RBF_INFO: RbfInfo = {
 
 const mockSetNewFeeRate = jest.fn();
 const mockAccelerate = jest.fn();
+const mockRequireAuth = jest.fn<Promise<boolean>, []>();
+const mockSubmitPin = jest.fn();
+const mockCancelAuth = jest.fn();
 
 const BASE_STATE: UseAccelerateState = {
   rbfInfo: ELIGIBLE_RBF_INFO,
@@ -46,10 +50,23 @@ const BASE_STATE: UseAccelerateState = {
   accelerate: mockAccelerate,
 };
 
+const BASE_REAUTH: UseReauthenticateState = {
+  pinModalVisible: false,
+  pinError: null,
+  requireAuth: mockRequireAuth,
+  submitPin: mockSubmitPin,
+  cancelAuth: mockCancelAuth,
+};
+
 let mockState: UseAccelerateState = BASE_STATE;
+let mockReauth: UseReauthenticateState = BASE_REAUTH;
 
 jest.mock('../../../src/presentation/hooks/useAccelerateTransaction', () => ({
   useAccelerateTransaction: () => mockState,
+}));
+
+jest.mock('../../../src/presentation/hooks/useReauthenticate', () => ({
+  useReauthenticate: () => mockReauth,
 }));
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -76,7 +93,9 @@ describe('AccelerateTransactionScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockState = { ...BASE_STATE };
+    mockReauth = { ...BASE_REAUTH };
     mockAccelerate.mockResolvedValue(undefined);
+    mockRequireAuth.mockResolvedValue(true);
   });
 
   describe('loading state', () => {
@@ -164,14 +183,6 @@ describe('AccelerateTransactionScreen', () => {
       expect(screen.getByTestId('rbf-new-change')).toBeTruthy();
     });
 
-    it('calls accelerate when confirm button is pressed', async () => {
-      const screen = renderWithTheme(<AccelerateTransactionScreen />);
-      await act(async () => {
-        fireEvent.press(screen.getByTestId('btn-confirm-accelerate'));
-      });
-      expect(mockAccelerate).toHaveBeenCalledTimes(1);
-    });
-
     it('shows accelerate error when accelerateError is set', () => {
       mockState = { ...BASE_STATE, accelerateError: 'Fee too low' };
       const screen = renderWithTheme(<AccelerateTransactionScreen />);
@@ -197,6 +208,46 @@ describe('AccelerateTransactionScreen', () => {
       const screen = renderWithTheme(<AccelerateTransactionScreen />);
       fireEvent.press(screen.getByTestId('btn-fee-decrease'));
       expect(mockSetNewFeeRate).toHaveBeenCalledWith(6); // clamped at currentFeeRate+1
+    });
+  });
+
+  describe('authentication gate on confirm', () => {
+    it('calls requireAuth before accelerating', async () => {
+      const screen = renderWithTheme(<AccelerateTransactionScreen />);
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('btn-confirm-accelerate'));
+      });
+      expect(mockRequireAuth).toHaveBeenCalledTimes(1);
+    });
+
+    it('calls accelerate after auth succeeds', async () => {
+      mockRequireAuth.mockResolvedValue(true);
+      const screen = renderWithTheme(<AccelerateTransactionScreen />);
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('btn-confirm-accelerate'));
+      });
+      expect(mockAccelerate).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not call accelerate when auth is cancelled', async () => {
+      mockRequireAuth.mockResolvedValue(false);
+      const screen = renderWithTheme(<AccelerateTransactionScreen />);
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('btn-confirm-accelerate'));
+      });
+      expect(mockRequireAuth).toHaveBeenCalledTimes(1);
+      expect(mockAccelerate).not.toHaveBeenCalled();
+    });
+
+    it('shows PIN modal when pinModalVisible is true', () => {
+      mockReauth = { ...BASE_REAUTH, pinModalVisible: true };
+      const screen = renderWithTheme(<AccelerateTransactionScreen />);
+      expect(screen.getByTestId('pin-input-modal')).toBeTruthy();
+    });
+
+    it('does not show PIN modal when pinModalVisible is false', () => {
+      const screen = renderWithTheme(<AccelerateTransactionScreen />);
+      expect(screen.queryByTestId('pin-input-modal')).toBeNull();
     });
   });
 

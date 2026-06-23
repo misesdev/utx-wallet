@@ -48,6 +48,40 @@ describe('AccountSummaryService', () => {
     expect(result.find(item => item.id === 'savings')).toMatchObject({ confirmedBalanceSats: 25_000, pendingBalanceSats: 5_000, totalBalanceSats: 30_000 });
   });
 
+  it('excludes frozen UTXOs from balance calculation', () => {
+    const result = calculateAccountSummaries(
+      [origin('default', 0, 'Default')],
+      [address('addr-0', 'default', 0)],
+      [
+        utxo('addr-0', 100_000),
+        { ...utxo('addr-0', 50_000), txid: 'frozen-1', isFrozen: true },
+      ],
+    );
+
+    // Frozen 50k should NOT count; only the 100k non-frozen UTXO
+    expect(result.find(item => item.id === 'default')).toMatchObject({
+      confirmedBalanceSats: 100_000,
+      totalBalanceSats: 100_000,
+    });
+  });
+
+  it('excludes frozen unconfirmed UTXOs from pending balance', () => {
+    const result = calculateAccountSummaries(
+      [origin('default', 0, 'Default')],
+      [address('addr-0', 'default', 0)],
+      [
+        utxo('addr-0', 100_000),
+        { ...utxo('addr-0', 30_000, false), txid: 'frozen-unconf', isFrozen: true },
+      ],
+    );
+
+    expect(result.find(item => item.id === 'default')).toMatchObject({
+      confirmedBalanceSats: 100_000,
+      pendingBalanceSats: 0,
+      totalBalanceSats: 100_000,
+    });
+  });
+
   it('uses the default account when no origin is selected', () => {
     const summaries = calculateAccountSummaries([origin('default', 0), origin('other', 1)], [], []);
     expect(findAccountSummary(summaries)?.id).toBe('default');

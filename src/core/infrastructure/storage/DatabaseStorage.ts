@@ -68,13 +68,15 @@ export class OpSQLiteDatabase implements Database {
         created_at TEXT NOT NULL,
         address TEXT,
         origin_id TEXT,
-        origin_name TEXT
+        origin_name TEXT,
+        replaced_by_txid TEXT
       )
     `);
     for (const column of [
       'address TEXT',
       'origin_id TEXT',
       'origin_name TEXT',
+      'replaced_by_txid TEXT',
     ]) {
       try {
         await db.execute(`ALTER TABLE transactions ADD COLUMN ${column}`);

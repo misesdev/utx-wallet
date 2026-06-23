@@ -56,7 +56,7 @@ export class SyncAccountUseCase {
     for (let iteration = 0; iteration < MAX_DISCOVER_ITERATIONS; iteration++) {
       const [receivePool, changePool] = await Promise.all([
         this.walletAddressRepository.findFreshByChain(walletId, originId, 'receive', ['received']),
-        this.walletAddressRepository.findFreshByChain(walletId, originId, 'change'),
+        this.walletAddressRepository.findFreshByChain(walletId, originId, 'change', ['reserved']),
       ]);
 
       const poolAddresses = [...receivePool, ...changePool].filter(

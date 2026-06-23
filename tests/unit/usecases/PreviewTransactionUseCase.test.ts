@@ -398,6 +398,63 @@ describe('PreviewTransactionUseCase', () => {
     });
   });
 
+  describe('frozen UTXO exclusion', () => {
+    it('excludes frozen UTXOs from available balance', async () => {
+      // 800k frozen, 200k available — only 200k should count
+      const repo = makeRepo([
+        { txid: 'a', vout: 0, valueSats: 800_000, address: 'bc1q...', isConfirmed: true, isFrozen: true },
+        { txid: 'b', vout: 0, valueSats: 200_000, address: 'bc1q...', isConfirmed: true, isFrozen: false },
+      ]);
+      const useCase = new PreviewTransactionUseCase(repo);
+
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: 100_000,
+        feeRateSatsPerVByte: FEE_RATE,
+      });
+
+      const fee = Math.ceil(FEE_RATE * 180);
+      expect(result.changeSats).toBe(200_000 - 100_000 - fee);
+    });
+
+    it('throws INSUFFICIENT_BALANCE when only frozen UTXOs exist', async () => {
+      const repo = makeRepo([
+        { txid: 'a', vout: 0, valueSats: 1_000_000, address: 'bc1q...', isConfirmed: true, isFrozen: true },
+      ]);
+      const useCase = new PreviewTransactionUseCase(repo);
+
+      await expect(
+        useCase.execute({
+          walletId: WALLET_ID,
+          toAddress: VALID_ADDRESS,
+          amountSats: 100_000,
+          feeRateSatsPerVByte: FEE_RATE,
+        }),
+      ).rejects.toMatchObject({ code: 'INSUFFICIENT_BALANCE' });
+    });
+
+    it('excludes frozen UTXOs from allowedAddresses balance', async () => {
+      const origin = 'addr-origin';
+      const repo = makeRepo([
+        { txid: 'a', vout: 0, valueSats: 500_000, address: origin, isConfirmed: true, isFrozen: true },
+        { txid: 'b', vout: 0, valueSats: 300_000, address: origin, isConfirmed: true, isFrozen: false },
+      ]);
+      const useCase = new PreviewTransactionUseCase(repo);
+
+      const fee = Math.ceil(FEE_RATE * 180);
+      const result = await useCase.execute({
+        walletId: WALLET_ID,
+        toAddress: VALID_ADDRESS,
+        amountSats: 100_000,
+        feeRateSatsPerVByte: FEE_RATE,
+        allowedAddresses: [origin],
+      });
+
+      expect(result.changeSats).toBe(300_000 - 100_000 - fee);
+    });
+  });
+
   describe('allowedAddresses (account isolation)', () => {
     function makeUtxoAt(valueSats: number, address: string, isConfirmed = true): Utxo {
       return { txid: 'abc', vout: 0, valueSats, address, isConfirmed };

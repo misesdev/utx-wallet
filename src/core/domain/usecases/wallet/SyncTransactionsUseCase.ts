@@ -1,7 +1,7 @@
 import type { TransactionRepository } from '../../repositories/TransactionRepository';
 import type { BlockchainProvider } from '../../repositories/BlockchainProvider';
 import type { BitcoinNetwork } from '../../entities/Network';
-import type { Transaction } from '../../entities/Transaction';
+import type { Transaction, TransactionStatus } from '../../entities/Transaction';
 import type { WalletAddress } from '../../entities/WalletAddress';
 import { delay } from '../../../../shared/utils/asyncUtils';
 import type { OnSyncProgress } from './SyncProgress';
@@ -95,10 +95,17 @@ export class SyncTransactionsUseCase {
     const resolvedTxs = freshTxs.map(freshTx => {
       const key = freshTx.txid ?? freshTx.id;
       const localTx = localTxByKey.get(key);
+      if (localTx?.status === 'replaced') {
+        return localTx;
+      }
       if (localTx && localTx.direction !== freshTx.direction) {
         const outgoing = localTx.direction === 'outgoing' ? localTx : freshTx;
         const incoming = localTx.direction === 'incoming' ? localTx : freshTx;
-        return { ...outgoing, amountSats: Math.max(0, outgoing.amountSats - incoming.amountSats) };
+        const bestStatus: TransactionStatus =
+          outgoing.status === 'confirmed' || incoming.status === 'confirmed'
+            ? 'confirmed'
+            : outgoing.status;
+        return { ...outgoing, amountSats: Math.max(0, outgoing.amountSats - incoming.amountSats), status: bestStatus };
       }
       return freshTx;
     });

@@ -376,6 +376,21 @@ describe('i18n resources', () => {
     });
   });
 
+  describe('transactions.replaced and txDetails.replacedBy keys', () => {
+    it('pt-BR has non-empty transactions.replaced', () => {
+      expect(ptBR.transactions.replaced).toBeTruthy();
+    });
+    it('en-US has non-empty transactions.replaced', () => {
+      expect(enUS.transactions.replaced).toBeTruthy();
+    });
+    it('pt-BR has non-empty txDetails.replacedBy', () => {
+      expect(ptBR.txDetails.replacedBy).toBeTruthy();
+    });
+    it('en-US has non-empty txDetails.replacedBy', () => {
+      expect(enUS.txDetails.replacedBy).toBeTruthy();
+    });
+  });
+
   describe('syncSettings keys', () => {
     const KEYS = [
       'title', 'sectionRate', 'sectionParallel',

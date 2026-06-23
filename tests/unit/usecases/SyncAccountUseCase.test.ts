@@ -140,7 +140,7 @@ describe('SyncAccountUseCase', () => {
       await useCase.execute(WALLET_ID, ORIGIN_ID);
 
       expect(addressRepo.findFreshByChain).toHaveBeenCalledWith(WALLET_ID, ORIGIN_ID, 'receive', ['received']);
-      expect(addressRepo.findFreshByChain).toHaveBeenCalledWith(WALLET_ID, ORIGIN_ID, 'change');
+      expect(addressRepo.findFreshByChain).toHaveBeenCalledWith(WALLET_ID, ORIGIN_ID, 'change', ['reserved']);
       const syncedAddresses = (syncUtxos.execute as jest.Mock).mock.calls[0][1];
       expect(syncedAddresses).toContain('receive-addr');
       expect(syncedAddresses).toContain('change-addr');
@@ -175,6 +175,51 @@ describe('SyncAccountUseCase', () => {
 
       // Pool was addr-A, then addr-A again but filtered by syncedThisRun → empty → break
       expect(syncUtxos.execute).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('reserved change address sync', () => {
+    it('includes reserved change addresses in sync batch', async () => {
+      const receiveAddr = makeAddress('receive-addr', 'receive');
+      const reservedChangeAddr = makeAddress('change-reserved', 'change', 'reserved');
+      const addressRepo: jest.Mocked<WalletAddressRepository> = {
+        findFreshByChain: jest.fn().mockImplementation(
+          (_wid: string, _oid: string, chain: 'receive' | 'change', additionalStatuses?: string[]) => {
+            if (chain === 'receive') return Promise.resolve([receiveAddr]);
+            // Ensure reserved addresses are included only when asked
+            if (chain === 'change' && additionalStatuses?.includes('reserved')) {
+              return Promise.resolve([reservedChangeAddr]);
+            }
+            return Promise.resolve([]);
+          },
+        ),
+      } as unknown as jest.Mocked<WalletAddressRepository>;
+      const syncUtxos = makeSyncUtxos();
+      const useCase = makeUseCase({ addressRepo, syncUtxos });
+
+      await useCase.execute(WALLET_ID, ORIGIN_ID);
+
+      expect(addressRepo.findFreshByChain).toHaveBeenCalledWith(WALLET_ID, ORIGIN_ID, 'change', ['reserved']);
+      const syncedAddresses: string[] = (syncUtxos.execute as jest.Mock).mock.calls[0][1];
+      expect(syncedAddresses).toContain('change-reserved');
+    });
+
+    it('syncs reserved change address so its UTXO is not lost after a send', async () => {
+      // The change address is reserved (status set by BuildTransactionUseCase after a send).
+      // Without passing ['reserved'] to findFreshByChain, the change UTXO would never sync
+      // and the wallet balance would appear zeroed after any transaction.
+      const reservedChange = makeAddress('bc1qchange', 'change', 'reserved');
+      const addressRepo: jest.Mocked<WalletAddressRepository> = {
+        findFreshByChain: jest.fn().mockResolvedValue([reservedChange]),
+      } as unknown as jest.Mocked<WalletAddressRepository>;
+      const syncUtxos = makeSyncUtxos(1, 0); // 1 new UTXO found (the change UTXO)
+      const useCase = makeUseCase({ addressRepo, syncUtxos });
+
+      const result = await useCase.execute(WALLET_ID, ORIGIN_ID);
+
+      expect(result.newUtxos).toBe(1);
+      const syncedAddresses: string[] = (syncUtxos.execute as jest.Mock).mock.calls[0][1];
+      expect(syncedAddresses).toContain('bc1qchange');
     });
   });
 

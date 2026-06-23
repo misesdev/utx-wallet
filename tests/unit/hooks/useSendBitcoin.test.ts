@@ -118,6 +118,26 @@ describe('useSendBitcoin', () => {
     });
   });
 
+  describe('frozen UTXO exclusion', () => {
+    it('excludes frozen UTXOs from available balance', async () => {
+      const frozenUtxo: Utxo = { txid: 'frozen', vout: 0, valueSats: 900_000, address: 'bc1q...', isConfirmed: true, isFrozen: true };
+      const normalUtxo: Utxo = { txid: 'normal', vout: 0, valueSats: 200_000, address: 'bc1q...', isConfirmed: true, isFrozen: false };
+      mockListUtxos.mockResolvedValue([frozenUtxo, normalUtxo]);
+
+      const { result } = renderHook(() => useSendBitcoin());
+      await waitFor(() => expect(result.current.availableBalanceSats).toBe(200_000));
+    });
+
+    it('shows zero available balance when all UTXOs are frozen', async () => {
+      mockListUtxos.mockResolvedValue([
+        { txid: 'f1', vout: 0, valueSats: 500_000, address: 'bc1q...', isConfirmed: true, isFrozen: true },
+      ]);
+
+      const { result } = renderHook(() => useSendBitcoin());
+      await waitFor(() => expect(result.current.availableBalanceSats).toBe(0));
+    });
+  });
+
   describe('origin address filtering', () => {
     const ORIGIN_ADDR = 'bc1qorigin';
     const OTHER_ADDR  = 'bc1qother';

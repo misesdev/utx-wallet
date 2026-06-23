@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -7,10 +7,12 @@ import { AppButton } from '../../components/base/AppButton';
 import { AppIcon } from '../../components/base/AppIcon';
 import { AppLoading } from '../../components/base/AppLoading';
 import { AppText } from '../../components/base/AppText';
+import { PinInputModal } from '../../components/security/PinInputModal';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
 import { useAccelerateTransaction } from '../../hooks/useAccelerateTransaction';
+import { useReauthenticate } from '../../hooks/useReauthenticate';
 import type { AppStackParamList } from '../../../app/navigation/routes';
 
 type RouteParams = RouteProp<AppStackParamList, 'AccelerateTransaction'>;
@@ -45,6 +47,14 @@ export function AccelerateTransactionScreen() {
     setNewFeeRate,
     accelerate,
   } = useAccelerateTransaction({ txid, toAddress, isConfirmed });
+
+  const { requireAuth, pinModalVisible, pinError, submitPin, cancelAuth } = useReauthenticate();
+
+  const handleConfirmAccelerate = useCallback(async () => {
+    const ok = await requireAuth();
+    if (!ok) return;
+    await accelerate();
+  }, [requireAuth, accelerate]);
 
   const feeIncrease = newFeeSats - (rbfInfo?.currentFeeSats ?? feeSats);
   const isValidRate =
@@ -115,6 +125,14 @@ export function AccelerateTransactionScreen() {
           {infoError}
         </AppText>
       )}
+
+      <PinInputModal
+        visible={pinModalVisible}
+        step="verify"
+        error={pinError}
+        onSubmit={submitPin}
+        onCancel={cancelAuth}
+      />
 
       {!isLoadingInfo && rbfInfo && (
         <ScrollView
@@ -309,7 +327,7 @@ export function AccelerateTransactionScreen() {
                 variant="primary"
                 loading={isAccelerating}
                 disabled={!isValidRate || isAccelerating}
-                onPress={accelerate}
+                onPress={handleConfirmAccelerate}
                 testID="btn-confirm-accelerate"
                 style={styles.ctaButton}
               />

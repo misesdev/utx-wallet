@@ -238,6 +238,29 @@ describe('GetTransactionDetailUseCase', () => {
     });
   });
 
+  describe('replaced transaction', () => {
+    it('does not fetch blockchain status for replaced transactions', async () => {
+      const tx = makeTx({ status: 'replaced', replacedByTxid: 'new-txid' });
+      const provider = makeProvider();
+      await makeUseCase(provider).execute({ transaction: tx, network: 'testnet4' });
+      expect(provider.getTransactionStatus).not.toHaveBeenCalled();
+      expect(provider.getCurrentBlockHeight).not.toHaveBeenCalled();
+    });
+
+    it('returns replaced transaction with replaced status intact', async () => {
+      const tx = makeTx({ status: 'replaced', replacedByTxid: 'new-txid' });
+      const result = await makeUseCase().execute({ transaction: tx, network: 'testnet4' });
+      expect(result.status).toBe('replaced');
+    });
+
+    it('fetches blockchain status for non-replaced pending transactions', async () => {
+      const tx = makeTx({ status: 'pending' });
+      const provider = makeProvider(makePendingStatus());
+      await makeUseCase(provider).execute({ transaction: tx, network: 'testnet4' });
+      expect(provider.getTransactionStatus).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('remote fetch failure', () => {
     it('falls back to local status when provider throws', async () => {
       const provider = makeProvider();

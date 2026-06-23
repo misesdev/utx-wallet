@@ -12,6 +12,7 @@ type TransactionRow = {
   address: string | null;
   origin_id: string | null;
   origin_name: string | null;
+  replaced_by_txid: string | null;
 };
 
 export class TransactionStorage {
@@ -19,7 +20,7 @@ export class TransactionStorage {
 
   async listByWallet(walletId: string): Promise<Transaction[]> {
     const rows = await this.db.execute<TransactionRow>(
-      'SELECT id, txid, amount_sats, fee_sats, direction, status, created_at, address, origin_id, origin_name FROM transactions WHERE wallet_id = ? ORDER BY created_at DESC',
+      'SELECT id, txid, amount_sats, fee_sats, direction, status, created_at, address, origin_id, origin_name, replaced_by_txid FROM transactions WHERE wallet_id = ? ORDER BY created_at DESC',
       [walletId],
     );
     return rows.map(row => ({
@@ -34,6 +35,7 @@ export class TransactionStorage {
       address: row.address ?? undefined,
       originId: row.origin_id ?? undefined,
       originName: row.origin_name ?? undefined,
+      replacedByTxid: row.replaced_by_txid ?? undefined,
     }));
   }
 
@@ -42,8 +44,8 @@ export class TransactionStorage {
     // share the same private key (and thus the same Bitcoin txids).
     const rowId = `${walletId}:${transaction.txid ?? transaction.id}`;
     await this.db.execute(
-      `INSERT OR REPLACE INTO transactions (id, wallet_id, txid, amount_sats, fee_sats, direction, status, created_at, address, origin_id, origin_name)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO transactions (id, wallet_id, txid, amount_sats, fee_sats, direction, status, created_at, address, origin_id, origin_name, replaced_by_txid)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         rowId,
         walletId,
@@ -56,6 +58,7 @@ export class TransactionStorage {
         transaction.address ?? null,
         transaction.originId ?? null,
         transaction.originName ?? null,
+        transaction.replacedByTxid ?? null,
       ],
     );
   }

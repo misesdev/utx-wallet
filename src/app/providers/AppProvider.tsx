@@ -196,7 +196,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       walletAddressRepository,
       addressOriginRepository,
       utxoRepository,
-      publicNodeAdapter,
+      nodeRepository,
       ensureAddressPool,
     );
     const createAddressOriginUseCase = new CreateAddressOriginUseCase(
@@ -350,6 +350,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       feeEstimation,
       signTransactionUseCase,
       broadcastTransactionUseCase,
+      transactionRepository,
     );
 
     const offlineTransactionStorage = new OfflineTransactionStorage(db);

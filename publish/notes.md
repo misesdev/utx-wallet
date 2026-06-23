@@ -1,66 +1,46 @@
-UTX Wallet v2.2
+UTX Wallet v2.3
 
 ── WHAT'S NEW ──────────────────────────────────────────────
 
-• Personal node works on physical devices
-  Connections to personal nodes over HTTP now work correctly
-  on installed (release) builds, not only in the emulator.
+• Wallet balance no longer zeroes after a send
+  The change address allocated during a transaction was being
+  silently excluded from sync, making the wallet appear empty
+  until a full re-discovery. The sync engine now includes
+  reserved change addresses in every iteration so the returning
+  balance appears immediately after a send confirms.
 
-• Testnet safety banner
-  When viewing a testnet wallet the home screen shows a
-  prominent warning that the coins have no real value and
-  should not be used for real payments.
+• Frozen UTXOs excluded from available balance
+  Coins marked as frozen are now correctly excluded from the
+  spendable balance shown on the send screen, the account
+  summary, and the transaction preview. Previously the app
+  would show a higher-than-real balance and then fail at
+  broadcast time when the coin selection skipped the frozen
+  inputs.
 
-• Receive address is always stable
-  The "New address" button has been removed. The wallet now
-  manages addresses automatically according to BIP-84 policy
-  so the displayed address is always the correct one to share.
+• Accelerate transaction requires authentication
+  The "Confirm acceleration" button on the RBF screen now
+  requires PIN or biometric verification before broadcasting,
+  consistent with the send flow.
 
-• Swipe between Mainnet and Testnet
-  The wallet list now lets you swipe left and right to switch
-  between Mainnet and Testnet tabs. The active tab follows a
-  smooth sliding underline indicator. Tapping the tab labels
-  still works as before.
+• Replaced transactions no longer stay pending forever
+  When a transaction is accelerated via RBF the original
+  transaction is immediately marked as Replaced in local
+  storage. Subsequent syncs preserve that status so the old
+  transaction never reappears as pending. The transaction
+  detail screen shows the replacement txid so you can track
+  the new transaction.
 
-• Authentication on every app open
-  The app now requires biometric or PIN authentication each
-  time it is opened. The lock screen appears instantly with no
-  flash of the wallet list underneath.
+• Personal node used for address status sync
+  Address status lookups (used to advance the HD address pool
+  after a receive) now go through the personal node when one
+  is configured, instead of always falling back to the public
+  Mempool API.
 
-• Configurable sync rate and parallel sync
-  A new Sync screen under Global Settings → Network lets you
-  set the maximum requests per second sent to the blockchain
-  API and enable parallel address fetching. Parallel sync is
-  intended for personal node users and is locked when no
-  personal node is configured.
-
-• PIN keypad improvements
-  Wrong PIN attempts now shake the dots to give clear visual
-  feedback. The error message disappears as soon as you start
-  typing the next attempt, and the keypad can no longer become
-  unresponsive after a rejection.
-
-• Seamless PIN hash upgrade
-  PINs stored with the legacy hash format are automatically
-  upgraded to SHA-256 on the first successful login. No action
-  is required.
-
-• Personal node form redesigned
-  The separate port field has been removed — include the port
-  in the URL instead. The auth token is now behind a toggle
-  (similar to the passphrase field) and the network is chosen
-  from a radio list.
-
-• Multi-device UTXO sync
-  Sync now re-verifies all addresses that have stored UTXOs,
-  not just the current address pool batch. Spent outputs
-  created on another device are correctly removed.
-
-• Transaction sync fixes
-  Cross-iteration merges no longer produce phantom pending
-  transactions. The home screen and transaction list refresh
-  on every screen focus so stale data is cleared immediately
-  after a sync or navigation event.
+• Pending status corrected after cross-iteration sync
+  When a spend and its change address are discovered in
+  different sync iterations, the merged transaction record
+  now correctly reflects a confirmed status as soon as either
+  side confirms on-chain.
 
 ── ABOUT UTX WALLET ────────────────────────────────────────
 

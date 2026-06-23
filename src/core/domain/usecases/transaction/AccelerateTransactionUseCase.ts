@@ -3,6 +3,7 @@ import type { BuiltTransaction } from '../../entities/BuiltTransaction';
 import type { RbfInfo } from '../../entities/RbfInfo';
 import type { BlockchainProvider } from '../../repositories/BlockchainProvider';
 import type { IFeeEstimationService } from '../../services/FeeEstimationService';
+import type { TransactionRepository } from '../../repositories/TransactionRepository';
 import type { SignTransactionUseCase } from './SignTransactionUseCase';
 import type { BroadcastTransactionUseCase, BroadcastResult } from './BroadcastTransactionUseCase';
 import { AppError } from '../../../application/errors/AppError';
@@ -30,6 +31,7 @@ export class AccelerateTransactionUseCase {
     private readonly feeEstimation: IFeeEstimationService,
     private readonly signTransaction: SignTransactionUseCase,
     private readonly broadcastTransaction: BroadcastTransactionUseCase,
+    private readonly transactionRepository: TransactionRepository | null = null,
   ) {}
 
   async getRbfInfo(params: GetRbfInfoParams): Promise<RbfInfo> {
@@ -191,6 +193,28 @@ export class AccelerateTransactionUseCase {
       network: params.walletNetwork,
     });
 
-    return this.broadcastTransaction.execute(signed, params.walletId);
+    const result = await this.broadcastTransaction.execute(signed, params.walletId);
+
+    await this.markOriginalAsReplaced(params.walletId, rbfInfo.originalTxid, result.txid);
+
+    return result;
+  }
+
+  private async markOriginalAsReplaced(
+    walletId: string,
+    originalTxid: string,
+    replacementTxid: string,
+  ): Promise<void> {
+    if (!this.transactionRepository) return;
+    try {
+      const txs = await this.transactionRepository.list(walletId);
+      const original = txs.find(tx => tx.txid === originalTxid);
+      if (!original) return;
+      await this.transactionRepository.upsertAll(walletId, [
+        { ...original, status: 'replaced', replacedByTxid: replacementTxid },
+      ]);
+    } catch {
+      // Non-critical — acceleration already succeeded
+    }
   }
 }

@@ -13,6 +13,8 @@ const tx: Transaction = {
   createdAt: '2026-06-05T00:00:00.000Z',
 };
 
+const REPLACEMENT_TXID = 'cafebabe' + '00'.repeat(28);
+
 describe('TransactionStorage', () => {
   describe('listByWallet()', () => {
     it('maps database rows to Transaction objects', async () => {
@@ -26,11 +28,51 @@ describe('TransactionStorage', () => {
           direction: 'outgoing',
           status: 'pending',
           created_at: '2026-06-05T00:00:00.000Z',
+          replaced_by_txid: null,
         },
       ]);
       const storage = new TransactionStorage(db);
       const result = await storage.listByWallet('wallet-1');
       expect(result).toEqual([tx]);
+    });
+
+    it('maps replaced_by_txid from database row to replacedByTxid field', async () => {
+      const db = createDatabaseMock();
+      (db.execute as jest.Mock).mockResolvedValueOnce([
+        {
+          id: 'wallet-1:deadbeef',
+          txid: 'deadbeef',
+          amount_sats: 10000,
+          fee_sats: 1800,
+          direction: 'outgoing',
+          status: 'replaced',
+          created_at: '2026-06-05T00:00:00.000Z',
+          replaced_by_txid: REPLACEMENT_TXID,
+        },
+      ]);
+      const storage = new TransactionStorage(db);
+      const [result] = await storage.listByWallet('wallet-1');
+      expect(result.status).toBe('replaced');
+      expect(result.replacedByTxid).toBe(REPLACEMENT_TXID);
+    });
+
+    it('returns undefined replacedByTxid when column is null', async () => {
+      const db = createDatabaseMock();
+      (db.execute as jest.Mock).mockResolvedValueOnce([
+        {
+          id: 'wallet-1:deadbeef',
+          txid: 'deadbeef',
+          amount_sats: 10000,
+          fee_sats: 1800,
+          direction: 'outgoing',
+          status: 'pending',
+          created_at: '2026-06-05T00:00:00.000Z',
+          replaced_by_txid: null,
+        },
+      ]);
+      const storage = new TransactionStorage(db);
+      const [result] = await storage.listByWallet('wallet-1');
+      expect(result.replacedByTxid).toBeUndefined();
     });
 
     it('returns txid as the domain id when txid is present', async () => {
@@ -102,6 +144,23 @@ describe('TransactionStorage', () => {
       await storage.save('wallet-1', txWithoutFee);
       const params = (db.execute as jest.Mock).mock.calls[0][1] as unknown[];
       expect(params[4]).toBeNull(); // feeSats
+    });
+
+    it('saves replacedByTxid when present', async () => {
+      const db = createDatabaseMock();
+      const storage = new TransactionStorage(db);
+      const replacedTx: Transaction = { ...tx, status: 'replaced', replacedByTxid: REPLACEMENT_TXID };
+      await storage.save('wallet-1', replacedTx);
+      const params = (db.execute as jest.Mock).mock.calls[0][1] as unknown[];
+      expect(params[params.length - 1]).toBe(REPLACEMENT_TXID);
+    });
+
+    it('saves null for missing replacedByTxid', async () => {
+      const db = createDatabaseMock();
+      const storage = new TransactionStorage(db);
+      await storage.save('wallet-1', tx);
+      const params = (db.execute as jest.Mock).mock.calls[0][1] as unknown[];
+      expect(params[params.length - 1]).toBeNull();
     });
   });
 });

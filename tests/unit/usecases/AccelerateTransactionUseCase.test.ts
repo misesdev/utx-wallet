@@ -2,10 +2,12 @@ import { AccelerateTransactionUseCase } from '../../../src/core/domain/usecases/
 import { AppError } from '../../../src/core/application/errors/AppError';
 import type { BlockchainProvider, RawTransaction } from '../../../src/core/domain/repositories/BlockchainProvider';
 import type { IFeeEstimationService } from '../../../src/core/domain/services/FeeEstimationService';
+import type { TransactionRepository } from '../../../src/core/domain/repositories/TransactionRepository';
 import type { SignTransactionUseCase } from '../../../src/core/domain/usecases/transaction/SignTransactionUseCase';
 import type { BroadcastTransactionUseCase } from '../../../src/core/domain/usecases/transaction/BroadcastTransactionUseCase';
 import type { SignedTransaction } from '../../../src/core/domain/entities/SignedTransaction';
 import type { GetRbfInfoParams } from '../../../src/core/domain/usecases/transaction/AccelerateTransactionUseCase';
+import type { Transaction } from '../../../src/core/domain/entities/Transaction';
 import { DUST_THRESHOLD_SATS } from '../../../src/core/domain/usecases/transaction/BuildTransactionUseCase';
 
 const WALLET_ID = 'wallet-1';
@@ -61,7 +63,19 @@ const SIGNED_TX: SignedTransaction = {
   },
 };
 
-const BROADCAST_RESULT = { txid: SIGNED_TX.txid, transaction: { id: SIGNED_TX.txid, txid: SIGNED_TX.txid, amountSats: 800_000, direction: 'outgoing' as const, status: 'pending' as const, createdAt: new Date().toISOString() } };
+const REPLACEMENT_TXID = SIGNED_TX.txid;
+const BROADCAST_RESULT = { txid: REPLACEMENT_TXID, transaction: { id: REPLACEMENT_TXID, txid: REPLACEMENT_TXID, amountSats: 800_000, direction: 'outgoing' as const, status: 'pending' as const, createdAt: new Date().toISOString() } };
+
+const ORIGINAL_TX: Transaction = {
+  id: TXID,
+  txid: TXID,
+  amountSats: 800_000,
+  feeSats: 4_000,
+  direction: 'outgoing',
+  status: 'pending',
+  createdAt: new Date().toISOString(),
+  address: TO_ADDRESS,
+};
 
 function makeBlockchainProvider(rawTx: RawTransaction = RBF_RAW_TX): jest.Mocked<BlockchainProvider> {
   return {
@@ -95,17 +109,30 @@ function makeBroadcastUseCase(): jest.Mocked<BroadcastTransactionUseCase> {
   } as unknown as jest.Mocked<BroadcastTransactionUseCase>;
 }
 
+function makeTransactionRepository(localTxs: Transaction[] = [ORIGINAL_TX]): jest.Mocked<TransactionRepository> {
+  return {
+    build: jest.fn(),
+    sign: jest.fn(),
+    broadcast: jest.fn(),
+    list: jest.fn().mockResolvedValue(localTxs),
+    upsertAll: jest.fn().mockResolvedValue(undefined),
+    deleteByWallet: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
 function makeUseCase(
   blockchainProvider = makeBlockchainProvider(),
   feeEstimation = makeFeeEstimation(),
   signUseCase = makeSignUseCase(),
   broadcastUseCase = makeBroadcastUseCase(),
+  transactionRepo: jest.Mocked<TransactionRepository> | null = makeTransactionRepository(),
 ) {
   return new AccelerateTransactionUseCase(
     blockchainProvider,
     feeEstimation,
     signUseCase,
     broadcastUseCase,
+    transactionRepo,
   );
 }
 
@@ -347,6 +374,73 @@ describe('AccelerateTransactionUseCase', () => {
   describe('DUST_THRESHOLD_SATS constant', () => {
     it('is 546 sats as per BIP-141 dust limit', () => {
       expect(DUST_THRESHOLD_SATS).toBe(546);
+    });
+  });
+
+  describe('original transaction status', () => {
+    const ELIGIBLE_INFO = {
+      originalTxid: TXID,
+      isRbfEligible: true,
+      toAddress: TO_ADDRESS,
+      recipientAmountSats: 800_000,
+      changeAddress: CHANGE_ADDRESS,
+      changeAmountSats: 196_000,
+      currentFeeSats: 4_000,
+      currentFeeRate: 5,
+      estimatedVBytes: 180,
+      rawInputs: RBF_RAW_TX.inputs,
+    };
+
+    const EXECUTE_PARAMS = {
+      walletId: WALLET_ID,
+      walletNetwork: 'testnet' as const,
+      rbfInfo: ELIGIBLE_INFO,
+      newFeeRateSatsPerVByte: 30,
+    };
+
+    it('marks original transaction as replaced after successful acceleration', async () => {
+      const repo = makeTransactionRepository([ORIGINAL_TX]);
+      const useCase = makeUseCase(undefined, makeFeeEstimation(180), undefined, undefined, repo);
+      await useCase.execute(EXECUTE_PARAMS);
+      expect(repo.upsertAll).toHaveBeenCalledWith(
+        WALLET_ID,
+        expect.arrayContaining([expect.objectContaining({ status: 'replaced', txid: TXID })]),
+      );
+    });
+
+    it('sets replacedByTxid on the original transaction', async () => {
+      const repo = makeTransactionRepository([ORIGINAL_TX]);
+      const useCase = makeUseCase(undefined, makeFeeEstimation(180), undefined, undefined, repo);
+      await useCase.execute(EXECUTE_PARAMS);
+      const [, txs] = repo.upsertAll.mock.calls[0] as [string, Transaction[]];
+      expect(txs[0].replacedByTxid).toBe(REPLACEMENT_TXID);
+    });
+
+    it('does not throw if original transaction not found in repository', async () => {
+      const repo = makeTransactionRepository([]);
+      const useCase = makeUseCase(undefined, makeFeeEstimation(180), undefined, undefined, repo);
+      await expect(useCase.execute(EXECUTE_PARAMS)).resolves.toBeDefined();
+    });
+
+    it('does not throw if repository.list throws', async () => {
+      const repo = makeTransactionRepository();
+      repo.list.mockRejectedValue(new Error('DB error'));
+      const useCase = makeUseCase(undefined, makeFeeEstimation(180), undefined, undefined, repo);
+      await expect(useCase.execute(EXECUTE_PARAMS)).resolves.toBeDefined();
+    });
+
+    it('does not call transactionRepository when broadcast fails', async () => {
+      const broadcastUseCase = makeBroadcastUseCase();
+      broadcastUseCase.execute.mockRejectedValue(new Error('broadcast failed'));
+      const repo = makeTransactionRepository();
+      const useCase = makeUseCase(undefined, makeFeeEstimation(180), undefined, broadcastUseCase, repo);
+      await expect(useCase.execute(EXECUTE_PARAMS)).rejects.toThrow();
+      expect(repo.upsertAll).not.toHaveBeenCalled();
+    });
+
+    it('works without transactionRepository (null)', async () => {
+      const useCase = makeUseCase(undefined, makeFeeEstimation(180), undefined, undefined, null);
+      await expect(useCase.execute(EXECUTE_PARAMS)).resolves.toBeDefined();
     });
   });
 });

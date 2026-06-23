@@ -37,6 +37,7 @@ export function calculateAccountSummaries(
   }
 
   for (const utxo of utxos) {
+    if (utxo.isFrozen) continue;
     const originId = addressToOrigin.get(utxo.address);
     if (!originId) continue;
     const summary = summaries.get(originId);

@@ -38,8 +38,8 @@ export class PreviewTransactionUseCase {
 
     const utxos = await this.utxoRepository.listByWallet(params.walletId);
     const eligibleUtxos = params.allowedAddresses?.length
-      ? utxos.filter(u => params.allowedAddresses!.includes(u.address))
-      : utxos;
+      ? utxos.filter(u => !u.isFrozen && params.allowedAddresses!.includes(u.address))
+      : utxos.filter(u => !u.isFrozen);
     const confirmedSats = eligibleUtxos
       .filter(u => u.isConfirmed)
       .reduce((sum, u) => sum + u.valueSats, 0);

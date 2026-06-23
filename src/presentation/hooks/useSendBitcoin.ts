@@ -97,7 +97,7 @@ export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
         const allowedSet = filtered ? new Set(filtered) : null;
         setAvailableBalanceSats(
           utxos
-            .filter(u => u.isConfirmed)
+            .filter(u => u.isConfirmed && !u.isFrozen)
             .filter(u => !allowedSet || allowedSet.has(u.address))
             .reduce((sum, u) => sum + u.valueSats, 0),
         );

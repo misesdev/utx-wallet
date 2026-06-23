@@ -50,6 +50,22 @@ const TX_OUT_PENDING: TransactionDetail = {
   explorerUrl: `https://mempool.space/testnet4/tx/${TXID_OUT_PENDING}`,
 };
 
+const TXID_REPLACED = 'ccccdddd' + '00'.repeat(28);
+const TXID_REPLACEMENT = 'eeeeffff' + '00'.repeat(28);
+const TX_REPLACED: TransactionDetail = {
+  id: 'tx-replaced',
+  txid: TXID_REPLACED,
+  amountSats: 60_000,
+  feeSats: 400,
+  direction: 'outgoing',
+  status: 'replaced',
+  isConfirmed: false,
+  replacedByTxid: TXID_REPLACEMENT,
+  address: 'bc1qrecipient000000000000000000000000000',
+  createdAt: '2026-06-04T10:00:00.000Z',
+  explorerUrl: `https://mempool.space/testnet4/tx/${TXID_REPLACED}`,
+};
+
 const mockRefresh = jest.fn().mockResolvedValue(undefined);
 const mockNavigate = jest.fn();
 
@@ -249,6 +265,12 @@ describe('TransactionDetailsScreen', () => {
       expect(screen.queryByTestId('tx-accelerate-tx-in')).toBeNull();
     });
 
+    it('does not show accelerate button for replaced transactions', () => {
+      mockState = { ...BASE_STATE, transactions: [TX_REPLACED] };
+      const screen = renderWithTheme(<TransactionDetailsScreen />);
+      expect(screen.queryByTestId('tx-accelerate-tx-replaced')).toBeNull();
+    });
+
     it('navigates to AccelerateTransaction when accelerate button is pressed', () => {
       mockState = { ...BASE_STATE, transactions: [TX_OUT_PENDING] };
       const screen = renderWithTheme(<TransactionDetailsScreen />);
@@ -260,6 +282,14 @@ describe('TransactionDetailsScreen', () => {
         feeSats: TX_OUT_PENDING.feeSats,
         isConfirmed: false,
       });
+    });
+  });
+
+  describe('replaced transaction', () => {
+    it('shows replaced status badge for replaced transactions', () => {
+      mockState = { ...BASE_STATE, transactions: [TX_REPLACED] };
+      const screen = renderWithTheme(<TransactionDetailsScreen />);
+      expect(screen.getByTestId('tx-status-tx-replaced').props.children).toBe('transactions.replaced');
     });
   });
 });

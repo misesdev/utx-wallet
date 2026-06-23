@@ -306,6 +306,50 @@ describe('SyncTransactionsUseCase', () => {
       expect(saved.status).toBe('confirmed'); // status updated from fresh
     });
 
+    it('uses confirmed status when one side of the direction-conflict pair is confirmed', async () => {
+      // Spending address was synced in iteration 1 → stored as outgoing 'pending'.
+      // Change address synced in iteration 2 → fetched as incoming 'confirmed'.
+      // The merged result should be 'confirmed' (not stuck as 'pending').
+      const TXID = 'cross-iter-status-txid';
+      const localOutgoing: Transaction = {
+        id: TXID, txid: TXID, amountSats: 20_000, direction: 'outgoing',
+        status: 'pending', createdAt: '2026-06-07T00:00:00.000Z',
+      };
+      const freshIncoming: Transaction = {
+        id: TXID, txid: TXID, amountSats: 14_100, direction: 'incoming',
+        status: 'confirmed', createdAt: '2026-06-07T00:00:00.000Z',
+      };
+      const repo = makeRepo([localOutgoing]);
+      const provider = makeProvider([freshIncoming]);
+      const useCase = new SyncTransactionsUseCase(repo, provider);
+      await useCase.execute(WALLET_ID, [ADDRESS], NETWORK);
+
+      const [, savedTxs] = (repo.upsertAll as jest.Mock).mock.calls[0] as [string, Transaction[]];
+      const saved = savedTxs.find(tx => tx.txid === TXID)!;
+      expect(saved.direction).toBe('outgoing');
+      expect(saved.status).toBe('confirmed');
+    });
+
+    it('keeps pending status when both sides are pending', async () => {
+      const TXID = 'both-pending-txid';
+      const localOutgoing: Transaction = {
+        id: TXID, txid: TXID, amountSats: 20_000, direction: 'outgoing',
+        status: 'pending', createdAt: '2026-06-07T00:00:00.000Z',
+      };
+      const freshIncoming: Transaction = {
+        id: TXID, txid: TXID, amountSats: 14_100, direction: 'incoming',
+        status: 'pending', createdAt: '2026-06-07T00:00:00.000Z',
+      };
+      const repo = makeRepo([localOutgoing]);
+      const provider = makeProvider([freshIncoming]);
+      const useCase = new SyncTransactionsUseCase(repo, provider);
+      await useCase.execute(WALLET_ID, [ADDRESS], NETWORK);
+
+      const [, savedTxs] = (repo.upsertAll as jest.Mock).mock.calls[0] as [string, Transaction[]];
+      const saved = savedTxs.find(tx => tx.txid === TXID)!;
+      expect(saved.status).toBe('pending');
+    });
+
     it('clamps merged amount to zero when change exceeds stored outgoing', async () => {
       const TXID = 'cross-iter-clamp-txid';
       const localOutgoing: Transaction = {
@@ -323,6 +367,29 @@ describe('SyncTransactionsUseCase', () => {
 
       const [saved] = (repo.upsertAll as jest.Mock).mock.calls[0][1] as Transaction[];
       expect(saved.amountSats).toBe(0);
+    });
+  });
+
+  describe('replaced transaction preservation', () => {
+    it('preserves replaced status for locally-replaced transactions even when blockchain returns them as pending', async () => {
+      const TXID = 'replaced-txid';
+      const localReplaced: Transaction = {
+        id: TXID, txid: TXID, amountSats: 5_000, direction: 'outgoing',
+        status: 'replaced', replacedByTxid: 'new-txid', createdAt: '2026-06-07T00:00:00.000Z',
+      };
+      const freshPending: Transaction = {
+        id: TXID, txid: TXID, amountSats: 5_000, direction: 'outgoing',
+        status: 'pending', createdAt: '2026-06-07T00:00:00.000Z',
+      };
+      const repo = makeRepo([localReplaced]);
+      const provider = makeProvider([freshPending]);
+      const useCase = new SyncTransactionsUseCase(repo, provider);
+      await useCase.execute(WALLET_ID, [ADDRESS], NETWORK);
+
+      const [, savedTxs] = (repo.upsertAll as jest.Mock).mock.calls[0] as [string, Transaction[]];
+      const saved = savedTxs.find(tx => tx.txid === TXID);
+      expect(saved?.status).toBe('replaced');
+      expect(saved?.replacedByTxid).toBe('new-txid');
     });
   });
 

@@ -1,5 +1,5 @@
 export type TransactionDirection = 'incoming' | 'outgoing';
-export type TransactionStatus = 'pending' | 'confirmed' | 'failed';
+export type TransactionStatus = 'pending' | 'confirmed' | 'failed' | 'replaced';
 
 export type Transaction = {
   id: string;
@@ -12,6 +12,7 @@ export type Transaction = {
   address?: string;
   originId?: string;
   originName?: string;
+  replacedByTxid?: string;
 };
 
 export type TransactionDraft = {

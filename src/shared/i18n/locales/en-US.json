@@ -243,6 +243,7 @@
     "confirmed": "Confirmed",
     "pending": "Pending",
     "failed": "Failed",
+    "replaced": "Replaced",
     "errorLoad": "Failed to load transactions"
   },
   "txDetails": {
@@ -258,7 +259,8 @@
     "confirmations": "Confirmations",
     "viewExplorer": "View on Explorer",
     "refresh": "Refresh",
-    "txidLabel": "TxID"
+    "txidLabel": "TxID",
+    "replacedBy": "Replaced by"
   },
   "utxos": {
     "title": "UTXOs",

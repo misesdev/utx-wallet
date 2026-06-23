@@ -102,7 +102,7 @@ export function PinInputModal({ visible, step, error, isSaving, onSubmit, onCanc
   const showError = Boolean(error) && !isSubmitting && pin.length === 0;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel} testID="pin-input-modal">
       <View style={styles.overlay}>
         <View style={[styles.sheet, { backgroundColor: theme.colors.surface }]}>
           {/* Icon */}

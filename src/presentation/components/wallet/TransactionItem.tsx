@@ -26,6 +26,7 @@ const STATUS_KEY: Record<Transaction['status'], string> = {
   confirmed: 'transactions.confirmed',
   pending: 'transactions.pending',
   failed: 'transactions.failed',
+  replaced: 'transactions.replaced',
 };
 
 export function TransactionItem({ transaction, onPress, hidden: hiddenProp }: TransactionItemProps) {
@@ -44,6 +45,7 @@ export function TransactionItem({ transaction, onPress, hidden: hiddenProp }: Tr
     confirmed: theme.colors.success,
     pending: theme.colors.warning,
     failed: theme.colors.danger,
+    replaced: theme.colors.textMuted,
   };
 
   const card = (

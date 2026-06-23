@@ -54,9 +54,14 @@ function TxCard({ tx }: TxCardProps) {
     confirmed: theme.colors.success,
     pending: theme.colors.warning,
     failed: theme.colors.danger,
+    replaced: theme.colors.textMuted,
   };
   const statusColor = statusColors[tx.status] ?? theme.colors.textMuted;
-  const statusLabel = tx.isConfirmed ? t('transactions.confirmed') : t('transactions.pending');
+  const statusLabel = tx.status === 'replaced'
+    ? t('transactions.replaced')
+    : tx.isConfirmed
+      ? t('transactions.confirmed')
+      : t('transactions.pending');
 
   function copyTxid() {
     if (tx.txid) Clipboard.setString(tx.txid);
@@ -167,14 +172,23 @@ function TxCard({ tx }: TxCardProps) {
               <AppText variant="caption" color="accent" style={styles.txidText}>
                 {truncateTxid(tx.txid)}
               </AppText>
-              <AppText variant="label" color="accent">⎘</AppText>
+              <AppIcon name="copy" size={14} color={theme.colors.accent} />
             </Pressable>
+          </View>
+        )}
+
+        {tx.replacedByTxid && (
+          <View style={styles.metaRow}>
+            <AppText variant="caption" color="muted">{t('txDetails.replacedBy')}</AppText>
+            <AppText variant="caption" color="muted" testID={`tx-replaced-by-${tx.id}`}>
+              {truncateTxid(tx.replacedByTxid)}
+            </AppText>
           </View>
         )}
       </View>
 
-      {/* Accelerate button — pending outgoing only */}
-      {tx.direction === 'outgoing' && !tx.isConfirmed && tx.txid && (
+      {/* Accelerate button — pending outgoing only (not replaced) */}
+      {tx.direction === 'outgoing' && tx.status === 'pending' && tx.txid && (
         <Pressable
           onPress={() => navigation.navigate(AppRoutes.AccelerateTransaction, {
             txid: tx.txid!,

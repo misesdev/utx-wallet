@@ -27,7 +27,7 @@ export class GetTransactionDetailUseCase {
     let isConfirmed = transaction.status === 'confirmed';
     let statusChanged = false;
 
-    if (transaction.txid) {
+    if (transaction.txid && transaction.status !== 'replaced') {
       try {
         const [status, currentHeight] = await Promise.all([
           this.blockchainProvider.getTransactionStatus(transaction.txid),
