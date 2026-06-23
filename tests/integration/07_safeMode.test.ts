@@ -258,4 +258,35 @@ describe('Integration: Safe Mode (Network Config)', () => {
       expect(config.nodeMode).toBe('personal-node');
     });
   });
+
+  describe('normalizeTestnet — cross-variant matching', () => {
+    it('auto-activates when adding "testnet" node while active network is "testnet4"', async () => {
+      const { service } = makeNetworkService();
+      // DEFAULT_CONFIG has network: 'testnet4'. Adding a node saved as 'testnet' must still activate.
+      await service.addPersonalNode({
+        label: 'Legacy Node',
+        url: 'http://192.168.1.1:8081',
+        network: 'testnet',
+        priority: 1,
+      });
+
+      const config = await service.getConfig();
+      expect(config.nodeMode).toBe('personal-node');
+    });
+
+    it('auto-deactivates when removing last "testnet" node while active network is "testnet4"', async () => {
+      const { service } = makeNetworkService();
+      const node = await service.addPersonalNode({
+        label: 'Legacy Node',
+        url: 'http://192.168.1.1:8081',
+        network: 'testnet',
+        priority: 1,
+      });
+      expect((await service.getConfig()).nodeMode).toBe('personal-node');
+
+      await service.removePersonalNode(node.id);
+      const config = await service.getConfig();
+      expect(config.nodeMode).toBe('public-api');
+    });
+  });
 });

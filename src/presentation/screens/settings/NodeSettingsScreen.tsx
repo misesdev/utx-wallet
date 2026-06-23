@@ -376,7 +376,7 @@ export function NodeSettingsScreen() {
                         variant="body"
                         style={isSelected ? [styles.networkSelected, { color: theme.colors.accent }] : undefined}
                       >
-                        {n}
+                        {n === 'mainnet' ? 'Mainnet' : 'Testnet4'}
                       </AppText>
                       <AppText variant="caption" color="muted">
                         {n === 'mainnet' ? t('nodeSettings.networkMainnetDesc') : t('nodeSettings.networkTestnetDesc')}

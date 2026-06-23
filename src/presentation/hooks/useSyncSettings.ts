@@ -4,6 +4,7 @@ import { usePersonalNodes } from './usePersonalNodes';
 import { useNetwork } from './useNetwork';
 import type { SyncSettings } from '../../core/domain/entities/SyncSettings';
 import { MAX_REQUESTS_PER_SECOND, MIN_REQUESTS_PER_SECOND } from '../../core/domain/entities/SyncSettings';
+import { normalizeTestnet } from '../../shared/constants/networks';
 
 export type UseSyncSettingsState = {
   settings: SyncSettings;
@@ -24,7 +25,9 @@ export function useSyncSettings(): UseSyncSettingsState {
   // Check that nodeMode is personal-node AND at least one node is configured for the active network.
   const canEnableParallelSync =
     networkConfig.nodeMode === 'personal-node' &&
-    nodes.some(n => n.network === networkConfig.network);
+    nodes.some(
+      n => normalizeTestnet(n.network) === normalizeTestnet(networkConfig.network),
+    );
 
   const setMaxRequestsPerSecond = useCallback(
     async (rps: number) => {

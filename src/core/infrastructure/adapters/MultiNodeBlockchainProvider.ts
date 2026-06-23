@@ -1,5 +1,6 @@
 import { AppError } from '../../application/errors/AppError';
 import type { BitcoinNetwork } from '../../domain/entities/Network';
+import { normalizeTestnet } from '../../../shared/constants/networks';
 import type { PersonalNode } from '../../domain/entities/PersonalNode';
 import type {
   AddressBalance,
@@ -132,7 +133,7 @@ export class MultiNodeBlockchainProvider implements BlockchainProvider {
   ): Promise<T> {
     const config = await this.configStorage.load();
     const nodes = (config?.personalNodes ?? [])
-      .filter(n => n.network === network)
+      .filter(n => normalizeTestnet(n.network) === normalizeTestnet(network))
       .sort((a, b) => a.priority - b.priority);
 
     if (nodes.length === 0) {

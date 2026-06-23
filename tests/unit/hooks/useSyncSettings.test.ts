@@ -94,6 +94,20 @@ describe('useSyncSettings', () => {
       const { result } = renderHook(() => useSyncSettings());
       expect(result.current.canEnableParallelSync).toBe(true);
     });
+
+    it('is true when node is "testnet" and active network is "testnet4" (normalizeTestnet)', () => {
+      mockNodes = [{ ...TESTNET4_NODE, network: 'testnet' as const }];
+      mockNetworkConfig = PERSONAL_NODE_CONFIG; // active network is testnet4
+      const { result } = renderHook(() => useSyncSettings());
+      expect(result.current.canEnableParallelSync).toBe(true);
+    });
+
+    it('is true when node is "testnet4" and active network is "testnet" (normalizeTestnet)', () => {
+      mockNodes = [TESTNET4_NODE]; // node.network = 'testnet4'
+      mockNetworkConfig = { ...PERSONAL_NODE_CONFIG, network: 'testnet' as const };
+      const { result } = renderHook(() => useSyncSettings());
+      expect(result.current.canEnableParallelSync).toBe(true);
+    });
   });
 
   describe('setMaxRequestsPerSecond', () => {

@@ -16,12 +16,12 @@ describe('useImportWallet', () => {
     jest.clearAllMocks();
   });
 
-  it('initializes with empty fields and testnet as default network', () => {
+  it('initializes with empty fields and testnet4 as default network', () => {
     const { result } = renderHook(() => useImportWallet());
     expect(result.current.walletName).toBe('');
     expect(result.current.seed).toBe('');
     expect(result.current.passphrase).toBe('');
-    expect(result.current.selectedNetwork).toBe('testnet');
+    expect(result.current.selectedNetwork).toBe('testnet4');
     expect(result.current.isLoading).toBe(false);
     expect(result.current.error).toBe('');
   });
@@ -141,7 +141,7 @@ describe('useImportWallet', () => {
         result.current.setPassphrase('mysecret');
       });
       await act(async () => { await result.current.submit(); });
-      expect(mockImportWallet).toHaveBeenCalledWith('W', VALID_MNEMONIC, 'testnet', 'mysecret');
+      expect(mockImportWallet).toHaveBeenCalledWith('W', VALID_MNEMONIC, 'testnet4', 'mysecret');
     });
   });
 

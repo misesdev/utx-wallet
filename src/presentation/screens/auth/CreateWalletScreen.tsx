@@ -14,14 +14,16 @@ import { useAppTranslation } from '../../hooks/useAppTranslation';
 
 type CreateWalletRoute = RouteProp<AppStackParamList, typeof AppRoutes.CreateWallet>;
 
-const NETWORK_ACCENT: Record<'mainnet' | 'testnet', string> = {
+const NETWORK_ACCENT: Record<string, string> = {
   mainnet: '#F7931A',
+  testnet4: '#8E6FE8',
   testnet: '#8E6FE8',
 };
 
-const NETWORK_LABEL: Record<'mainnet' | 'testnet', string> = {
+const NETWORK_LABEL: Record<string, string> = {
   mainnet: 'Mainnet',
-  testnet: 'Testnet',
+  testnet4: 'Testnet4',
+  testnet: 'Testnet4',
 };
 
 export function CreateWalletScreen() {
@@ -32,7 +34,7 @@ export function CreateWalletScreen() {
   const { t } = useAppTranslation();
   const route = useRoute<CreateWalletRoute>();
 
-  const routeNetwork = route.params?.network ?? 'testnet';
+  const routeNetwork = route.params?.network ?? 'testnet4';
   const accent = NETWORK_ACCENT[routeNetwork];
 
   const [name, setName] = useState('');

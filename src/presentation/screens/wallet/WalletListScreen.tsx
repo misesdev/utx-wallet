@@ -32,7 +32,7 @@ import { AppRoutes } from '../../../app/navigation/routes';
 // Types
 // ---------------------------------------------------------------------------
 
-type NetworkTab = 'mainnet' | 'testnet';
+type NetworkTab = 'mainnet' | 'testnet4';
 
 type WalletSummary = {
   balanceSats: number;
@@ -52,11 +52,11 @@ function matchesTab(wallet: Wallet, tab: NetworkTab): boolean {
 
 const NETWORK_ACCENT: Record<NetworkTab, string> = {
   mainnet: '#F7931A',
-  testnet: '#178a54',
+  testnet4: '#178a54',
 };
 
 function walletAccent(wallet: Wallet): string {
-  return wallet.network === 'mainnet' ? NETWORK_ACCENT.mainnet : NETWORK_ACCENT.testnet;
+  return wallet.network === 'mainnet' ? NETWORK_ACCENT.mainnet : NETWORK_ACCENT.testnet4;
 }
 
 function formatDate(iso: string): string {
@@ -170,7 +170,7 @@ function WalletCard({ wallet, summary, hidden, onOpen }: WalletCardProps) {
               <View style={[styles.networkBadge, { backgroundColor: accent + '18', borderRadius: theme.radii.sm }]}>
                 <View style={[styles.networkDot, { backgroundColor: accent }]} />
                 <AppText variant="label" style={[styles.networkLabel, { color: accent }]}>
-                  {wallet.network === 'mainnet' ? 'Mainnet' : 'Testnet'}
+                  {wallet.network === 'mainnet' ? 'Mainnet' : 'Testnet4'}
                 </AppText>
               </View>
               {isWatchOnly && (
@@ -283,7 +283,7 @@ function EmptyState({ network, onCreateWallet, onImportWallet }: EmptyStateProps
 
 const NETWORK_TABS: { key: NetworkTab }[] = [
   { key: 'mainnet' },
-  { key: 'testnet' },
+  { key: 'testnet4' },
 ];
 
 export function WalletListScreen() {

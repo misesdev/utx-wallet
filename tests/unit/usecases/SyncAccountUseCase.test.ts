@@ -513,12 +513,43 @@ describe('SyncAccountUseCase with SyncSettingsRepository', () => {
       );
     });
 
-    it('keeps parallel:false when personal node is only for a different network', async () => {
+    it('keeps parallel:false when personal node is only for mainnet but wallet is testnet', async () => {
       const receiveAddr = makeAddress('addr-A', 'receive');
       const addressRepo = makeAddressRepo([receiveAddr], []);
       const syncUtxos = makeSyncUtxos();
       const settingsRepo = makeSyncSettingsRepo({ maxRequestsPerSecond: 5, parallelSync: true });
-      // Node is for testnet4, but wallet.network = 'testnet' (different)
+      // Node is for mainnet, wallet.network = 'testnet' (truly different networks)
+      const nodeRepo = makeNodeRepo({
+        nodeMode: 'personal-node',
+        personalNodes: [{ id: 'n1', label: 'Node', url: 'http://node:8081', network: 'mainnet', priority: 1 }],
+      });
+      const useCase = new SyncAccountUseCase(
+        makeWalletRepo(), // wallet.network = 'testnet'
+        addressRepo,
+        syncUtxos,
+        makeSyncTransactions(),
+        makeSyncBalance(),
+        makeSyncStateRepo(),
+        null,
+        settingsRepo,
+        nodeRepo,
+      );
+      await useCase.execute(WALLET_ID, ORIGIN_ID);
+      expect(syncUtxos.execute).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(Array),
+        expect.any(String),
+        undefined,
+        expect.objectContaining({ parallel: false }),
+      );
+    });
+
+    it('enables parallel when node is "testnet4" and wallet is "testnet" (normalizeTestnet)', async () => {
+      const receiveAddr = makeAddress('addr-A', 'receive');
+      const addressRepo = makeAddressRepo([receiveAddr], []);
+      const syncUtxos = makeSyncUtxos();
+      const settingsRepo = makeSyncSettingsRepo({ maxRequestsPerSecond: 5, parallelSync: true });
+      // Node stored as 'testnet4', wallet stored as 'testnet' — must match after normalization
       const nodeRepo = makeNodeRepo({
         nodeMode: 'personal-node',
         personalNodes: [{ id: 'n1', label: 'Node', url: 'http://node:8081', network: 'testnet4', priority: 1 }],
@@ -540,7 +571,7 @@ describe('SyncAccountUseCase with SyncSettingsRepository', () => {
         expect.any(Array),
         expect.any(String),
         undefined,
-        expect.objectContaining({ parallel: false }),
+        expect.objectContaining({ parallel: true }),
       );
     });
 

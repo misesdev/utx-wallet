@@ -23,7 +23,9 @@ function NetworkBadge({ network, theme }: { network: string; theme: ReturnType<t
   return (
     <View style={[styles.networkBadge, { backgroundColor: theme.colors.surfaceMuted }]}>
       <View style={[styles.networkDot, { backgroundColor: color }]} />
-      <AppText variant="caption" style={{ color }}>{network}</AppText>
+      <AppText variant="caption" style={{ color }}>
+        {network === 'mainnet' ? 'Mainnet' : 'Testnet4'}
+      </AppText>
     </View>
   );
 }

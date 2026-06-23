@@ -266,9 +266,9 @@ describe('NodeSettingsScreen', () => {
       expect(screen.getByTestId('network-chip-mainnet')).toBeTruthy();
     });
 
-    it('renders testnet radio option', () => {
+    it('renders testnet4 radio option', () => {
       const screen = renderWithTheme(<NodeSettingsScreen />);
-      expect(screen.getByTestId('network-chip-testnet')).toBeTruthy();
+      expect(screen.getByTestId('network-chip-testnet4')).toBeTruthy();
     });
 
     it('resets status when network is changed', async () => {

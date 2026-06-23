@@ -91,18 +91,18 @@ describe('WalletListScreen', () => {
       expect(mockNavigate).toHaveBeenCalledWith('ImportWallet', { network: 'mainnet' });
     });
 
-    it('navigates to CreateWallet with testnet param after switching to Testnet tab', () => {
+    it('navigates to CreateWallet with testnet4 param after switching to Testnet tab', () => {
       const screen = renderWithTheme(<WalletListScreen />);
       fireEvent.press(screen.getByText('walletList.testnet'));
       fireEvent.press(screen.getByLabelText('walletList.createWallet'));
-      expect(mockNavigate).toHaveBeenCalledWith('CreateWallet', { network: 'testnet' });
+      expect(mockNavigate).toHaveBeenCalledWith('CreateWallet', { network: 'testnet4' });
     });
 
-    it('navigates to ImportWallet with testnet param after switching to Testnet tab', () => {
+    it('navigates to ImportWallet with testnet4 param after switching to Testnet tab', () => {
       const screen = renderWithTheme(<WalletListScreen />);
       fireEvent.press(screen.getByText('walletList.testnet'));
       fireEvent.press(screen.getByLabelText('walletList.importWallet'));
-      expect(mockNavigate).toHaveBeenCalledWith('ImportWallet', { network: 'testnet' });
+      expect(mockNavigate).toHaveBeenCalledWith('ImportWallet', { network: 'testnet4' });
     });
   });
 
@@ -347,7 +347,7 @@ describe('WalletListScreen', () => {
       const screen = renderWithTheme(<WalletListScreen />);
       expect(screen.getByTestId('wallet-pager')).toBeTruthy();
       expect(screen.getByTestId('page-mainnet')).toBeTruthy();
-      expect(screen.getByTestId('page-testnet')).toBeTruthy();
+      expect(screen.getByTestId('page-testnet4')).toBeTruthy();
     });
 
     it('activates the testnet tab after swiping to the second page', () => {
@@ -426,7 +426,7 @@ describe('WalletListScreen', () => {
         nativeEvent: { contentOffset: { x: 375, y: 0 } },
       });
       fireEvent.press(screen.getByTestId('wallet-list-scan-import'));
-      expect(mockNavigate).toHaveBeenCalledWith('ScanWalletQr', { network: 'testnet' });
+      expect(mockNavigate).toHaveBeenCalledWith('ScanWalletQr', { network: 'testnet4' });
     });
 
     it('clamps swipe offset to valid tab index range', () => {

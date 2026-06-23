@@ -23,6 +23,8 @@ const screenCaptureGuard = new NoopScreenCaptureAdapter();
 const COIN_TYPE: Record<string, string> = {
   mainnet: "0'",
   testnet: "1'",
+  testnet3: "1'",
+  testnet4: "1'",
   regtest: "1'",
 };
 

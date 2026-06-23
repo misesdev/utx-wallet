@@ -19,12 +19,14 @@ type ImportWalletRoute = RouteProp<AppStackParamList, typeof AppRoutes.ImportWal
 
 const NETWORK_ACCENT: Record<string, string> = {
   mainnet: '#F7931A',
+  testnet4: '#8E6FE8',
   testnet: '#8E6FE8',
 };
 
 const NETWORK_LABEL: Record<string, string> = {
   mainnet: 'Mainnet',
-  testnet: 'Testnet',
+  testnet4: 'Testnet4',
+  testnet: 'Testnet4',
 };
 
 export function ImportWalletScreen() {
@@ -32,9 +34,9 @@ export function ImportWalletScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
   const route = useRoute<ImportWalletRoute>();
-  const routeNetwork = route.params?.network ?? 'testnet';
+  const routeNetwork = route.params?.network ?? 'testnet4';
   const routeSeedRef = route.params?.seedRef;
-  const accent = NETWORK_ACCENT[routeNetwork] ?? NETWORK_ACCENT.testnet;
+  const accent = NETWORK_ACCENT[routeNetwork] ?? NETWORK_ACCENT.testnet4;
   const {
     walletName,
     setWalletName,

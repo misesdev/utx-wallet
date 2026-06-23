@@ -28,9 +28,9 @@ const HEX_PRIVATE_KEY_RE = /^[0-9a-fA-F]{64}$/;
 
 function networkFromExtendedKey(secret: string): BitcoinNetwork | undefined {
   if (secret.startsWith('xpub') || secret.startsWith('xprv')) return 'mainnet';
-  if (secret.startsWith('tpub') || secret.startsWith('tprv')) return 'testnet';
+  if (secret.startsWith('tpub') || secret.startsWith('tprv')) return 'testnet4';
   if (secret.startsWith('zpub') || secret.startsWith('zprv')) return 'mainnet';
-  if (secret.startsWith('vpub') || secret.startsWith('vprv')) return 'testnet';
+  if (secret.startsWith('vpub') || secret.startsWith('vprv')) return 'testnet4';
   return undefined;
 }
 
@@ -90,7 +90,7 @@ export class WalletImportFormatDetector {
     try {
       const network = networkFromExtendedKey(secret);
       HDWallet.import(secret, undefined, {
-        network: NetworkType.of(network ?? 'testnet').toBNetwork(),
+        network: NetworkType.of(network ?? 'testnet4').toBNetwork(),
       });
       return {
         format,
@@ -110,7 +110,7 @@ export class WalletImportFormatDetector {
     try {
       const network = networkFromExtendedKey(secret);
       HDWallet.import(secret, undefined, {
-        network: NetworkType.of(network ?? 'testnet').toBNetwork(),
+        network: NetworkType.of(network ?? 'testnet4').toBNetwork(),
       });
       return {
         format: 'xpriv',
@@ -133,7 +133,7 @@ export class WalletImportFormatDetector {
         normalizedSecret: pair.getWif(),
         canSign: true,
         isWatchOnly: false,
-        network: pair.network === 'mainnet' ? 'mainnet' : 'testnet',
+        network: pair.network === 'mainnet' ? 'mainnet' : 'testnet4',
         storageKind: 'single-private-key',
       };
     } catch {
@@ -147,7 +147,7 @@ export class WalletImportFormatDetector {
   ): WalletImportFormatResult | null {
     if (!HEX_PRIVATE_KEY_RE.test(secret)) return null;
     try {
-      const network = selectedNetwork ?? 'testnet';
+      const network = selectedNetwork ?? 'testnet4';
       const pair = ECPairKey.fromHex(secret, NetworkType.of(network).toBNetwork());
       return {
         format: 'private-key',
@@ -167,7 +167,7 @@ export class WalletImportFormatDetector {
     selectedNetwork?: BitcoinNetwork,
   ): WalletImportFormatResult | null {
     try {
-      const network = selectedNetwork ?? 'testnet';
+      const network = selectedNetwork ?? 'testnet4';
       HDWallet.import(secret, undefined, {
         network: NetworkType.of(network).toBNetwork(),
         purpose: 84,

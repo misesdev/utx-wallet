@@ -3,6 +3,7 @@ import type { PersonalNode } from '../../domain/entities/PersonalNode';
 import type { NodeConnectionTester, NodeRepository } from '../../domain/repositories/NodeRepository';
 import { ChangeNetworkUseCase } from '../../domain/usecases/network/ChangeNetworkUseCase';
 import { NodeConnectionTestUseCase } from '../../domain/usecases/network/NodeConnectionTestUseCase';
+import { normalizeTestnet } from '../../../shared/constants/networks';
 
 function generateNodeId(): string {
   return `node_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -50,9 +51,13 @@ export class NetworkService {
     const nodes = config.personalNodes ?? [];
     const node: PersonalNode = { ...input, id: generateNodeId() };
     const updatedNodes = [...nodes, node];
-    // Auto-activate personal-node mode when the first node is added for the active network
-    const alreadyHasNodeForActiveNetwork = nodes.some(n => n.network === config.network);
-    const isNewNodeForActiveNetwork = input.network === config.network;
+    // Auto-activate personal-node mode when the first node is added for the active network.
+    // Normalize testnet variants so 'testnet' and 'testnet4' nodes match the same active network.
+    const alreadyHasNodeForActiveNetwork = nodes.some(
+      n => normalizeTestnet(n.network) === normalizeTestnet(config.network),
+    );
+    const isNewNodeForActiveNetwork =
+      normalizeTestnet(input.network) === normalizeTestnet(config.network);
     const nodeMode =
       !alreadyHasNodeForActiveNetwork && isNewNodeForActiveNetwork
         ? 'personal-node'
@@ -66,9 +71,14 @@ export class NetworkService {
     const existingNodes = config.personalNodes ?? [];
     const removedNode = existingNodes.find(n => n.id === nodeId);
     const nodes = existingNodes.filter(n => n.id !== nodeId);
-    // Auto-deactivate only when removing a node for the active network leaves no remaining nodes for it
-    const removingActiveNetworkNode = removedNode?.network === config.network;
-    const stillHasNodeForActiveNetwork = nodes.some(n => n.network === config.network);
+    // Auto-deactivate only when removing a node for the active network leaves no remaining nodes for it.
+    // Normalize testnet variants so 'testnet' and 'testnet4' nodes match correctly.
+    const removingActiveNetworkNode =
+      removedNode !== undefined &&
+      normalizeTestnet(removedNode.network) === normalizeTestnet(config.network);
+    const stillHasNodeForActiveNetwork = nodes.some(
+      n => normalizeTestnet(n.network) === normalizeTestnet(config.network),
+    );
     const nodeMode =
       removingActiveNetworkNode && !stillHasNodeForActiveNetwork && config.nodeMode === 'personal-node'
         ? 'public-api'

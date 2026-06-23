@@ -158,7 +158,7 @@ export function QrWalletScannerScreen() {
   const navigation = useAppNavigation();
   const insets = useSafeAreaInsets();
   const route = useRoute<ScannerRoute>();
-  const selectedNetwork: BitcoinNetwork = route.params?.network ?? 'testnet';
+  const selectedNetwork: BitcoinNetwork = route.params?.network ?? 'testnet4';
   const { width: W, height: H } = useWindowDimensions();
 
   const { hasPermission, requestPermission } = useCameraPermission();
@@ -195,7 +195,7 @@ export function QrWalletScannerScreen() {
     setError('');
     setShowManual(false);
     if (detected.format === 'mnemonic') {
-      const importNetwork = (detected.network ?? selectedNetwork) as 'mainnet' | 'testnet';
+      const importNetwork = (detected.network ?? selectedNetwork) as BitcoinNetwork;
       navigation.navigate(AppRoutes.ImportWallet, {
         network: importNetwork,
         seedRef: stashSensitiveData(detected.normalizedSecret),

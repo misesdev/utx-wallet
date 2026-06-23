@@ -5,6 +5,7 @@ import type { SyncSettingsRepository } from '../../repositories/SyncSettingsRepo
 import type { NodeRepository } from '../../repositories/NodeRepository';
 import type { BitcoinNetwork } from '../../entities/Network';
 import { AppError } from '../../../application/errors/AppError';
+import { normalizeTestnet } from '../../../../shared/constants/networks';
 import { SyncUtxosUseCase } from './SyncUtxosUseCase';
 import { SyncTransactionsUseCase } from './SyncTransactionsUseCase';
 import { SyncBalanceUseCase } from './SyncBalanceUseCase';
@@ -124,6 +125,8 @@ export class SyncAccountUseCase {
     if (!this.nodeRepository) return false;
     const config = await this.nodeRepository.getNetworkConfig();
     if (config.nodeMode !== 'personal-node') return false;
-    return (config.personalNodes ?? []).some(n => n.network === network);
+    return (config.personalNodes ?? []).some(
+      n => normalizeTestnet(n.network) === normalizeTestnet(network),
+    );
   }
 }

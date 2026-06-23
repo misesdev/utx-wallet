@@ -22,7 +22,7 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
-let mockRouteParams: { network?: 'mainnet' | 'testnet' } | undefined;
+let mockRouteParams: { network?: 'mainnet' | 'testnet' | 'testnet4' } | undefined;
 
 jest.mock('@react-navigation/native', () => ({
   useRoute: () => ({ params: mockRouteParams }),
@@ -58,11 +58,11 @@ describe('CreateWalletScreen', () => {
     expect(mockInitiate).not.toHaveBeenCalled();
   });
 
-  it('calls initiate with testnet and navigates to BackupSeed with a valid name', () => {
+  it('calls initiate with testnet4 and navigates to BackupSeed with a valid name', () => {
     const screen = renderWithTheme(<CreateWalletScreen />);
     fireEvent.changeText(screen.getByPlaceholderText('createWallet.namePlaceholder'), 'My Wallet');
     fireEvent.press(screen.getByLabelText('createWallet.generateSeed'));
-    expect(mockInitiate).toHaveBeenCalledWith('My Wallet', undefined, 'testnet');
+    expect(mockInitiate).toHaveBeenCalledWith('My Wallet', undefined, 'testnet4');
     expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.BackupSeed);
   });
 
@@ -78,7 +78,7 @@ describe('CreateWalletScreen', () => {
     const screen = renderWithTheme(<CreateWalletScreen />);
     fireEvent.changeText(screen.getByPlaceholderText('createWallet.namePlaceholder'), '  Padded  ');
     fireEvent.press(screen.getByLabelText('createWallet.generateSeed'));
-    expect(mockInitiate).toHaveBeenCalledWith('Padded', undefined, 'testnet');
+    expect(mockInitiate).toHaveBeenCalledWith('Padded', undefined, 'testnet4');
   });
 
   it('shows an error when name exceeds 48 characters', () => {
@@ -123,7 +123,7 @@ describe('CreateWalletScreen', () => {
     fireEvent.changeText(screen.getByLabelText('createWallet.passphraseLabel'), 'mysecret');
     fireEvent.changeText(screen.getByLabelText('createWallet.confirmPassphraseLabel'), 'mysecret');
     fireEvent.press(screen.getByLabelText('createWallet.generateSeed'));
-    expect(mockInitiate).toHaveBeenCalledWith('My Wallet', 'mysecret', 'testnet');
+    expect(mockInitiate).toHaveBeenCalledWith('My Wallet', 'mysecret', 'testnet4');
     expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.BackupSeed);
   });
 

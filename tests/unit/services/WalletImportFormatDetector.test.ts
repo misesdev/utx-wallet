@@ -106,7 +106,7 @@ describe('WalletImportFormatDetector', () => {
     expect(result!.normalizedSecret).toBe(zpub);
   });
 
-  it('detects BIP84 testnet xpriv (vprv) and keeps native format', () => {
+  it('detects BIP84 testnet xpriv (vprv) and maps network to testnet4', () => {
     const { wallet } = HDWallet.import(MNEMONIC, undefined, { network: 'testnet', purpose: 84 });
     const vprv = wallet.getXPriv();
     expect(vprv.startsWith('vprv')).toBe(true);
@@ -116,13 +116,13 @@ describe('WalletImportFormatDetector', () => {
       format: 'xpriv',
       canSign: true,
       isWatchOnly: false,
-      network: 'testnet',
+      network: 'testnet4',
       storageKind: 'hd',
     });
     expect(result!.normalizedSecret).toBe(vprv);
   });
 
-  it('detects tprv (testnet BIP44 xpriv) and keeps native format', () => {
+  it('detects tprv (testnet BIP44 xpriv) and maps network to testnet4', () => {
     const { wallet } = HDWallet.import(MNEMONIC, undefined, { network: 'testnet', purpose: 44 });
     const tprv = wallet.getXPriv();
     expect(tprv.startsWith('tprv')).toBe(true);
@@ -132,13 +132,13 @@ describe('WalletImportFormatDetector', () => {
       format: 'xpriv',
       canSign: true,
       isWatchOnly: false,
-      network: 'testnet',
+      network: 'testnet4',
       storageKind: 'hd',
     });
     expect(result!.normalizedSecret).toBe(tprv);
   });
 
-  it('detects tpub (testnet BIP44 xpub) and keeps native format', () => {
+  it('detects tpub (testnet BIP44 xpub) and maps network to testnet4', () => {
     const { wallet } = HDWallet.import(MNEMONIC, undefined, { network: 'testnet', purpose: 44 });
     const tpub = wallet.getXPub();
     expect(tpub.startsWith('tpub')).toBe(true);
@@ -148,7 +148,7 @@ describe('WalletImportFormatDetector', () => {
       format: 'xpub',
       canSign: false,
       isWatchOnly: true,
-      network: 'testnet',
+      network: 'testnet4',
       storageKind: 'hd',
     });
     expect(result!.normalizedSecret).toBe(tpub);

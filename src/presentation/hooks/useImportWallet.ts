@@ -20,7 +20,7 @@ export type ImportWalletHook = {
   submit: () => Promise<Wallet | null>;
 };
 
-export function useImportWallet(initialNetwork: BitcoinNetwork = 'testnet'): ImportWalletHook {
+export function useImportWallet(initialNetwork: BitcoinNetwork = 'testnet4'): ImportWalletHook {
   const { importWallet } = useWallet();
   const { t } = useAppTranslation();
   const [walletName, setWalletName] = useState('');

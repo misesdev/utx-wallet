@@ -257,7 +257,7 @@ describe('ExportWalletKeyUseCase', () => {
       expect(detected!.canSign).toBe(true);
     });
 
-    it('exported testnet xpriv (vprv) can be re-imported as testnet xpriv', async () => {
+    it('exported testnet xpriv (vprv) can be re-imported as testnet4 xpriv', async () => {
       const result = await new ExportWalletKeyUseCase(makeRepo()).execute({
         walletId: WALLET_ID, format: 'xpriv', network: 'testnet',
       });
@@ -265,7 +265,7 @@ describe('ExportWalletKeyUseCase', () => {
       const detected = detector.detect(result.value);
       expect(detected).not.toBeNull();
       expect(detected!.format).toBe('xpriv');
-      expect(detected!.network).toBe('testnet');
+      expect(detected!.network).toBe('testnet4');
       expect(detected!.canSign).toBe(true);
     });
 
@@ -281,7 +281,7 @@ describe('ExportWalletKeyUseCase', () => {
       expect(detected!.isWatchOnly).toBe(true);
     });
 
-    it('exported testnet xpub (vpub) can be re-imported as testnet watch-only', async () => {
+    it('exported testnet xpub (vpub) can be re-imported as testnet4 watch-only', async () => {
       const result = await new ExportWalletKeyUseCase(makeRepo()).execute({
         walletId: WALLET_ID, format: 'xpub', network: 'testnet',
       });
@@ -289,7 +289,7 @@ describe('ExportWalletKeyUseCase', () => {
       const detected = detector.detect(result.value);
       expect(detected).not.toBeNull();
       expect(detected!.format).toBe('xpub');
-      expect(detected!.network).toBe('testnet');
+      expect(detected!.network).toBe('testnet4');
       expect(detected!.isWatchOnly).toBe(true);
     });
   });

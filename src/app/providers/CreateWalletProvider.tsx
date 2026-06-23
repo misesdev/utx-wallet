@@ -1,10 +1,11 @@
 import React, { createContext, PropsWithChildren, useCallback, useMemo, useRef, useState } from 'react';
 import type { Wallet } from '../../core/domain/entities/Wallet';
+import type { BitcoinNetwork } from '../../core/domain/entities/Network';
 import { GenerateMnemonicUseCase } from '../../core/domain/usecases/wallet/GenerateMnemonicUseCase';
 import { DEFAULT_NETWORK } from '../../shared/constants/networks';
 import { useWallet } from '../../presentation/hooks/useWallet';
 
-type WalletNetwork = 'mainnet' | 'testnet';
+type WalletNetwork = BitcoinNetwork;
 type Step = 'idle' | 'backup' | 'confirming' | 'saving';
 
 // words and passphrase are intentionally excluded — they live in refs to avoid
@@ -28,8 +29,7 @@ export type CreateWalletContextValue = CreateWalletFlowState & {
 
 export const CreateWalletContext = createContext<CreateWalletContextValue | null>(null);
 
-const defaultNetwork: WalletNetwork =
-  DEFAULT_NETWORK === 'mainnet' ? 'mainnet' : 'testnet';
+const defaultNetwork: WalletNetwork = DEFAULT_NETWORK;
 
 const INITIAL: CreateWalletFlowState = {
   step: 'idle',

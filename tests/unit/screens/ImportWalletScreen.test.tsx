@@ -55,7 +55,7 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
-let mockRouteParams: { network?: 'mainnet' | 'testnet'; seedRef?: string } | undefined;
+let mockRouteParams: { network?: 'mainnet' | 'testnet' | 'testnet4'; seedRef?: string } | undefined;
 
 jest.mock('@react-navigation/native', () => ({
   useRoute: () => ({ params: mockRouteParams }),
@@ -87,9 +87,9 @@ describe('ImportWalletScreen', () => {
     expect(screen.getByPlaceholderText('importWallet.seedPlaceholder')).toBeTruthy();
   });
 
-  it('shows Testnet network badge when no route params provided', () => {
+  it('shows Testnet4 network badge when no route params provided', () => {
     const screen = renderWithTheme(<ImportWalletScreen />);
-    expect(screen.getByText('Testnet')).toBeTruthy();
+    expect(screen.getByText('Testnet4')).toBeTruthy();
   });
 
   it('shows Mainnet network badge when route params specify mainnet', () => {
@@ -116,7 +116,7 @@ describe('ImportWalletScreen', () => {
   it('navigates to ScanWalletQr when scan QR button is pressed', () => {
     const screen = renderWithTheme(<ImportWalletScreen />);
     fireEvent.press(screen.getByTestId('import-scan-qr-btn'));
-    expect(mockNavigate).toHaveBeenCalledWith('ScanWalletQr', { network: 'testnet' });
+    expect(mockNavigate).toHaveBeenCalledWith('ScanWalletQr', { network: 'testnet4' });
   });
 
   it('navigates to ScanWalletQr with mainnet when route params specify mainnet', () => {

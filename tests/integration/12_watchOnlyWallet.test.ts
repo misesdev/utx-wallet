@@ -91,12 +91,12 @@ describe('Integration: Watch-Only Wallet (xpub)', () => {
     expect(wallet.network).toBe('mainnet');
   });
 
-  it('network auto-detected from tpub prefix resolves to testnet', async () => {
+  it('network auto-detected from tpub prefix resolves to testnet4', async () => {
     const { importWallet } = makeSetup();
     // bitcoin-tx-lib 2.0.3+ correctly emits tpub for testnet wallets (BIP44 testnet version bytes).
-    // The detector maps tpub prefix → testnet.
+    // The detector maps tpub/vpub prefix → testnet4 (canonical testnet).
     const wallet = await importWallet.execute('Tpub Testnet', getXpub('testnet'));
-    expect(wallet.network).toBe('testnet');
+    expect(wallet.network).toBe('testnet4');
   });
 
   it('derives receive addresses from the stored xpub', async () => {
@@ -210,11 +210,11 @@ describe('Integration: Single-Key Wallet (WIF)', () => {
     expect(wallet.network).toBe('mainnet');
   });
 
-  it('auto-detects testnet network from WIF prefix', async () => {
+  it('auto-detects testnet4 network from WIF prefix', async () => {
     const { importWallet } = makeSetup();
     const pair = new ECPairKey({ network: 'testnet' });
     const wallet = await importWallet.execute('WIF Testnet', pair.getWif());
-    expect(wallet.network).toBe('testnet');
+    expect(wallet.network).toBe('testnet4');
   });
 
   it('derives the p2wpkh address from stored WIF', async () => {

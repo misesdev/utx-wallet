@@ -69,8 +69,8 @@ export type AuthStackParamList = {
 
 export type AppStackParamList = {
   WalletList: undefined;
-  CreateWallet: { network?: 'mainnet' | 'testnet' } | undefined;
-  ImportWallet: { network?: 'mainnet' | 'testnet'; seedRef?: string } | undefined;
+  CreateWallet: { network?: BitcoinNetwork } | undefined;
+  ImportWallet: { network?: BitcoinNetwork; seedRef?: string } | undefined;
   BackupSeed: undefined;
   ConfirmSeed: undefined;
   Home: undefined;
