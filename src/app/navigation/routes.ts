@@ -37,6 +37,7 @@ export const AppRoutes = {
   NodeSettings: 'NodeSettings',
   NodeTutorial: 'NodeTutorial',
   ManageNodes: 'ManageNodes',
+  SyncSettings: 'SyncSettings',
   BackupSettings: 'BackupSettings',
   OfflineMode: 'OfflineMode',
   SafeMode: 'SafeMode',
@@ -100,6 +101,7 @@ export type AppStackParamList = {
   NodeSettings: { nodeId?: string } | undefined;
   NodeTutorial: undefined;
   ManageNodes: undefined;
+  SyncSettings: undefined;
   BackupSettings: undefined;
   OfflineMode: undefined;
   SafeMode: undefined;

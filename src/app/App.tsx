@@ -2,6 +2,7 @@ import React from 'react';
 import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProvider } from './providers/AppProvider';
+import { AppAuthGate } from './providers/AppAuthGate';
 import { RootNavigator } from './navigation/RootNavigator';
 import { useTheme } from '../presentation/hooks/useTheme';
 
@@ -16,6 +17,7 @@ export default function App() {
       <AppProvider>
         <AppStatusBar />
         <RootNavigator />
+        <AppAuthGate />
       </AppProvider>
     </SafeAreaProvider>
   );

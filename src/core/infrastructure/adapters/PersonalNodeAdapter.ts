@@ -6,12 +6,8 @@ import type { NodeConnectionTester, NodeRepository } from '../../domain/reposito
 import type { Transaction } from '../../domain/entities/Transaction';
 import type { Utxo } from '../../domain/entities/Utxo';
 import type { HttpClient } from '../api/HttpClient';
-import { MempoolApiClient, type MempoolTxResponse, type MempoolUtxoEntry } from '../api/MempoolApiClient';
+import { MempoolApiClient, type MempoolFeeRatesResponse, type MempoolTxResponse, type MempoolUtxoEntry } from '../api/MempoolApiClient';
 import { NetworkConfigStorage } from '../storage/NetworkConfigStorage';
-
-type NodeNetworkResponse = {
-  network: BitcoinNetwork;
-};
 
 export function normalizeNodeUrl(url: string, port?: number): string {
   const rawUrl = url.trim();
@@ -19,7 +15,11 @@ export function normalizeNodeUrl(url: string, port?: number): string {
   const withProtocol = /^https?:\/\//i.test(rawUrl) ? rawUrl : `http://${rawUrl}`;
   const parsed = new URL(withProtocol);
   const portStr = port ? `:${port}` : parsed.port ? `:${parsed.port}` : '';
-  const path = parsed.pathname === '/' ? '' : parsed.pathname.replace(/\/$/, '');
+  // Strip trailing version segment (e.g. /v1, /v2) — the app appends /v1/... to all
+  // endpoint paths internally. A user entering http://host:8081/api/v1 should work the
+  // same as http://host:8081/api to avoid a double /v1/v1/... path.
+  const rawPath = parsed.pathname === '/' ? '' : parsed.pathname.replace(/\/$/, '');
+  const path = rawPath.replace(/\/v\d+$/, '');
   return `${parsed.protocol}//${parsed.hostname}${portStr}${path}${parsed.search}`;
 }
 
@@ -91,20 +91,20 @@ export class PersonalNodeAdapter implements NodeRepository, NodeConnectionTester
     expectedNetwork: BitcoinNetwork,
   ): Promise<NodeConnectionTestResult> {
     try {
-      const response = await this.httpClient.get<NodeNetworkResponse>(`${baseUrl}/v1/network`, {
-        headers,
-        timeoutMs: 10_000,
-      });
+      // /v1/fees/recommended is a standard mempool self-hosted endpoint that exists
+      // in all versions and returns a predictable JSON shape when the API is healthy.
+      // The old /v1/network endpoint does not exist in the mempool REST API.
+      const rates = await this.httpClient.get<MempoolFeeRatesResponse>(
+        `${baseUrl}/v1/fees/recommended`,
+        { headers, timeoutMs: 10_000 },
+      );
 
-      if (response.network !== expectedNetwork) {
-        return {
-          status: 'network-incompatible',
-          expectedNetwork,
-          actualNetwork: response.network,
-        };
+      // Guard against nginx/proxy returning HTML with status 200
+      if (typeof rates?.fastestFee !== 'number') {
+        return { status: 'disconnected', expectedNetwork };
       }
 
-      return { status: 'connected', expectedNetwork, actualNetwork: response.network };
+      return { status: 'connected', expectedNetwork, actualNetwork: expectedNetwork };
     } catch (err) {
       return {
         status: isAuthError(err) ? 'authentication-error' : 'disconnected',

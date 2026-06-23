@@ -43,6 +43,15 @@ describe('GlobalSettingsScreen', () => {
     expect(screen.getByTestId('global-settings-safe-mode')).toBeTruthy();
   });
 
+  it('renders the app version in the About section', () => {
+    const screen = renderWithTheme(<GlobalSettingsScreen />);
+    expect(screen.getByTestId('global-settings-version')).toBeTruthy();
+    // Version label key is rendered (i18n mock returns key)
+    expect(screen.getByText('globalSettings.version')).toBeTruthy();
+    // Actual semver string from package.json
+    expect(screen.getByText('2.1.0')).toBeTruthy();
+  });
+
   it('navigates to donation screen', () => {
     const screen = renderWithTheme(<GlobalSettingsScreen />);
     fireEvent.press(screen.getByTestId('global-settings-donation'));

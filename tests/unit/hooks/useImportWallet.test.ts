@@ -21,7 +21,6 @@ describe('useImportWallet', () => {
     expect(result.current.walletName).toBe('');
     expect(result.current.seed).toBe('');
     expect(result.current.passphrase).toBe('');
-    expect(result.current.confirmPassphrase).toBe('');
     expect(result.current.selectedNetwork).toBe('testnet');
     expect(result.current.isLoading).toBe(false);
     expect(result.current.error).toBe('');
@@ -48,12 +47,6 @@ describe('useImportWallet', () => {
     const { result } = renderHook(() => useImportWallet());
     act(() => result.current.setPassphrase('mypass'));
     expect(result.current.passphrase).toBe('mypass');
-  });
-
-  it('updates confirmPassphrase via setConfirmPassphrase', () => {
-    const { result } = renderHook(() => useImportWallet());
-    act(() => result.current.setConfirmPassphrase('mypass'));
-    expect(result.current.confirmPassphrase).toBe('mypass');
   });
 
   it('updates selectedNetwork via setSelectedNetwork', () => {
@@ -108,18 +101,6 @@ describe('useImportWallet', () => {
       expect(mockImportWallet).not.toHaveBeenCalled();
     });
 
-    it('sets error when passphrases do not match', async () => {
-      const { result } = renderHook(() => useImportWallet());
-      act(() => {
-        result.current.setWalletName('My Wallet');
-        result.current.setSeed(VALID_MNEMONIC);
-        result.current.setPassphrase('abc');
-        result.current.setConfirmPassphrase('xyz');
-      });
-      await act(async () => { await result.current.submit(); });
-      expect(result.current.error).toBe('createWallet.errorPassphraseMismatch');
-      expect(mockImportWallet).not.toHaveBeenCalled();
-    });
   });
 
   describe('submit() — successful import', () => {
@@ -158,7 +139,6 @@ describe('useImportWallet', () => {
         result.current.setWalletName('W');
         result.current.setSeed(VALID_MNEMONIC);
         result.current.setPassphrase('mysecret');
-        result.current.setConfirmPassphrase('mysecret');
       });
       await act(async () => { await result.current.submit(); });
       expect(mockImportWallet).toHaveBeenCalledWith('W', VALID_MNEMONIC, 'testnet', 'mysecret');

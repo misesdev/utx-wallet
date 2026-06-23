@@ -11,6 +11,11 @@ export type SyncTransactionsResult = {
   fetchedTransactions: Map<string, Transaction[]>;
 };
 
+export type SyncTransactionsOpts = {
+  parallel?: boolean;
+  requestDelayMs?: number;
+};
+
 export class SyncTransactionsUseCase {
   constructor(
     private readonly transactionRepository: TransactionRepository,
@@ -24,12 +29,16 @@ export class SyncTransactionsUseCase {
     network: BitcoinNetwork,
     addressMetadata: Map<string, Pick<WalletAddress, 'originId' | 'originName'>> = new Map(),
     onProgress?: OnSyncProgress,
+    opts?: SyncTransactionsOpts,
   ): Promise<SyncTransactionsResult> {
+    const parallel = opts?.parallel ?? false;
+    const delayMs = opts?.requestDelayMs ?? this.requestDelayMs;
+
     const localTxs = await this.transactionRepository.list(walletId);
 
     const fetchedTransactions = new Map<string, Transaction[]>();
-    for (let i = 0; i < addresses.length; i++) {
-      const address = addresses[i];
+
+    const fetchForAddress = async (address: string, i: number): Promise<void> => {
       onProgress?.({ currentAddress: address, currentIndex: i, totalAddresses: addresses.length, phase: 'transactions' });
       const metadata = addressMetadata.get(address);
       const txs = (await this.blockchainProvider.getTransactions(address, network)).map(tx => ({
@@ -39,8 +48,16 @@ export class SyncTransactionsUseCase {
         ...(metadata?.originName ?? tx.originName ? { originName: metadata?.originName ?? tx.originName } : {}),
       }));
       fetchedTransactions.set(address, txs);
-      if (i < addresses.length - 1) {
-        await delay(this.requestDelayMs);
+    };
+
+    if (parallel) {
+      await Promise.all(addresses.map((addr, i) => fetchForAddress(addr, i)));
+    } else {
+      for (let i = 0; i < addresses.length; i++) {
+        await fetchForAddress(addresses[i], i);
+        if (i < addresses.length - 1) {
+          await delay(delayMs);
+        }
       }
     }
 
@@ -70,7 +87,23 @@ export class SyncTransactionsUseCase {
     const localKeys = new Set(localTxs.map(tx => tx.txid ?? tx.id));
     const newCount = freshTxs.filter(tx => !localKeys.has(tx.txid ?? tx.id)).length;
 
-    await this.transactionRepository.upsertAll(walletId, freshTxs);
+    // Resolve direction conflicts against locally-stored transactions.
+    // This handles the cross-iteration case: when the spending address is synced in one
+    // iteration and the change address is discovered and synced in the next, the second
+    // iteration's upsertAll would otherwise overwrite the first with the wrong direction.
+    const localTxByKey = new Map(localTxs.map(tx => [tx.txid ?? tx.id, tx]));
+    const resolvedTxs = freshTxs.map(freshTx => {
+      const key = freshTx.txid ?? freshTx.id;
+      const localTx = localTxByKey.get(key);
+      if (localTx && localTx.direction !== freshTx.direction) {
+        const outgoing = localTx.direction === 'outgoing' ? localTx : freshTx;
+        const incoming = localTx.direction === 'incoming' ? localTx : freshTx;
+        return { ...outgoing, amountSats: Math.max(0, outgoing.amountSats - incoming.amountSats) };
+      }
+      return freshTx;
+    });
+
+    await this.transactionRepository.upsertAll(walletId, resolvedTxs);
 
     return { newCount, fetchedTransactions };
   }

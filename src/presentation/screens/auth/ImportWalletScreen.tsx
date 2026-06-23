@@ -42,8 +42,6 @@ export function ImportWalletScreen() {
     setSeed,
     passphrase,
     setPassphrase,
-    confirmPassphrase,
-    setConfirmPassphrase,
     isLoading,
     error,
     clearError,
@@ -188,7 +186,6 @@ export function ImportWalletScreen() {
           onPress={() => {
             setPassphraseEnabled(prev => !prev);
             setPassphrase('');
-            setConfirmPassphrase('');
           }}
           style={({ pressed }) => [
             styles.toggleRow,
@@ -249,27 +246,9 @@ export function ImportWalletScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               spellCheck={false}
-              returnKeyType="next"
-              accessibilityLabel={t('importWallet.passphraseLabel')}
-            />
-
-            <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-
-            <FormInput
-              label={t('importWallet.confirmPassphraseLabel')}
-              placeholder={t('importWallet.confirmPassphrasePlaceholder')}
-              value={confirmPassphrase}
-              onChangeText={v => {
-                setConfirmPassphrase(v);
-                if (error) clearError();
-              }}
-              secureTextEntry={!showPassphrase}
-              autoCapitalize="none"
-              autoCorrect={false}
-              spellCheck={false}
               returnKeyType="done"
               onSubmitEditing={handleImport}
-              accessibilityLabel={t('importWallet.confirmPassphraseLabel')}
+              accessibilityLabel={t('importWallet.passphraseLabel')}
             />
 
             <Pressable

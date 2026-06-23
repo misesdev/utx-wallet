@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { Fragment, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute } from '@react-navigation/native';
@@ -36,32 +36,75 @@ export function NodeSettingsScreen() {
 
   const [label, setLabel] = useState(editingNode?.label ?? '');
   const [url, setUrl] = useState(editingNode?.url ?? '');
-  const [port, setPort] = useState(editingNode?.port ? String(editingNode.port) : '');
-  const [authToken, setAuthToken] = useState(editingNode?.authToken ?? '');
   const [network, setNetwork] = useState<BitcoinNetwork>(
     editingNode?.network ?? networkConfig.network ?? DEFAULT_NETWORK,
   );
+  const [authEnabled, setAuthEnabled] = useState(!!editingNode?.authToken);
+  const [authToken, setAuthToken] = useState(editingNode?.authToken ?? '');
+  const [showToken, setShowToken] = useState(false);
+
   const [status, setStatus] = useState<NodeConnectionStatus | null>(null);
   const [isTesting, setIsTesting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   function handleUrlChange(v: string) { setUrl(v); setStatus(null); }
-  function handlePortChange(v: string) { setPort(v); setStatus(null); }
-  function handleAuthTokenChange(v: string) { setAuthToken(v); setStatus(null); }
   function handleNetworkChange(v: BitcoinNetwork) { setNetwork(v); setStatus(null); }
+  function handleAuthTokenChange(v: string) { setAuthToken(v); setStatus(null); }
+
+  function handleAuthToggle() {
+    const next = !authEnabled;
+    setAuthEnabled(next);
+    if (!next) setAuthToken('');
+    setStatus(null);
+  }
 
   const isEditing = !!editingNode;
   const connectionFieldsFilled = label.trim().length > 0 && url.trim().length > 0;
+  const isHttpUrl = url.trim().length > 0 && url.trim().toLowerCase().startsWith('http://');
   const canSave = connectionFieldsFilled && status === 'connected';
 
+  const statusColor =
+    status === 'connected'
+      ? theme.colors.success
+      : status !== null
+        ? theme.colors.danger
+        : theme.colors.textMuted;
+
+  const statusBgColor =
+    status === 'connected'
+      ? theme.colors.success + '18'
+      : status !== null
+        ? theme.colors.danger + '18'
+        : theme.colors.surfaceMuted;
+
+  const statusBorderColor =
+    status === 'connected'
+      ? theme.colors.success + '55'
+      : status !== null
+        ? theme.colors.danger + '55'
+        : theme.colors.border;
+
+  const statusText = status
+    ? t(`nodeSettings.status_${status}`)
+    : t('nodeSettings.statusNotTested');
+
+  const statusDesc =
+    status === 'connected'
+      ? t('nodeSettings.statusConnectedDesc')
+      : status === 'network-incompatible'
+        ? t('nodeSettings.statusNetworkMismatchDesc')
+        : status === 'authentication-error'
+          ? t('nodeSettings.statusAuthErrorDesc')
+          : status === 'disconnected'
+            ? t('nodeSettings.statusDisconnectedDesc')
+            : t('nodeSettings.statusNotTestedDesc');
+
   function buildNode(): Omit<PersonalNode, 'id'> {
-    const parsedPort = parseInt(port, 10);
     return {
       label: label.trim(),
       url: url.trim(),
-      port: Number.isFinite(parsedPort) && parsedPort > 0 ? parsedPort : undefined,
-      authToken: authToken.trim() || undefined,
+      authToken: authEnabled && authToken.trim() ? authToken.trim() : undefined,
       network,
       priority: editingNode?.priority ?? (nodes.length + 1),
     };
@@ -71,13 +114,11 @@ export function NodeSettingsScreen() {
     setIsTesting(true);
     setStatus(null);
     try {
-      const parsedPort = parseInt(port, 10);
       const testableNode: PersonalNode = {
         id: editingNode?.id ?? '__test__',
         label: label.trim(),
         url: url.trim(),
-        port: Number.isFinite(parsedPort) && parsedPort > 0 ? parsedPort : undefined,
-        authToken: authToken.trim() || undefined,
+        authToken: authEnabled && authToken.trim() ? authToken.trim() : undefined,
         network,
         priority: 1,
       };
@@ -106,22 +147,6 @@ export function NodeSettingsScreen() {
     }
   }
 
-  const statusColor = status === 'connected'
-    ? theme.colors.success
-    : status !== null
-      ? theme.colors.danger
-      : theme.colors.textMuted;
-
-  const statusBorderColor = status === 'connected'
-    ? theme.colors.success + '55'
-    : status !== null
-      ? theme.colors.danger + '55'
-      : theme.colors.border;
-
-  const statusText = status
-    ? t(`nodeSettings.status_${status}`)
-    : t('nodeSettings.statusNotTested');
-
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
       {/* Header */}
@@ -130,7 +155,7 @@ export function NodeSettingsScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('common.back')}
           onPress={() => navigation.goBack()}
-          style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+          style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.6 : 1 }]}
         >
           <AppIcon name="back" size={24} color={theme.colors.textMuted} />
         </Pressable>
@@ -144,7 +169,7 @@ export function NodeSettingsScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('nodeTutorial.title')}
           onPress={() => navigation.navigate('NodeTutorial')}
-          style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
+          style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.6 : 1 }]}
           testID="btn-node-tutorial"
         >
           <AppIcon name="info" size={22} color={theme.colors.accent} />
@@ -153,14 +178,17 @@ export function NodeSettingsScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, { paddingBottom: Math.max(insets.bottom, 16) + 80 }]}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.scroll}
       >
-        {/* Connection inputs */}
+        {/* Connection card */}
         <View style={styles.section}>
-          <AppText variant="label" color="muted" style={styles.sectionLabel}>{t('nodeSettings.connection')}</AppText>
+          <AppText variant="label" color="muted" style={styles.sectionLabel}>
+            {t('nodeSettings.connection')}
+          </AppText>
           <View
             style={[
-              styles.formCard,
+              styles.card,
               {
                 backgroundColor: theme.colors.surfaceRaised,
                 borderColor: theme.colors.border,
@@ -168,8 +196,11 @@ export function NodeSettingsScreen() {
               },
             ]}
           >
-            <View style={styles.inputGroup}>
-              <AppText variant="caption" color="muted" style={styles.inputLabel}>{t('nodeSettings.label')}</AppText>
+            {/* Label */}
+            <View style={styles.fieldGroup}>
+              <AppText variant="caption" color="muted" style={styles.fieldLabel}>
+                {t('nodeSettings.label')}
+              </AppText>
               <AppInput
                 accessibilityLabel={t('nodeSettings.label')}
                 autoCapitalize="words"
@@ -179,9 +210,14 @@ export function NodeSettingsScreen() {
                 testID="input-label"
               />
             </View>
-            <View style={[styles.inputDivider, { backgroundColor: theme.colors.border }]} />
-            <View style={styles.inputGroup}>
-              <AppText variant="caption" color="muted" style={styles.inputLabel}>{t('nodeSettings.nodeUrl')}</AppText>
+
+            <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+
+            {/* URL */}
+            <View style={styles.fieldGroup}>
+              <AppText variant="caption" color="muted" style={styles.fieldLabel}>
+                {t('nodeSettings.nodeUrl')}
+              </AppText>
               <AppInput
                 accessibilityLabel={t('nodeSettings.nodeUrl')}
                 autoCapitalize="none"
@@ -192,86 +228,195 @@ export function NodeSettingsScreen() {
                 onChangeText={handleUrlChange}
                 testID="input-url"
               />
+              <View
+                style={[
+                  styles.urlHint,
+                  {
+                    backgroundColor: theme.colors.accentMuted,
+                    borderRadius: theme.radii.sm,
+                  },
+                ]}
+                testID="url-hint"
+              >
+                <AppIcon name="info" size={13} color={theme.colors.accent} />
+                <AppText variant="caption" style={[styles.urlHintText, { color: theme.colors.accent }]}>
+                  {t('nodeSettings.urlHint')}
+                </AppText>
+              </View>
+              {isHttpUrl && (
+                <View
+                  style={[
+                    styles.urlHint,
+                    {
+                      backgroundColor: theme.colors.danger + '18',
+                      borderRadius: theme.radii.sm,
+                    },
+                  ]}
+                  testID="http-warning"
+                >
+                  <AppIcon name="warning" size={13} color={theme.colors.danger} />
+                  <AppText variant="caption" style={[styles.urlHintText, { color: theme.colors.danger }]}>
+                    {t('nodeSettings.httpNodeWarning')}
+                  </AppText>
+                </View>
+              )}
             </View>
-            <View style={[styles.inputDivider, { backgroundColor: theme.colors.border }]} />
-            <View style={styles.inputGroup}>
-              <AppText variant="caption" color="muted" style={styles.inputLabel}>{t('nodeSettings.port')}</AppText>
-              <AppInput
-                accessibilityLabel={t('nodeSettings.port')}
-                keyboardType="number-pad"
-                placeholder={t('nodeSettings.portPlaceholder')}
-                value={port}
-                onChangeText={handlePortChange}
-                testID="input-port"
-              />
-            </View>
-            <View style={[styles.inputDivider, { backgroundColor: theme.colors.border }]} />
-            <View style={styles.inputGroup}>
-              <AppText variant="caption" color="muted" style={styles.inputLabel}>{t('nodeSettings.authToken')}</AppText>
-              <AppInput
-                accessibilityLabel={t('nodeSettings.authToken')}
-                autoCapitalize="none"
-                autoCorrect={false}
-                placeholder={t('nodeSettings.authTokenPlaceholder')}
-                secureTextEntry
-                value={authToken}
-                onChangeText={handleAuthTokenChange}
-                testID="input-auth-token"
-              />
-            </View>
+
+            <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+
+            {/* Auth token toggle */}
+            <Pressable
+              accessibilityRole="switch"
+              accessibilityState={{ checked: authEnabled }}
+              accessibilityLabel={t('nodeSettings.authTokenSection')}
+              onPress={handleAuthToggle}
+              style={({ pressed }) => [styles.toggleRow, { opacity: pressed ? 0.8 : 1 }]}
+              testID="toggle-auth"
+            >
+              <AppIcon name="safeMode" size={20} color={theme.colors.textMuted} />
+              <View style={styles.toggleText}>
+                <AppText variant="body" style={styles.toggleLabel}>{t('nodeSettings.authTokenSection')}</AppText>
+                <AppText variant="caption" color="muted">{t('nodeSettings.authTokenDesc')}</AppText>
+              </View>
+              <View
+                style={[
+                  styles.togglePill,
+                  { backgroundColor: authEnabled ? theme.colors.accent : theme.colors.surfaceMuted },
+                ]}
+              >
+                <View style={[styles.toggleThumb, authEnabled ? styles.thumbOn : styles.thumbOff]} />
+              </View>
+            </Pressable>
+
+            {authEnabled && (
+              <>
+                <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+                <View style={styles.fieldGroup}>
+                  <AppText variant="caption" color="muted" style={styles.fieldLabel}>
+                    {t('nodeSettings.authToken')}
+                  </AppText>
+                  <View style={styles.tokenRow}>
+                    <AppInput
+                      accessibilityLabel={t('nodeSettings.authToken')}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      placeholder={t('nodeSettings.authTokenPlaceholder')}
+                      secureTextEntry={!showToken}
+                      value={authToken}
+                      onChangeText={handleAuthTokenChange}
+                      testID="input-auth-token"
+                      style={styles.tokenInput}
+                    />
+                    <Pressable
+                      onPress={() => setShowToken(p => !p)}
+                      style={({ pressed }) => [
+                        styles.eyeBtn,
+                        {
+                          backgroundColor: theme.colors.surfaceMuted,
+                          borderColor: theme.colors.border,
+                          borderRadius: theme.radii.md,
+                          opacity: pressed ? 0.6 : 1,
+                        },
+                      ]}
+                      testID="btn-toggle-token-visibility"
+                      accessibilityLabel={showToken ? t('nodeSettings.hideToken') : t('nodeSettings.showToken')}
+                    >
+                      <AppIcon
+                        name={showToken ? 'eyeOff' : 'eye'}
+                        size={18}
+                        color={theme.colors.textMuted}
+                      />
+                    </Pressable>
+                  </View>
+                </View>
+              </>
+            )}
           </View>
         </View>
 
-        {/* Network selector */}
+        {/* Network card */}
         <View style={styles.section}>
-          <AppText variant="label" color="muted" style={styles.sectionLabel}>{t('common.network')}</AppText>
-          <View style={styles.networkGrid}>
-            {SUPPORTED_NETWORKS.map(n => {
+          <AppText variant="label" color="muted" style={styles.sectionLabel}>
+            {t('common.network')}
+          </AppText>
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: theme.colors.surfaceRaised,
+                borderColor: theme.colors.border,
+                borderRadius: theme.radii.lg,
+              },
+            ]}
+          >
+            {SUPPORTED_NETWORKS.map((n, idx) => {
               const isSelected = network === n;
+              const isLast = idx === SUPPORTED_NETWORKS.length - 1;
               return (
-                <Pressable
-                  key={n}
-                  onPress={() => handleNetworkChange(n as BitcoinNetwork)}
-                  style={({ pressed }) => [
-                    styles.networkChip,
-                    {
-                      backgroundColor: isSelected ? theme.colors.accentMuted : theme.colors.surfaceRaised,
-                      borderColor: isSelected ? theme.colors.accent : theme.colors.border,
-                      borderRadius: theme.radii.md,
-                      opacity: pressed ? 0.72 : 1,
-                    },
-                  ]}
-                  testID={`network-chip-${n}`}
-                >
-                  <AppText
-                    variant="body"
-                    style={isSelected ? [styles.chipSelected, { color: theme.colors.accent }] : undefined}
+                <Fragment key={n}>
+                  <Pressable
+                    onPress={() => handleNetworkChange(n as BitcoinNetwork)}
+                    style={({ pressed }) => [styles.networkRow, { opacity: pressed ? 0.7 : 1 }]}
+                    testID={`network-chip-${n}`}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isSelected }}
                   >
-                    {n}
-                  </AppText>
-                </Pressable>
+                    <View
+                      style={[
+                        styles.radioOuter,
+                        { borderColor: isSelected ? theme.colors.accent : theme.colors.border },
+                      ]}
+                    >
+                      {isSelected && (
+                        <View style={[styles.radioInner, { backgroundColor: theme.colors.accent }]} />
+                      )}
+                    </View>
+                    <View style={styles.networkLabelGroup}>
+                      <AppText
+                        variant="body"
+                        style={isSelected ? [styles.networkSelected, { color: theme.colors.accent }] : undefined}
+                      >
+                        {n}
+                      </AppText>
+                      <AppText variant="caption" color="muted">
+                        {n === 'mainnet' ? t('nodeSettings.networkMainnetDesc') : t('nodeSettings.networkTestnetDesc')}
+                      </AppText>
+                    </View>
+                  </Pressable>
+                  {!isLast && (
+                    <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+                  )}
+                </Fragment>
               );
             })}
           </View>
         </View>
 
-        {/* Connection status — always visible */}
+        {/* Status card */}
         <View
           style={[
             styles.statusCard,
             {
-              backgroundColor: theme.colors.surfaceRaised,
+              backgroundColor: statusBgColor,
               borderColor: statusBorderColor,
               borderRadius: theme.radii.lg,
             },
           ]}
           testID="status-card"
         >
-          <AppText variant="label" color="muted">{t('nodeSettings.status')}</AppText>
           <View style={styles.statusRow}>
             <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-            <AppText variant="body" style={{ color: statusColor }} testID="status-text">{statusText}</AppText>
+            <AppText
+              variant="body"
+              style={[styles.statusLabel, { color: statusColor }]}
+              testID="status-text"
+            >
+              {statusText}
+            </AppText>
           </View>
+          <AppText variant="caption" color="muted" testID="status-desc">
+            {statusDesc}
+          </AppText>
           {connectionFieldsFilled && status !== 'connected' && !isTesting && (
             <AppText variant="caption" color="muted" testID="test-required-hint">
               {t('nodeSettings.testRequired')}
@@ -280,10 +425,23 @@ export function NodeSettingsScreen() {
         </View>
 
         {saveError && (
-          <AppText variant="caption" color="danger" testID="save-error">{saveError}</AppText>
+          <AppText variant="caption" color="danger" testID="save-error">
+            {saveError}
+          </AppText>
         )}
+      </ScrollView>
 
-        {/* Actions */}
+      {/* Sticky footer */}
+      <View
+        style={[
+          styles.footer,
+          {
+            backgroundColor: theme.colors.background,
+            borderTopColor: theme.colors.border,
+            paddingBottom: Math.max(insets.bottom, 16),
+          },
+        ]}
+      >
         <AppButton
           title={isTesting ? t('nodeSettings.testing') : t('nodeSettings.testConnection')}
           variant="secondary"
@@ -299,7 +457,7 @@ export function NodeSettingsScreen() {
           disabled={!canSave || isSaving}
           testID="btn-save"
         />
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -308,6 +466,8 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
+
+  // Header
   header: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -315,7 +475,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
-  backBtn: {
+  iconBtn: {
     alignItems: 'center',
     height: 40,
     justifyContent: 'center',
@@ -329,13 +489,16 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontWeight: '700',
   },
+
+  // Scroll
   scroll: {
     gap: 20,
+    paddingBottom: 16,
     paddingHorizontal: 20,
     paddingTop: 4,
   },
 
-  // Sections
+  // Section
   section: {
     gap: 10,
   },
@@ -344,57 +507,145 @@ const styles = StyleSheet.create({
     marginLeft: 2,
   },
 
-  // Form card
-  formCard: {
+  // Card
+  card: {
     borderWidth: 1,
-    gap: 0,
     overflow: 'hidden',
     paddingBottom: 8,
     paddingHorizontal: 16,
     paddingTop: 4,
   },
-  inputGroup: {
-    gap: 4,
-    paddingVertical: 8,
-  },
-  inputLabel: {
-    letterSpacing: 0.5,
-  },
-  inputDivider: {
+  divider: {
     height: StyleSheet.hairlineWidth,
   },
 
-  // Network
-  networkGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+  // Field
+  fieldGroup: {
+    gap: 4,
+    paddingVertical: 10,
   },
-  networkChip: {
+  fieldLabel: {
+    letterSpacing: 0.5,
+  },
+
+  // URL hint
+  urlHint: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 5,
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  urlHintText: {
+    flex: 1,
+    lineHeight: 16,
+  },
+
+  // Auth toggle
+  toggleRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    paddingVertical: 14,
+  },
+  toggleText: {
+    flex: 1,
+    gap: 2,
+  },
+  toggleLabel: {
+    fontWeight: '600',
+  },
+  togglePill: {
+    borderRadius: 99,
+    height: 26,
+    justifyContent: 'center',
+    padding: 2,
+    width: 44,
+  },
+  toggleThumb: {
+    backgroundColor: '#fff',
+    borderRadius: 99,
+    height: 22,
+    width: 22,
+  },
+  thumbOn: {
+    transform: [{ translateX: 18 }],
+  },
+  thumbOff: {
+    transform: [{ translateX: 0 }],
+  },
+
+  // Token row
+  tokenRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  tokenInput: {
+    flex: 1,
+  },
+  eyeBtn: {
     alignItems: 'center',
     borderWidth: 1,
-    minWidth: 110,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
   },
-  chipSelected: {
-    fontWeight: '700',
+
+  // Network
+  networkRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    paddingVertical: 14,
+  },
+  radioOuter: {
+    alignItems: 'center',
+    borderRadius: 99,
+    borderWidth: 2,
+    height: 20,
+    justifyContent: 'center',
+    width: 20,
+  },
+  radioInner: {
+    borderRadius: 99,
+    height: 10,
+    width: 10,
+  },
+  networkLabelGroup: {
+    flex: 1,
+    gap: 1,
+  },
+  networkSelected: {
+    fontWeight: '600',
   },
 
   // Status
   statusCard: {
     borderWidth: 1,
-    gap: 10,
+    gap: 6,
     padding: 16,
   },
   statusRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
   },
   statusDot: {
     borderRadius: 5,
     height: 10,
     width: 10,
+  },
+  statusLabel: {
+    fontWeight: '600',
+  },
+
+  // Footer
+  footer: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingTop: 12,
   },
 });

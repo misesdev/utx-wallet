@@ -18,6 +18,7 @@ export function AppAuthGate() {
   const insets = useSafeAreaInsets();
 
   const [isLocked, setIsLocked] = useState(false);
+  const [securityReady, setSecurityReady] = useState(false);
   const [isBiometricPending, setIsBiometricPending] = useState(false);
   const [pinModalVisible, setPinModalVisible] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
@@ -86,13 +87,17 @@ export function AppAuthGate() {
     setPinModalVisible(true);
   }, []);
 
-  // Authenticate on first load once settings are ready
+  // Authenticate on first load once settings are ready.
+  // triggerAuth calls setIsLocked(true) synchronously so both state updates
+  // are batched by React 18, preventing a flash of the wallet list before
+  // the lock screen appears.
   useEffect(() => {
     if (isLoading || initializedRef.current) return;
     initializedRef.current = true;
     if (settings.pinEnabled || settings.biometricEnabled) {
       triggerAuth();
     }
+    setSecurityReady(true);
   }, [isLoading, settings.pinEnabled, settings.biometricEnabled, triggerAuth]);
 
   // Re-lock after autoLockSeconds in background
@@ -114,6 +119,25 @@ export function AppAuthGate() {
     });
     return () => sub.remove();
   }, [settings, triggerAuth]);
+
+  // Show opaque splash while SecurityProvider is loading or before the first
+  // auth check runs. This prevents the wallet list from ever flashing through.
+  if (isLoading || !securityReady) {
+    return (
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          styles.overlay,
+          { backgroundColor: theme.colors.background, paddingTop: insets.top, paddingBottom: insets.bottom },
+        ]}
+        testID="app-loading-overlay"
+      >
+        <View style={styles.logoArea}>
+          <AppLogo size="sm" showName />
+        </View>
+      </View>
+    );
+  }
 
   if (!isLocked && !pinModalVisible) return null;
 

@@ -8,6 +8,7 @@ import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
 import { AppRoutes, type AppStackParamList } from '../../../app/navigation/routes';
+import { APP_VERSION } from '../../../shared/config/appVersion';
 
 type GlobalSettingsRoute = keyof Pick<
   AppStackParamList,
@@ -15,6 +16,7 @@ type GlobalSettingsRoute = keyof Pick<
   | 'LanguageSettings'
   | 'SecuritySettings'
   | 'ManageNodes'
+  | 'SyncSettings'
   | 'OfflineMode'
   | 'SafeMode'
 >;
@@ -53,6 +55,7 @@ const GROUPS: NavGroup[] = [
     labelKey: 'globalSettings.groupNetwork',
     items: [
       { icon: 'node', titleKey: 'settings.node', descKey: 'settings.nodeDesc', route: 'ManageNodes', testID: 'global-settings-node' },
+      { icon: 'syncSettings', titleKey: 'settings.syncSettings', descKey: 'settings.syncSettingsDesc', route: 'SyncSettings', testID: 'global-settings-sync' },
     ],
   },
   {
@@ -164,6 +167,33 @@ export function GlobalSettingsScreen() {
             </View>
           </View>
         ))}
+
+        {/* About — version card */}
+        <View style={styles.group}>
+          <AppText variant="label" color="muted" style={styles.groupLabel}>
+            {t('globalSettings.groupAbout' as any)}
+          </AppText>
+          <View
+            style={[
+              styles.groupCard,
+              {
+                backgroundColor: theme.colors.surfaceRaised,
+                borderColor: theme.colors.border,
+                borderRadius: theme.radii.lg,
+              },
+            ]}
+          >
+            <View style={styles.versionRow} testID="global-settings-version">
+              <View style={[styles.navIcon, { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radii.md }]}>
+                <AppIcon name="info" size={22} color={theme.colors.accent} />
+              </View>
+              <View style={styles.navBody}>
+                <AppText variant="body" style={styles.navTitle}>{t('globalSettings.version' as any)}</AppText>
+                <AppText variant="caption" color="muted">{APP_VERSION}</AppText>
+              </View>
+            </View>
+          </View>
+        </View>
       </ScrollView>
     </View>
   );
@@ -251,5 +281,12 @@ const styles = StyleSheet.create({
   rowDivider: {
     height: StyleSheet.hairlineWidth,
     marginLeft: 68,
+  },
+  versionRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
 });

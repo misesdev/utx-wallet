@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppEmptyState } from '../../components/base/AppEmptyState';
@@ -25,9 +26,15 @@ export function TransactionListScreen() {
   const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
-  const { transactions, isLoading, error } = useHomeWallet();
+  const { transactions, isLoading, error, refresh } = useHomeWallet();
   const { hidden: hideBalance, hideBalanceEnabled, toggleReveal, pinModalVisible, pinError, submitPin, cancelAuth } =
     useTemporaryRevealBalance();
+
+  useFocusEffect(
+    useCallback(() => {
+      refresh().catch(() => undefined);
+    }, [refresh]),
+  );
 
   const handleOpen = useCallback((tx: Transaction) => {
     navigation.navigate(AppRoutes.TransactionDetails, { txid: tx.txid ?? tx.id });

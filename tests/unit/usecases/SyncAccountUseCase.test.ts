@@ -338,3 +338,85 @@ describe('SyncAccountUseCase', () => {
     });
   });
 });
+
+describe('SyncAccountUseCase with SyncSettingsRepository', () => {
+  function makeSyncSettingsRepo(settings: { maxRequestsPerSecond: number; parallelSync: boolean } | null = null) {
+    return {
+      load: jest.fn().mockResolvedValue(settings),
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+  }
+
+  it('uses default settings when no repository is provided', async () => {
+    const receiveAddr = makeAddress('addr-A', 'receive');
+    const addressRepo = makeAddressRepo([receiveAddr], []);
+    const syncUtxos = makeSyncUtxos();
+    const useCase = new SyncAccountUseCase(
+      makeWalletRepo(),
+      addressRepo,
+      syncUtxos,
+      makeSyncTransactions(),
+      makeSyncBalance(),
+      makeSyncStateRepo(),
+    );
+    await useCase.execute(WALLET_ID, ORIGIN_ID);
+    expect(syncUtxos.execute).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Array),
+      expect.any(String),
+      undefined,
+      { parallel: false },
+    );
+  });
+
+  it('reads settings from repository and passes opts to syncUtxos', async () => {
+    const receiveAddr = makeAddress('addr-A', 'receive');
+    const addressRepo = makeAddressRepo([receiveAddr], []);
+    const syncUtxos = makeSyncUtxos();
+    const settingsRepo = makeSyncSettingsRepo({ maxRequestsPerSecond: 5, parallelSync: true });
+    const useCase = new SyncAccountUseCase(
+      makeWalletRepo(),
+      addressRepo,
+      syncUtxos,
+      makeSyncTransactions(),
+      makeSyncBalance(),
+      makeSyncStateRepo(),
+      null,
+      settingsRepo,
+    );
+    await useCase.execute(WALLET_ID, ORIGIN_ID);
+    expect(settingsRepo.load).toHaveBeenCalled();
+    expect(syncUtxos.execute).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Array),
+      expect.any(String),
+      undefined,
+      expect.objectContaining({ parallel: true, requestDelayMs: 200 }),
+    );
+  });
+
+  it('falls back to defaults when repository returns null', async () => {
+    const receiveAddr = makeAddress('addr-A', 'receive');
+    const addressRepo = makeAddressRepo([receiveAddr], []);
+    const syncUtxos = makeSyncUtxos();
+    const settingsRepo = makeSyncSettingsRepo(null);
+    const useCase = new SyncAccountUseCase(
+      makeWalletRepo(),
+      addressRepo,
+      syncUtxos,
+      makeSyncTransactions(),
+      makeSyncBalance(),
+      makeSyncStateRepo(),
+      null,
+      settingsRepo,
+    );
+    await useCase.execute(WALLET_ID, ORIGIN_ID);
+    expect(syncUtxos.execute).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Array),
+      expect.any(String),
+      undefined,
+      { parallel: false, requestDelayMs: 1000 },
+    );
+  });
+});

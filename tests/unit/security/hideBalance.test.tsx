@@ -47,7 +47,7 @@ let mockHomeWalletState: HomeWalletState = {
   transactions: [],
   isLoading: false,
   error: null,
-  refresh: jest.fn(),
+  refresh: jest.fn().mockResolvedValue(undefined),
 };
 
 const mockSendBitcoinState: SendBitcoinState = {
@@ -146,7 +146,7 @@ const BASE_WALLET: HomeWalletState = {
   transactions: [],
   isLoading: false,
   error: null,
-  refresh: jest.fn(),
+  refresh: jest.fn().mockResolvedValue(undefined),
 };
 
 describe('HomeScreen — hideBalance', () => {

@@ -11,7 +11,6 @@ const mockImportSync = jest.fn();
 const mockSetWalletName = jest.fn();
 const mockSetSeed = jest.fn();
 const mockSetPassphrase = jest.fn();
-const mockSetConfirmPassphrase = jest.fn();
 const mockClearError = jest.fn();
 
 let mockError = '';
@@ -31,8 +30,6 @@ jest.mock('../../../src/presentation/hooks/useImportWallet', () => ({
     setSeed: mockSetSeed,
     passphrase: '',
     setPassphrase: mockSetPassphrase,
-    confirmPassphrase: '',
-    setConfirmPassphrase: mockSetConfirmPassphrase,
     isLoading: mockIsLoading,
     error: mockError,
     clearError: mockClearError,
@@ -233,11 +230,16 @@ describe('ImportWalletScreen', () => {
     expect(mockClearError).toHaveBeenCalledTimes(1);
   });
 
-  it('shows passphrase fields when toggle is pressed', () => {
+  it('shows passphrase field when toggle is pressed', () => {
     const screen = renderWithTheme(<ImportWalletScreen />);
     fireEvent.press(screen.getByLabelText('importWallet.passphraseSection'));
     expect(screen.getByLabelText('importWallet.passphraseLabel')).toBeTruthy();
-    expect(screen.getByLabelText('importWallet.confirmPassphraseLabel')).toBeTruthy();
+  });
+
+  it('does not show a confirm passphrase field on import', () => {
+    const screen = renderWithTheme(<ImportWalletScreen />);
+    fireEvent.press(screen.getByLabelText('importWallet.passphraseSection'));
+    expect(screen.queryByLabelText('importWallet.confirmPassphraseLabel')).toBeNull();
   });
 
   it('renders the info button', () => {

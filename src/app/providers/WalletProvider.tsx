@@ -1,4 +1,5 @@
 import React, { createContext, PropsWithChildren, useCallback, useEffect, useMemo, useState } from 'react';
+import { clearAllSensitiveData } from '../../core/infrastructure/adapters/SensitiveDataStore';
 import { WalletService } from '../../core/application/services/WalletService';
 import type { Wallet } from '../../core/domain/entities/Wallet';
 import type { Transaction } from '../../core/domain/entities/Transaction';
@@ -83,6 +84,7 @@ export function WalletProvider({ children, walletService }: WalletProviderProps)
       selectWallet: (id: string) => setSelectedWalletId(id),
       deleteWallet: async (id: string) => {
         await walletService.deleteWallet(id);
+        clearAllSensitiveData();
         if (selectedWalletId === id) setSelectedWalletId(null);
         await reloadWallets();
       },

@@ -1,9 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Animated,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -162,7 +166,6 @@ function WalletCard({ wallet, summary, hidden, onOpen }: WalletCardProps) {
               {wallet.name}
             </AppText>
 
-            {/* Badge row — network + watch-only on the same row, never overflow */}
             <View style={styles.badgeRow}>
               <View style={[styles.networkBadge, { backgroundColor: accent + '18', borderRadius: theme.radii.sm }]}>
                 <View style={[styles.networkDot, { backgroundColor: accent }]} />
@@ -178,7 +181,6 @@ function WalletCard({ wallet, summary, hidden, onOpen }: WalletCardProps) {
               )}
             </View>
 
-            {/* Date on its own line — never competes with badges */}
             {wallet.createdAt ? (
               <AppText variant="caption" color="faint" style={styles.dateText}>
                 {formatDate(wallet.createdAt)}
@@ -214,46 +216,6 @@ function WalletCard({ wallet, summary, hidden, onOpen }: WalletCardProps) {
           </View>
         </View>
       </View>
-    </Pressable>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// NetworkTabChip
-// ---------------------------------------------------------------------------
-
-type NetworkTabChipProps = {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-};
-
-function NetworkTabChip({ label, active, onPress }: NetworkTabChipProps) {
-  const { theme } = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="tab"
-      accessibilityState={{ selected: active }}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.tabChip,
-        {
-          backgroundColor: active ? theme.colors.primary : theme.colors.surfaceRaised,
-          borderColor: active ? theme.colors.primary : theme.colors.border,
-          borderRadius: theme.radii.md,
-          opacity: pressed ? 0.75 : 1,
-        },
-      ]}
-    >
-      <AppText
-        variant="label"
-        style={[
-          active ? styles.tabChipTextActive : styles.tabChipTextInactive,
-          active ? { color: theme.colors.primaryText } : undefined,
-        ]}
-      >
-        {label}
-      </AppText>
     </Pressable>
   );
 }
@@ -319,25 +281,69 @@ function EmptyState({ network, onCreateWallet, onImportWallet }: EmptyStateProps
 // WalletListScreen
 // ---------------------------------------------------------------------------
 
+const NETWORK_TABS: { key: NetworkTab }[] = [
+  { key: 'mainnet' },
+  { key: 'testnet' },
+];
+
 export function WalletListScreen() {
   const { theme } = useTheme();
   const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
+  const { width: windowWidth } = useWindowDimensions();
   const { wallets, isLoading, selectWallet, listUtxos } = useWallet();
   const { getOrigins } = useAddressManager();
   const { hidden, hideBalanceEnabled, toggleReveal, pinModalVisible, pinError, submitPin, cancelAuth } =
     useTemporaryRevealBalance();
 
-  const NETWORK_TABS: { key: NetworkTab; label: string }[] = [
-    { key: 'mainnet', label: t('walletList.mainnet') },
-    { key: 'testnet', label: t('walletList.testnet') },
-  ];
-
-  const [activeTab, setActiveTab] = useState<NetworkTab>('mainnet');
+  const [activeTabIndex, setActiveTabIndex] = useState(0);
+  // Lazy-mount: only render page content after the user first navigates there.
+  // This avoids duplicate DOM nodes (e.g. two empty-state CTAs) that would
+  // break getByText assertions while keeping swipe UX smooth for visited pages.
+  const [visitedTabs, setVisitedTabs] = useState<Set<number>>(new Set([0]));
   const [summaries, setSummaries] = useState<Record<string, WalletSummary>>({});
+  const pagerRef = useRef<ScrollView>(null);
+  const indicatorAnim = useRef(new Animated.Value(0)).current;
 
-  const filtered = wallets.filter(w => matchesTab(w, activeTab));
+  // Guard against zero-width in test environments
+  const effectiveWidth = Math.max(windowWidth, 1);
+  const tabWidth = effectiveWidth / NETWORK_TABS.length;
+
+  const activeTab: NetworkTab = NETWORK_TABS[activeTabIndex].key;
+
+  const updateActiveTab = useCallback(
+    (index: number) => {
+      setActiveTabIndex(index);
+      setVisitedTabs(prev => {
+        if (prev.has(index)) return prev;
+        return new Set([...prev, index]);
+      });
+      Animated.timing(indicatorAnim, {
+        toValue: index * tabWidth,
+        duration: 220,
+        useNativeDriver: true,
+      }).start();
+    },
+    [indicatorAnim, tabWidth],
+  );
+
+  function handleTabPress(index: number) {
+    if (index === activeTabIndex) return;
+    pagerRef.current?.scrollTo({ x: index * effectiveWidth, animated: true });
+    updateActiveTab(index);
+  }
+
+  function handleMomentumScrollEnd(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    const index = Math.max(
+      0,
+      Math.min(
+        NETWORK_TABS.length - 1,
+        Math.round(e.nativeEvent.contentOffset.x / effectiveWidth),
+      ),
+    );
+    updateActiveTab(index);
+  }
 
   const walletsRef = useRef(wallets);
   walletsRef.current = wallets;
@@ -367,12 +373,10 @@ export function WalletListScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Reload when wallets context changes (e.g. after a wallet is added)
   useEffect(() => {
     loadSummaries(wallets).catch(() => undefined);
   }, [wallets, loadSummaries]);
 
-  // Reload every time this screen gains focus (e.g. returning after sync)
   useFocusEffect(
     useCallback(() => {
       loadSummaries(walletsRef.current).catch(() => undefined);
@@ -400,6 +404,28 @@ export function WalletListScreen() {
     navigation.navigate(AppRoutes.ScanWalletQr, { network: activeTab });
   }
 
+  function renderTabContent(tab: NetworkTab) {
+    const filtered = wallets.filter(w => matchesTab(w, tab));
+    if (filtered.length === 0) {
+      return (
+        <EmptyState
+          network={tab}
+          onCreateWallet={handleNavigateCreate}
+          onImportWallet={handleNavigateImport}
+        />
+      );
+    }
+    return filtered.map(wallet => (
+      <WalletCard
+        key={wallet.id}
+        wallet={wallet}
+        summary={summaries[wallet.id]}
+        hidden={hidden}
+        onOpen={() => handleOpenWallet(wallet)}
+      />
+    ));
+  }
+
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
       <PinInputModal
@@ -409,6 +435,7 @@ export function WalletListScreen() {
         onSubmit={submitPin}
         onCancel={cancelAuth}
       />
+
       {/* Header */}
       <View style={styles.header}>
         <AppLogo size="sm" showName={false} />
@@ -440,48 +467,83 @@ export function WalletListScreen() {
         </View>
       </View>
 
-      {/* Network tabs */}
-      <View style={styles.tabsRow}>
-        {NETWORK_TABS.map(tab => (
-          <NetworkTabChip
-            key={tab.key}
-            label={tab.label}
-            active={activeTab === tab.key}
-            onPress={() => setActiveTab(tab.key)}
-          />
-        ))}
+      {/* Tab bar with sliding underline indicator */}
+      <View style={[styles.tabBar, { borderBottomColor: theme.colors.border }]}>
+        {NETWORK_TABS.map((tab, index) => {
+          const isActive = activeTabIndex === index;
+          const accent = NETWORK_ACCENT[tab.key];
+          return (
+            <Pressable
+              key={tab.key}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
+              onPress={() => handleTabPress(index)}
+              style={({ pressed }) => [styles.tabItem, { opacity: pressed ? 0.7 : 1 }]}
+            >
+              <AppText
+                variant="label"
+                style={[
+                  styles.tabLabel,
+                  { color: isActive ? accent : theme.colors.textMuted },
+                  isActive && styles.tabLabelActive,
+                ]}
+              >
+                {tab.key === 'mainnet' ? t('walletList.mainnet') : t('walletList.testnet')}
+              </AppText>
+            </Pressable>
+          );
+        })}
+
+        {/* Animated underline indicator */}
+        <Animated.View
+          style={[
+            styles.tabIndicator,
+            {
+              backgroundColor: NETWORK_ACCENT[activeTab],
+              width: tabWidth,
+              transform: [{ translateX: indicatorAnim }],
+            },
+          ]}
+          testID="tab-indicator"
+        />
       </View>
 
-      {/* Content */}
+      {/* Swipeable pager */}
       {isLoading ? (
         <View style={styles.center}>
           <AppLoading />
         </View>
       ) : (
         <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.list,
-            { paddingBottom: Math.max(insets.bottom, 16) + 112 },
-          ]}
+          ref={pagerRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
+          bounces={false}
+          style={styles.pager}
+          testID="wallet-pager"
         >
-          {filtered.length === 0 ? (
-            <EmptyState
-              network={activeTab}
-              onCreateWallet={handleNavigateCreate}
-              onImportWallet={handleNavigateImport}
-            />
-          ) : (
-            filtered.map(wallet => (
-              <WalletCard
-                key={wallet.id}
-                wallet={wallet}
-                summary={summaries[wallet.id]}
-                hidden={hidden}
-                onOpen={() => handleOpenWallet(wallet)}
-              />
-            ))
-          )}
+          {NETWORK_TABS.map((tab, i) => (
+            <View
+              key={tab.key}
+              style={[styles.page, { width: effectiveWidth }]}
+              testID={`page-${tab.key}`}
+            >
+              {visitedTabs.has(i) && (
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={[
+                    styles.list,
+                    { paddingBottom: Math.max(insets.bottom, 16) + 112 },
+                  ]}
+                >
+                  {renderTabContent(tab.key)}
+                </ScrollView>
+              )}
+            </View>
+          ))}
         </ScrollView>
       )}
 
@@ -545,35 +607,47 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Tabs
-  tabsRow: {
+  // Tab bar
+  tabBar: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
   },
-  tabChip: {
+  tabItem: {
     alignItems: 'center',
-    borderWidth: 1,
     flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 13,
   },
-  tabChipTextActive: {
+  tabLabel: {
+    fontSize: 13,
+    letterSpacing: 0.3,
+  },
+  tabLabelActive: {
     fontWeight: '700',
   },
-  tabChipTextInactive: {
-    opacity: 0.55,
+  tabIndicator: {
+    borderRadius: 2,
+    bottom: 0,
+    height: 2,
+    left: 0,
+    position: 'absolute',
   },
 
-  // Center state
+  // Center loading
   center: {
     alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
   },
 
-  // List
+  // Swipeable pager
+  pager: {
+    flex: 1,
+  },
+  page: {
+    flex: 1,
+  },
+
+  // List inside a page
   list: {
     gap: 12,
     paddingHorizontal: 20,
@@ -652,18 +726,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
   },
-  // Base shared between all stat pills; flex is added via statPillWide / statPillNarrow
   statPillBase: {
     alignItems: 'center',
     gap: 3,
     paddingHorizontal: 8,
     paddingVertical: 12,
   },
-  // Balance column — double width so long values (e.g. "99,999,999 sats") never crowd the edges
   statPillWide: {
     flex: 2,
   },
-  // Accounts / UTXOs — single-digit or small numbers always fit
   statPillNarrow: {
     flex: 1,
   },

@@ -1,12 +1,14 @@
 import type { WalletRepository } from '../../repositories/WalletRepository';
 import type { WalletAddressRepository } from '../../repositories/WalletAddressRepository';
 import type { SyncStateRepository } from '../../repositories/SyncStateRepository';
+import type { SyncSettingsRepository } from '../../repositories/SyncSettingsRepository';
 import { AppError } from '../../../application/errors/AppError';
 import { SyncUtxosUseCase } from './SyncUtxosUseCase';
 import { SyncTransactionsUseCase } from './SyncTransactionsUseCase';
 import { SyncBalanceUseCase } from './SyncBalanceUseCase';
 import type { SyncAddressStatusUseCase } from '../address/SyncAddressStatusUseCase';
 import type { OnSyncProgress, SyncProgress } from './SyncProgress';
+import { DEFAULT_SYNC_SETTINGS } from '../../entities/SyncSettings';
 
 export type SyncAccountResult = {
   newUtxos: number;
@@ -27,12 +29,22 @@ export class SyncAccountUseCase {
     private readonly syncBalance: SyncBalanceUseCase,
     private readonly syncStateRepository: SyncStateRepository,
     private readonly syncAddressStatus: SyncAddressStatusUseCase | null = null,
+    private readonly syncSettingsRepository: SyncSettingsRepository | null = null,
   ) {}
 
   async execute(walletId: string, originId: string, onProgress?: OnSyncProgress): Promise<SyncAccountResult> {
     const wallet = await this.walletRepository.findById(walletId);
     if (!wallet) {
       throw new AppError('Wallet not found', 'WALLET_NOT_FOUND');
+    }
+
+    let syncOpts: { parallel: boolean; requestDelayMs?: number } = { parallel: false };
+    if (this.syncSettingsRepository) {
+      const syncSettings = (await this.syncSettingsRepository.load()) ?? DEFAULT_SYNC_SETTINGS;
+      syncOpts = {
+        parallel: syncSettings.parallelSync,
+        requestDelayMs: Math.floor(1000 / syncSettings.maxRequestsPerSecond),
+      };
     }
 
     const syncedThisRun = new Set<string>();
@@ -65,8 +77,8 @@ export class SyncAccountUseCase {
         ? (p: SyncProgress) => onProgress({ ...p, phase: 'transactions' })
         : undefined;
 
-      const utxoResult = await this.syncUtxos.execute(walletId, addresses, wallet.network, utxoProgress);
-      const txResult = await this.syncTransactions.execute(walletId, addresses, wallet.network, addressMetadata, txProgress);
+      const utxoResult = await this.syncUtxos.execute(walletId, addresses, wallet.network, utxoProgress, syncOpts);
+      const txResult = await this.syncTransactions.execute(walletId, addresses, wallet.network, addressMetadata, txProgress, syncOpts);
 
       for (const txs of txResult.fetchedTransactions.values()) {
         if (txs.length > 0) {

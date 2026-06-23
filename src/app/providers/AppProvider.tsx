@@ -99,7 +99,12 @@ import { WalletKeyStorage } from '../../core/infrastructure/storage/WalletKeySto
 import { WalletStorage } from '../../core/infrastructure/storage/WalletStorage';
 import { DEFAULT_NETWORK } from '../../shared/constants/networks';
 import { SYNC_REQUEST_DELAY_MS } from '../../shared/config/syncConfig';
+import { SyncSettingsStorage } from '../../core/infrastructure/storage/SyncSettingsStorage';
+import { SyncSettingsRepositoryImpl } from '../../core/infrastructure/repositories/SyncSettingsRepositoryImpl';
+import { LoadSyncSettingsUseCase } from '../../core/domain/usecases/sync/LoadSyncSettingsUseCase';
+import { SaveSyncSettingsUseCase } from '../../core/domain/usecases/sync/SaveSyncSettingsUseCase';
 import { AccelerateProvider } from './AccelerateProvider';
+import { SyncSettingsProvider } from './SyncSettingsProvider';
 import { AddressManagerProvider } from './AddressManagerProvider';
 import { AddressProvider } from './AddressProvider';
 import { NetworkProvider } from './NetworkProvider';
@@ -132,6 +137,8 @@ type Dependencies = {
   signingService: MessageSigningService;
   signMessageUseCase: SignMessageUseCase;
   verifyMessageUseCase: VerifyMessageUseCase;
+  loadSyncSettings: LoadSyncSettingsUseCase;
+  saveSyncSettings: SaveSyncSettingsUseCase;
 };
 
 export function AppProvider({ children }: PropsWithChildren) {
@@ -210,6 +217,11 @@ export function AppProvider({ children }: PropsWithChildren) {
     const syncUtxos = new SyncUtxosUseCase(utxoRepository, nodeRepository, SYNC_REQUEST_DELAY_MS);
     const syncTransactions = new SyncTransactionsUseCase(transactionRepository, nodeRepository, SYNC_REQUEST_DELAY_MS);
 
+    const syncSettingsStorage = new SyncSettingsStorage(secureStorage);
+    const syncSettingsRepository = new SyncSettingsRepositoryImpl(syncSettingsStorage);
+    const loadSyncSettings = new LoadSyncSettingsUseCase(syncSettingsRepository);
+    const saveSyncSettings = new SaveSyncSettingsUseCase(syncSettingsRepository);
+
     const syncAccountUseCase = new SyncAccountUseCase(
       walletRepository,
       walletAddressRepository,
@@ -218,6 +230,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       syncBalance,
       syncStateStorage,
       syncAddressStatus,
+      syncSettingsRepository,
     );
 
     const walletImportSyncUseCase = new WalletImportSyncUseCase(
@@ -391,10 +404,12 @@ export function AppProvider({ children }: PropsWithChildren) {
       signingService,
       signMessageUseCase,
       verifyMessageUseCase,
+      loadSyncSettings,
+      saveSyncSettings,
     };
   }
 
-  const { walletService, networkService, addressService, addressManagerService, sendService, transactionHistoryService, offlineModeService, securityService, getCurrentLanguage, setLanguageUseCase, accelerateUseCase, signingService, signMessageUseCase, verifyMessageUseCase } = depsRef.current;
+  const { walletService, networkService, addressService, addressManagerService, sendService, transactionHistoryService, offlineModeService, securityService, getCurrentLanguage, setLanguageUseCase, accelerateUseCase, signingService, signMessageUseCase, verifyMessageUseCase, loadSyncSettings, saveSyncSettings } = depsRef.current;
 
   return (
     <LanguageProvider getCurrentLanguage={getCurrentLanguage} setLanguage={setLanguageUseCase}>
@@ -402,6 +417,7 @@ export function AppProvider({ children }: PropsWithChildren) {
       <SecurityProvider service={securityService}>
         <ScreenshotGuard>
         <NetworkProvider networkService={networkService}>
+          <SyncSettingsProvider loadUseCase={loadSyncSettings} saveUseCase={saveSyncSettings}>
           <WalletProvider walletService={walletService}>
             <WalletNetworkSync />
             <AddressManagerProvider service={addressManagerService}>
@@ -424,6 +440,7 @@ export function AppProvider({ children }: PropsWithChildren) {
             </AddressProvider>
             </AddressManagerProvider>
           </WalletProvider>
+          </SyncSettingsProvider>
         </NetworkProvider>
         </ScreenshotGuard>
       </SecurityProvider>

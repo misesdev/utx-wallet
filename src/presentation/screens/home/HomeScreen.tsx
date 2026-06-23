@@ -287,7 +287,8 @@ export function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       reloadAccounts();
-    }, [reloadAccounts]),
+      refresh().catch(() => undefined);
+    }, [reloadAccounts, refresh]),
   );
 
   const handleSync = useCallback(async () => {

@@ -12,8 +12,6 @@ export type ImportWalletHook = {
   setSeed: (v: string) => void;
   passphrase: string;
   setPassphrase: (v: string) => void;
-  confirmPassphrase: string;
-  setConfirmPassphrase: (v: string) => void;
   selectedNetwork: BitcoinNetwork;
   setSelectedNetwork: (v: BitcoinNetwork) => void;
   isLoading: boolean;
@@ -28,7 +26,6 @@ export function useImportWallet(initialNetwork: BitcoinNetwork = 'testnet'): Imp
   const [walletName, setWalletName] = useState('');
   const [seed, setSeed] = useState('');
   const [passphrase, setPassphrase] = useState('');
-  const [confirmPassphrase, setConfirmPassphrase] = useState('');
   const [selectedNetwork, setSelectedNetwork] = useState<BitcoinNetwork>(initialNetwork);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -49,11 +46,6 @@ export function useImportWallet(initialNetwork: BitcoinNetwork = 'testnet'): Imp
       setError(t('importWallet.errorSeedRequired'));
       return null;
     }
-    if (passphrase && passphrase !== confirmPassphrase) {
-      setError(t('createWallet.errorPassphraseMismatch'));
-      return null;
-    }
-
     setIsLoading(true);
     setError('');
     try {
@@ -84,8 +76,6 @@ export function useImportWallet(initialNetwork: BitcoinNetwork = 'testnet'): Imp
     setSeed,
     passphrase,
     setPassphrase,
-    confirmPassphrase,
-    setConfirmPassphrase,
     selectedNetwork,
     setSelectedNetwork,
     isLoading,

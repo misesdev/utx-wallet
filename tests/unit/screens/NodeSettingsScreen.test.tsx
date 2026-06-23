@@ -7,17 +7,21 @@ import type { NetworkConfig } from '../../../src/core/domain/entities/Network';
 
 const mockGoBack = jest.fn();
 const mockNavigate = jest.fn();
-const mockAddNode = jest.fn().mockResolvedValue({ id: 'new-node', label: 'Test', url: 'http://node.local', network: 'testnet4', priority: 1 });
+const mockAddNode = jest.fn().mockResolvedValue({ id: 'new-node', label: 'Test', url: 'http://node.local/api', network: 'testnet4', priority: 1 });
 const mockUpdateNode = jest.fn().mockResolvedValue(undefined);
 const mockTestNode = jest.fn().mockResolvedValue('connected');
 
 const EXISTING_NODE: PersonalNode = {
   id: 'node-1',
   label: 'My Node',
-  url: 'http://node.local',
-  port: 8332,
+  url: 'http://node.local/api',
   network: 'testnet4',
   priority: 1,
+};
+
+const EXISTING_NODE_WITH_TOKEN: PersonalNode = {
+  ...EXISTING_NODE,
+  authToken: 'my-token',
 };
 
 const DEFAULT_CONFIG: NetworkConfig = {
@@ -59,7 +63,7 @@ jest.mock('@react-navigation/native', () => ({
   useRoute: () => ({ params: { nodeId: mockNodeId } }),
 }));
 
-async function fillAndTest(screen: ReturnType<typeof renderWithTheme>, label = 'My Node', url = 'http://node.local') {
+async function fillAndTest(screen: ReturnType<typeof renderWithTheme>, label = 'My Node', url = 'http://node.local/api') {
   fireEvent.changeText(screen.getByTestId('input-label'), label);
   fireEvent.changeText(screen.getByTestId('input-url'), url);
   fireEvent.press(screen.getByTestId('btn-test-connection'));
@@ -91,19 +95,14 @@ describe('NodeSettingsScreen', () => {
       expect(screen.getByTestId('input-url')).toBeTruthy();
     });
 
-    it('renders the port input', () => {
+    it('does not render a port input', () => {
       const screen = renderWithTheme(<NodeSettingsScreen />);
-      expect(screen.getByTestId('input-port')).toBeTruthy();
-    });
-
-    it('renders the auth token input', () => {
-      const screen = renderWithTheme(<NodeSettingsScreen />);
-      expect(screen.getByTestId('input-auth-token')).toBeTruthy();
+      expect(screen.queryByTestId('input-port')).toBeNull();
     });
 
     it('save button is disabled when label is empty', () => {
       const screen = renderWithTheme(<NodeSettingsScreen />);
-      fireEvent.changeText(screen.getByTestId('input-url'), 'http://node.local');
+      fireEvent.changeText(screen.getByTestId('input-url'), 'http://node.local/api');
       expect(screen.getByTestId('btn-save').props.accessibilityState?.disabled).toBe(true);
     });
 
@@ -116,7 +115,7 @@ describe('NodeSettingsScreen', () => {
     it('save button is disabled when fields are filled but test not done', () => {
       const screen = renderWithTheme(<NodeSettingsScreen />);
       fireEvent.changeText(screen.getByTestId('input-label'), 'My Node');
-      fireEvent.changeText(screen.getByTestId('input-url'), 'http://node.local');
+      fireEvent.changeText(screen.getByTestId('input-url'), 'http://node.local/api');
       expect(screen.getByTestId('btn-save').props.accessibilityState?.disabled).toBe(true);
     });
 
@@ -132,7 +131,7 @@ describe('NodeSettingsScreen', () => {
       fireEvent.press(screen.getByTestId('btn-save'));
       await waitFor(() => expect(mockAddNode).toHaveBeenCalledTimes(1));
       expect(mockAddNode).toHaveBeenCalledWith(
-        expect.objectContaining({ label: 'My Node', url: 'http://node.local' }),
+        expect.objectContaining({ label: 'My Node', url: 'http://node.local/api' }),
       );
     });
 
@@ -162,12 +161,7 @@ describe('NodeSettingsScreen', () => {
 
     it('pre-fills the URL from the existing node', () => {
       const screen = renderWithTheme(<NodeSettingsScreen />);
-      expect(screen.getByTestId('input-url').props.value).toBe('http://node.local');
-    });
-
-    it('pre-fills the port from the existing node', () => {
-      const screen = renderWithTheme(<NodeSettingsScreen />);
-      expect(screen.getByTestId('input-port').props.value).toBe('8332');
+      expect(screen.getByTestId('input-url').props.value).toBe('http://node.local/api');
     });
 
     it('shows "save changes" button in edit mode', () => {
@@ -189,6 +183,134 @@ describe('NodeSettingsScreen', () => {
     });
   });
 
+  describe('Auth token toggle', () => {
+    it('does not show auth token input by default', () => {
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      expect(screen.queryByTestId('input-auth-token')).toBeNull();
+    });
+
+    it('shows auth token input after enabling the toggle', () => {
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      fireEvent.press(screen.getByTestId('toggle-auth'));
+      expect(screen.getByTestId('input-auth-token')).toBeTruthy();
+    });
+
+    it('hides token input again when toggle is disabled', () => {
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      fireEvent.press(screen.getByTestId('toggle-auth'));
+      expect(screen.getByTestId('input-auth-token')).toBeTruthy();
+      fireEvent.press(screen.getByTestId('toggle-auth'));
+      expect(screen.queryByTestId('input-auth-token')).toBeNull();
+    });
+
+    it('shows eye toggle button when auth is enabled', () => {
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      fireEvent.press(screen.getByTestId('toggle-auth'));
+      expect(screen.getByTestId('btn-toggle-token-visibility')).toBeTruthy();
+    });
+
+    it('token input is masked by default', () => {
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      fireEvent.press(screen.getByTestId('toggle-auth'));
+      expect(screen.getByTestId('input-auth-token').props.secureTextEntry).toBe(true);
+    });
+
+    it('reveals token when eye button is pressed', () => {
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      fireEvent.press(screen.getByTestId('toggle-auth'));
+      fireEvent.press(screen.getByTestId('btn-toggle-token-visibility'));
+      expect(screen.getByTestId('input-auth-token').props.secureTextEntry).toBe(false);
+    });
+
+    it('resets status when auth token changes', async () => {
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      await fillAndTest(screen);
+      expect(screen.getByTestId('status-text').props.children).toBe('nodeSettings.status_connected');
+      fireEvent.press(screen.getByTestId('toggle-auth'));
+      expect(screen.getByTestId('status-text').props.children).toBe('nodeSettings.statusNotTested');
+    });
+
+    it('pre-enables toggle when editing a node with an auth token', () => {
+      mockNodeId = 'node-1';
+      mockNodes = [EXISTING_NODE_WITH_TOKEN];
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      expect(screen.getByTestId('input-auth-token')).toBeTruthy();
+    });
+
+    it('saves node without authToken when toggle is disabled', async () => {
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      await fillAndTest(screen);
+      fireEvent.press(screen.getByTestId('btn-save'));
+      await waitFor(() => expect(mockAddNode).toHaveBeenCalledTimes(1));
+      expect(mockAddNode).toHaveBeenCalledWith(
+        expect.objectContaining({ authToken: undefined }),
+      );
+    });
+
+    it('saves node with authToken when token is entered and toggle is enabled', async () => {
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      fireEvent.press(screen.getByTestId('toggle-auth'));
+      fireEvent.changeText(screen.getByTestId('input-auth-token'), 'my-bearer-token');
+      await fillAndTest(screen);
+      fireEvent.press(screen.getByTestId('btn-save'));
+      await waitFor(() => expect(mockAddNode).toHaveBeenCalledTimes(1));
+      expect(mockAddNode).toHaveBeenCalledWith(
+        expect.objectContaining({ authToken: 'my-bearer-token' }),
+      );
+    });
+  });
+
+  describe('Network selector', () => {
+    it('renders mainnet radio option', () => {
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      expect(screen.getByTestId('network-chip-mainnet')).toBeTruthy();
+    });
+
+    it('renders testnet radio option', () => {
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      expect(screen.getByTestId('network-chip-testnet')).toBeTruthy();
+    });
+
+    it('resets status when network is changed', async () => {
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      await fillAndTest(screen);
+      fireEvent.press(screen.getByTestId('network-chip-mainnet'));
+      expect(screen.getByTestId('status-text').props.children).toBe('nodeSettings.statusNotTested');
+    });
+  });
+
+  describe('URL hint', () => {
+    it('renders the URL format hint below the URL input', () => {
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      expect(screen.getByTestId('url-hint')).toBeTruthy();
+    });
+  });
+
+  describe('HTTP security warning', () => {
+    it('does not show warning when URL field is empty', () => {
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      expect(screen.queryByTestId('http-warning')).toBeNull();
+    });
+
+    it('shows warning when URL is http://', () => {
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      fireEvent.changeText(screen.getByTestId('input-url'), 'http://192.168.1.100:8080/api');
+      expect(screen.getByTestId('http-warning')).toBeTruthy();
+    });
+
+    it('does not show warning when URL is https://', () => {
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      fireEvent.changeText(screen.getByTestId('input-url'), 'https://mynode.example.com/api');
+      expect(screen.queryByTestId('http-warning')).toBeNull();
+    });
+
+    it('shows the http warning message text', () => {
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      fireEvent.changeText(screen.getByTestId('input-url'), 'http://192.168.1.100:8080/api');
+      expect(screen.getByText('nodeSettings.httpNodeWarning')).toBeTruthy();
+    });
+  });
+
   describe('Connection test gate', () => {
     it('shows "not tested" status initially', () => {
       const screen = renderWithTheme(<NodeSettingsScreen />);
@@ -206,7 +328,7 @@ describe('NodeSettingsScreen', () => {
       expect(screen.getByTestId('status-text').props.children).toBe('nodeSettings.status_connected');
     });
 
-    it('shows failed status after an unsuccessful test', async () => {
+    it('shows disconnected status after a failed test', async () => {
       mockTestNode.mockResolvedValue('disconnected');
       const screen = renderWithTheme(<NodeSettingsScreen />);
       await fillAndTest(screen);
@@ -223,7 +345,7 @@ describe('NodeSettingsScreen', () => {
     it('shows test-required hint when fields filled but status not connected', () => {
       const screen = renderWithTheme(<NodeSettingsScreen />);
       fireEvent.changeText(screen.getByTestId('input-label'), 'My Node');
-      fireEvent.changeText(screen.getByTestId('input-url'), 'http://node.local');
+      fireEvent.changeText(screen.getByTestId('input-url'), 'http://node.local/api');
       expect(screen.getByTestId('test-required-hint')).toBeTruthy();
     });
 
@@ -237,28 +359,7 @@ describe('NodeSettingsScreen', () => {
       const screen = renderWithTheme(<NodeSettingsScreen />);
       await fillAndTest(screen);
       expect(screen.getByTestId('status-text').props.children).toBe('nodeSettings.status_connected');
-      fireEvent.changeText(screen.getByTestId('input-url'), 'http://other.local');
-      expect(screen.getByTestId('status-text').props.children).toBe('nodeSettings.statusNotTested');
-    });
-
-    it('resets status when port is changed after a successful test', async () => {
-      const screen = renderWithTheme(<NodeSettingsScreen />);
-      await fillAndTest(screen);
-      fireEvent.changeText(screen.getByTestId('input-port'), '9999');
-      expect(screen.getByTestId('status-text').props.children).toBe('nodeSettings.statusNotTested');
-    });
-
-    it('resets status when auth token is changed after a successful test', async () => {
-      const screen = renderWithTheme(<NodeSettingsScreen />);
-      await fillAndTest(screen);
-      fireEvent.changeText(screen.getByTestId('input-auth-token'), 'newtoken');
-      expect(screen.getByTestId('status-text').props.children).toBe('nodeSettings.statusNotTested');
-    });
-
-    it('resets status when network is changed after a successful test', async () => {
-      const screen = renderWithTheme(<NodeSettingsScreen />);
-      await fillAndTest(screen);
-      fireEvent.press(screen.getByTestId('network-chip-mainnet'));
+      fireEvent.changeText(screen.getByTestId('input-url'), 'http://other.local/api');
       expect(screen.getByTestId('status-text').props.children).toBe('nodeSettings.statusNotTested');
     });
 
@@ -266,8 +367,28 @@ describe('NodeSettingsScreen', () => {
       const screen = renderWithTheme(<NodeSettingsScreen />);
       await fillAndTest(screen);
       expect(screen.getByTestId('btn-save').props.accessibilityState?.disabled).toBe(false);
-      fireEvent.changeText(screen.getByTestId('input-url'), 'http://other.local');
+      fireEvent.changeText(screen.getByTestId('input-url'), 'http://other.local/api');
       expect(screen.getByTestId('btn-save').props.accessibilityState?.disabled).toBe(true);
+    });
+  });
+
+  describe('Status card descriptions', () => {
+    it('shows not-tested description initially', () => {
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      expect(screen.getByTestId('status-desc').props.children).toBe('nodeSettings.statusNotTestedDesc');
+    });
+
+    it('shows connected description after a successful test', async () => {
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      await fillAndTest(screen);
+      expect(screen.getByTestId('status-desc').props.children).toBe('nodeSettings.statusConnectedDesc');
+    });
+
+    it('shows disconnected description after a failed test', async () => {
+      mockTestNode.mockResolvedValue('disconnected');
+      const screen = renderWithTheme(<NodeSettingsScreen />);
+      await fillAndTest(screen);
+      expect(screen.getByTestId('status-desc').props.children).toBe('nodeSettings.statusDisconnectedDesc');
     });
   });
 
@@ -287,7 +408,7 @@ describe('NodeSettingsScreen', () => {
   describe('Test connection button', () => {
     it('calls testNode when pressed', async () => {
       const screen = renderWithTheme(<NodeSettingsScreen />);
-      fireEvent.changeText(screen.getByTestId('input-url'), 'http://node.local');
+      fireEvent.changeText(screen.getByTestId('input-url'), 'http://node.local/api');
       fireEvent.press(screen.getByTestId('btn-test-connection'));
       await waitFor(() => expect(mockTestNode).toHaveBeenCalledTimes(1));
     });

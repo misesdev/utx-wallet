@@ -46,6 +46,7 @@ export const ICON_NAMES = {
   node: 'server-outline',
   offline: 'cloud-offline-outline',
   safeMode: 'lock-closed-outline',
+  syncSettings: 'speedometer-outline',
   key: 'key-outline',
   fingerprint: 'finger-print-outline',
   faceId: 'scan-circle-outline',

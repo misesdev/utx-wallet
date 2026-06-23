@@ -235,4 +235,119 @@ describe('SyncTransactionsUseCase', () => {
       expect(saved.amountSats).toBe(0);
     });
   });
+
+  describe('cross-iteration direction merge', () => {
+    it('merges fresh incoming change tx with existing local outgoing tx from previous iteration', async () => {
+      // Scenario: spending address synced in iteration 1 → stored as outgoing 20k.
+      // Change address discovered and synced in iteration 2 → fetched as incoming 14.1k.
+      // Without fix: incoming 14.1k would overwrite outgoing 20k → received inflated, sent zeroed.
+      // With fix: merge → outgoing 5.9k (net sent = amount to recipient + fee).
+      const TXID = 'cross-iter-txid';
+      const localOutgoing: Transaction = {
+        id: TXID, txid: TXID, amountSats: 20_000, feeSats: 900, direction: 'outgoing',
+        status: 'pending', createdAt: '2026-06-07T00:00:00.000Z',
+      };
+      const freshIncoming: Transaction = {
+        id: TXID, txid: TXID, amountSats: 14_100, direction: 'incoming',
+        status: 'pending', createdAt: '2026-06-07T00:00:00.000Z',
+      };
+      const repo = makeRepo([localOutgoing]);
+      const provider = makeProvider([freshIncoming]);
+      const useCase = new SyncTransactionsUseCase(repo, provider);
+      await useCase.execute(WALLET_ID, [ADDRESS], NETWORK);
+
+      const [saved] = (repo.upsertAll as jest.Mock).mock.calls[0][1] as Transaction[];
+      expect(saved.direction).toBe('outgoing');
+      expect(saved.amountSats).toBe(5_900); // 20k − 14.1k
+      expect(saved.feeSats).toBe(900); // preserves fee from outgoing
+    });
+
+    it('merges fresh outgoing tx with existing local incoming change tx from previous iteration', async () => {
+      // Reverse: change address was synced first (incoming 14.1k stored),
+      // then spending address synced (outgoing 20k fetched).
+      const TXID = 'cross-iter-reverse-txid';
+      const localIncoming: Transaction = {
+        id: TXID, txid: TXID, amountSats: 14_100, direction: 'incoming',
+        status: 'pending', createdAt: '2026-06-07T00:00:00.000Z',
+      };
+      const freshOutgoing: Transaction = {
+        id: TXID, txid: TXID, amountSats: 20_000, feeSats: 900, direction: 'outgoing',
+        status: 'pending', createdAt: '2026-06-07T00:00:00.000Z',
+      };
+      const repo = makeRepo([localIncoming]);
+      const provider = makeProvider([freshOutgoing]);
+      const useCase = new SyncTransactionsUseCase(repo, provider);
+      await useCase.execute(WALLET_ID, [ADDRESS], NETWORK);
+
+      const [saved] = (repo.upsertAll as jest.Mock).mock.calls[0][1] as Transaction[];
+      expect(saved.direction).toBe('outgoing');
+      expect(saved.amountSats).toBe(5_900);
+      expect(saved.feeSats).toBe(900);
+    });
+
+    it('does not alter a fresh tx when local has the same direction', async () => {
+      const TXID = 'same-dir-txid';
+      const localOutgoing: Transaction = {
+        id: TXID, txid: TXID, amountSats: 5_000, direction: 'outgoing',
+        status: 'pending', createdAt: '2026-06-07T00:00:00.000Z',
+      };
+      const freshOutgoing: Transaction = {
+        id: TXID, txid: TXID, amountSats: 5_000, direction: 'outgoing',
+        status: 'confirmed', createdAt: '2026-06-07T00:00:00.000Z',
+      };
+      const repo = makeRepo([localOutgoing]);
+      const provider = makeProvider([freshOutgoing]);
+      const useCase = new SyncTransactionsUseCase(repo, provider);
+      await useCase.execute(WALLET_ID, [ADDRESS], NETWORK);
+
+      const [saved] = (repo.upsertAll as jest.Mock).mock.calls[0][1] as Transaction[];
+      expect(saved.direction).toBe('outgoing');
+      expect(saved.amountSats).toBe(5_000);
+      expect(saved.status).toBe('confirmed'); // status updated from fresh
+    });
+
+    it('clamps merged amount to zero when change exceeds stored outgoing', async () => {
+      const TXID = 'cross-iter-clamp-txid';
+      const localOutgoing: Transaction = {
+        id: TXID, txid: TXID, amountSats: 1_000, direction: 'outgoing',
+        status: 'pending', createdAt: '2026-06-07T00:00:00.000Z',
+      };
+      const freshIncoming: Transaction = {
+        id: TXID, txid: TXID, amountSats: 2_000, direction: 'incoming',
+        status: 'pending', createdAt: '2026-06-07T00:00:00.000Z',
+      };
+      const repo = makeRepo([localOutgoing]);
+      const provider = makeProvider([freshIncoming]);
+      const useCase = new SyncTransactionsUseCase(repo, provider);
+      await useCase.execute(WALLET_ID, [ADDRESS], NETWORK);
+
+      const [saved] = (repo.upsertAll as jest.Mock).mock.calls[0][1] as Transaction[];
+      expect(saved.amountSats).toBe(0);
+    });
+  });
+
+  describe('parallel mode', () => {
+    it('fetches all addresses simultaneously when parallel is true', async () => {
+      const ADDR_B = 'tb1qaddr2';
+      const tx1 = makeTx('tx1');
+      const tx2 = { ...makeTx('tx2'), id: 'tx2' };
+      const repo = makeRepo([]);
+      const provider = makeProvider([]);
+      provider.getTransactions
+        .mockResolvedValueOnce([tx1])
+        .mockResolvedValueOnce([tx2]);
+      const useCase = new SyncTransactionsUseCase(repo, provider);
+      const result = await useCase.execute(WALLET_ID, [ADDRESS, ADDR_B], NETWORK, new Map(), undefined, { parallel: true });
+      expect(result.newCount).toBe(2);
+      expect(provider.getTransactions).toHaveBeenCalledTimes(2);
+    });
+
+    it('overrides requestDelayMs via opts', async () => {
+      const provider = makeProvider([makeTx('tx1')]);
+      const useCase = new SyncTransactionsUseCase(makeRepo([]), provider, 99999);
+      const start = Date.now();
+      await useCase.execute(WALLET_ID, [ADDRESS], NETWORK, new Map(), undefined, { requestDelayMs: 0 });
+      expect(Date.now() - start).toBeLessThan(500);
+    });
+  });
 });

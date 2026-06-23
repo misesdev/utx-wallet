@@ -65,15 +65,24 @@ describe('AppAuthGate', () => {
   });
 
   describe('when no auth is required', () => {
-    it('renders nothing when PIN and biometric are both disabled', () => {
+    it('renders nothing when PIN and biometric are both disabled', async () => {
       const screen = renderWithTheme(<AppAuthGate />);
+      // Allow securityReady effect to run before asserting
+      await waitFor(() => expect(screen.queryByTestId('app-loading-overlay')).toBeNull());
       expect(screen.queryByTestId('app-lock-overlay')).toBeNull();
     });
 
-    it('renders nothing while settings are loading', () => {
+    it('shows opaque loading overlay while settings are loading (prevents wallet list flash)', () => {
       mockSecurity = { ...DEFAULT_SECURITY, isLoading: true };
       const screen = renderWithTheme(<AppAuthGate />);
+      expect(screen.getByTestId('app-loading-overlay')).toBeTruthy();
       expect(screen.queryByTestId('app-lock-overlay')).toBeNull();
+    });
+
+    it('hides loading overlay after settings finish loading with no auth needed', async () => {
+      mockSecurity = { ...DEFAULT_SECURITY, isLoading: false };
+      const screen = renderWithTheme(<AppAuthGate />);
+      await waitFor(() => expect(screen.queryByTestId('app-loading-overlay')).toBeNull());
     });
   });
 
@@ -133,7 +142,8 @@ describe('AppAuthGate', () => {
     it('unlocks and hides overlay when biometric succeeds on mount', async () => {
       mockReauthenticate.mockResolvedValue(true);
       const screen = renderWithTheme(<AppAuthGate />);
-      await waitFor(() => expect(screen.queryByTestId('app-lock-overlay')).toBeNull());
+      // Loading overlay → lock overlay → biometric resolves → null: needs extra render cycles
+      await waitFor(() => expect(screen.queryByTestId('app-lock-overlay')).toBeNull(), { timeout: 3000 });
     });
 
     it('keeps overlay visible when biometric fails', async () => {

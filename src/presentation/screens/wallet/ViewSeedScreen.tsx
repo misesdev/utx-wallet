@@ -84,6 +84,7 @@ export function ViewSeedScreen() {
     Clipboard.setString(keyValue);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => Clipboard.setString(''), 60_000);
   }, [keyValue]);
 
   const handleShare = useCallback(async () => {

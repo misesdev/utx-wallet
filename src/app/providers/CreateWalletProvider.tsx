@@ -7,17 +7,19 @@ import { useWallet } from '../../presentation/hooks/useWallet';
 type WalletNetwork = 'mainnet' | 'testnet';
 type Step = 'idle' | 'backup' | 'confirming' | 'saving';
 
+// words and passphrase are intentionally excluded — they live in refs to avoid
+// React DevTools exposure of sensitive seed material.
 type CreateWalletFlowState = {
   step: Step;
   walletName: string;
-  words: string[];
-  passphrase: string;
   network: WalletNetwork;
   isLoading: boolean;
   error: string | null;
 };
 
 export type CreateWalletContextValue = CreateWalletFlowState & {
+  words: string[];
+  passphrase: string;
   initiate(walletName: string, passphrase?: string, network?: WalletNetwork): void;
   proceedToConfirm(): void;
   save(): Promise<Wallet | null>;
@@ -32,8 +34,6 @@ const defaultNetwork: WalletNetwork =
 const INITIAL: CreateWalletFlowState = {
   step: 'idle',
   walletName: '',
-  words: [],
-  passphrase: '',
   network: defaultNetwork,
   isLoading: false,
   error: null,
@@ -45,17 +45,20 @@ export function CreateWalletProvider({ children }: PropsWithChildren) {
   const { importWallet } = useWallet();
   const [state, setState] = useState<CreateWalletFlowState>(INITIAL);
 
-  // Keep mnemonic out of plain state so it isn't exposed in DevTools snapshots
+  // Keep all sensitive seed material in refs — never in React state — so it
+  // does not appear in DevTools snapshots or React's internal fiber tree.
   const mnemonicRef = useRef('');
+  const wordsRef = useRef<string[]>([]);
+  const passphraseRef = useRef('');
 
   const initiate = useCallback((walletName: string, passphrase = '', network: WalletNetwork = defaultNetwork) => {
     const mnemonic = generateMnemonicUseCase.execute();
     mnemonicRef.current = mnemonic;
+    wordsRef.current = mnemonic.split(' ');
+    passphraseRef.current = passphrase;
     setState({
       step: 'backup',
       walletName,
-      words: mnemonic.split(' '),
-      passphrase,
       network,
       isLoading: false,
       error: null,
@@ -67,11 +70,14 @@ export function CreateWalletProvider({ children }: PropsWithChildren) {
   }, []);
 
   const save = useCallback(async (): Promise<Wallet | null> => {
-    const { walletName, passphrase, network } = state;
+    const { walletName, network } = state;
+    const passphrase = passphraseRef.current;
     setState(prev => ({ ...prev, step: 'saving', isLoading: true, error: null }));
     try {
       const wallet = await importWallet(walletName, mnemonicRef.current, network, passphrase || undefined);
       mnemonicRef.current = '';
+      wordsRef.current = [];
+      passphraseRef.current = '';
       setState(prev => ({ ...prev, isLoading: false }));
       return wallet;
     } catch (err) {
@@ -87,11 +93,24 @@ export function CreateWalletProvider({ children }: PropsWithChildren) {
 
   const reset = useCallback(() => {
     mnemonicRef.current = '';
+    wordsRef.current = [];
+    passphraseRef.current = '';
     setState(INITIAL);
   }, []);
 
+  // words and passphrase are read from refs here. Because useMemo re-runs whenever
+  // `state` changes (and state changes on every flow step), the context value always
+  // reflects the current ref values without storing them in React state.
   const value = useMemo<CreateWalletContextValue>(
-    () => ({ ...state, initiate, proceedToConfirm, save, reset }),
+    () => ({
+      ...state,
+      words: wordsRef.current,
+      passphrase: passphraseRef.current,
+      initiate,
+      proceedToConfirm,
+      save,
+      reset,
+    }),
     [state, initiate, proceedToConfirm, save, reset],
   );
 

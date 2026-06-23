@@ -50,7 +50,9 @@ describe('i18n resources', () => {
   });
 
   describe('globalSettings keys', () => {
-    const KEYS: Array<keyof typeof ptBR.globalSettings> = ['title', 'groupApp', 'groupNetwork', 'groupAdvanced'];
+    const KEYS: Array<keyof typeof ptBR.globalSettings> = [
+      'title', 'groupApp', 'groupNetwork', 'groupAdvanced', 'groupAbout', 'version', 'changelog',
+    ];
     it.each(KEYS)('pt-BR has non-empty globalSettings.%s', (key) => {
       expect(ptBR.globalSettings[key]).toBeTruthy();
     });
@@ -277,8 +279,15 @@ describe('i18n resources', () => {
   describe('nodeSettings multi-node keys', () => {
     const KEYS: Array<keyof typeof ptBR.nodeSettings> = [
       'title', 'titleEdit', 'label', 'labelPlaceholder',
+      'urlHint',
+      'authTokenSection', 'authTokenDesc', 'authToken', 'authTokenPlaceholder',
+      'showToken', 'hideToken',
+      'networkMainnetDesc', 'networkTestnetDesc',
+      'httpNodeWarning',
       'testConnection', 'testRequired', 'saveAndAdd', 'saveChanges',
       'status_connected', 'status_disconnected',
+      'statusNotTestedDesc', 'statusConnectedDesc', 'statusDisconnectedDesc',
+      'statusNetworkMismatchDesc', 'statusAuthErrorDesc',
     ];
     it.each(KEYS)('pt-BR has non-empty nodeSettings.%s', (key) => {
       expect(ptBR.nodeSettings[key]).toBeTruthy();
@@ -355,6 +364,30 @@ describe('i18n resources', () => {
     it('en-US has settings.export and settings.exportDesc', () => {
       expect(enUS.settings.export).toBeTruthy();
       expect(enUS.settings.exportDesc).toBeTruthy();
+    });
+  });
+
+  describe('syncSettings keys', () => {
+    const KEYS = [
+      'title', 'sectionRate', 'sectionParallel',
+      'maxRps', 'maxRpsDesc', 'requestDelay', 'delayValue',
+      'parallelSync', 'parallelSyncDesc', 'requiresPersonalNode',
+      'parallelWarning', 'rateLimitInfo', 'info',
+    ] as const;
+    it.each(KEYS)('pt-BR has non-empty syncSettings.%s', (key) => {
+      expect(ptBR.syncSettings[key]).toBeTruthy();
+    });
+    it.each(KEYS)('en-US has non-empty syncSettings.%s', (key) => {
+      expect(enUS.syncSettings[key]).toBeTruthy();
+    });
+
+    it('pt-BR has settings.syncSettings and settings.syncSettingsDesc', () => {
+      expect(ptBR.settings.syncSettings).toBeTruthy();
+      expect(ptBR.settings.syncSettingsDesc).toBeTruthy();
+    });
+    it('en-US has settings.syncSettings and settings.syncSettingsDesc', () => {
+      expect(enUS.settings.syncSettings).toBeTruthy();
+      expect(enUS.settings.syncSettingsDesc).toBeTruthy();
     });
   });
 

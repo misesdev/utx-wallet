@@ -10,6 +10,11 @@ export type SyncUtxosResult = {
   spentCount: number;
 };
 
+export type SyncUtxosOpts = {
+  parallel?: boolean;
+  requestDelayMs?: number;
+};
+
 export class SyncUtxosUseCase {
   constructor(
     private readonly utxoRepository: UtxoRepository,
@@ -22,42 +27,88 @@ export class SyncUtxosUseCase {
     addresses: string[],
     network: BitcoinNetwork,
     onProgress?: OnSyncProgress,
+    opts?: SyncUtxosOpts,
   ): Promise<SyncUtxosResult> {
+    const parallel = opts?.parallel ?? false;
+    const delayMs = opts?.requestDelayMs ?? this.requestDelayMs;
+
     const allLocalUtxos = await this.utxoRepository.listByWallet(walletId);
-    const syncedAddressSet = new Set(addresses);
+    const primaryAddressSet = new Set(addresses);
 
-    // UTXOs from addresses NOT being synced must be preserved — a partial sync
-    // (account or single address) must never wipe UTXOs from other accounts.
-    const untouchedUtxos = allLocalUtxos.filter(u => !syncedAddressSet.has(u.address));
-    const localSyncedUtxos = allLocalUtxos.filter(u => syncedAddressSet.has(u.address));
+    // Addresses with stored UTXOs that are NOT in the primary sync batch.
+    // These must also be verified against the blockchain: another device sharing
+    // the same private key may have spent those UTXOs without this wallet knowing.
+    // Leaving them untouched would cause double-spend errors on the next send.
+    const verifyAddresses = [
+      ...new Set(
+        allLocalUtxos
+          .filter(u => !primaryAddressSet.has(u.address))
+          .map(u => u.address),
+      ),
+    ];
 
-    const freshUtxos: Utxo[] = [];
-    for (let i = 0; i < addresses.length; i++) {
-      onProgress?.({ currentAddress: addresses[i], currentIndex: i, totalAddresses: addresses.length, phase: 'utxos' });
-      const utxos = await this.blockchainProvider.getUtxos(addresses[i], network);
-      freshUtxos.push(...utxos);
-      if (i < addresses.length - 1) {
-        await delay(this.requestDelayMs);
+    // Primary addresses first (with progress reporting), then verify addresses (silent).
+    const primaryIndexMap = new Map(addresses.map((addr, i) => [addr, i]));
+    const allFetchAddresses = [...addresses, ...verifyAddresses];
+
+    const freshByAddress = new Map<string, Utxo[]>();
+    const fetchAddress = async (addr: string): Promise<void> => {
+      const utxos = await this.blockchainProvider.getUtxos(addr, network);
+      freshByAddress.set(addr, utxos);
+    };
+
+    if (parallel) {
+      addresses.forEach((addr, i) =>
+        onProgress?.({ currentAddress: addr, currentIndex: i, totalAddresses: addresses.length, phase: 'utxos' }),
+      );
+      await Promise.all(allFetchAddresses.map(addr => fetchAddress(addr)));
+    } else {
+      for (let i = 0; i < allFetchAddresses.length; i++) {
+        const addr = allFetchAddresses[i];
+        const primaryIdx = primaryIndexMap.get(addr);
+        if (primaryIdx !== undefined) {
+          onProgress?.({ currentAddress: addr, currentIndex: primaryIdx, totalAddresses: addresses.length, phase: 'utxos' });
+        }
+        await fetchAddress(addr);
+        if (i < allFetchAddresses.length - 1) {
+          await delay(delayMs);
+        }
       }
     }
 
-    const freshSet = new Set(freshUtxos.map(u => `${u.txid}:${u.vout}`));
-    const localSet = new Set(localSyncedUtxos.map(u => `${u.txid}:${u.vout}`));
-    const frozenLocalSet = new Set(
-      localSyncedUtxos
-        .filter(u => u.isFrozen)
-        .map(u => `${u.txid}:${u.vout}`),
-    );
+    // Build per-address local lookup for frozen-state preservation
+    const localByAddress = new Map<string, Utxo[]>();
+    for (const u of allLocalUtxos) {
+      const list = localByAddress.get(u.address) ?? [];
+      list.push(u);
+      localByAddress.set(u.address, list);
+    }
 
-    const spentCount = localSyncedUtxos.filter(u => !freshSet.has(`${u.txid}:${u.vout}`)).length;
-    const newCount = freshUtxos.filter(u => !localSet.has(`${u.txid}:${u.vout}`)).length;
-    const refreshedUtxos = freshUtxos.map(utxo => ({
-      ...utxo,
-      isFrozen: frozenLocalSet.has(`${utxo.txid}:${utxo.vout}`) || utxo.isFrozen,
-    }));
+    // Compute new/spent counts from primary addresses only (metrics are per-sync-batch)
+    const primaryLocalUtxos = addresses.flatMap(addr => localByAddress.get(addr) ?? []);
+    const freshPrimaryUtxos = addresses.flatMap(addr => freshByAddress.get(addr) ?? []);
+    const freshPrimarySet = new Set(freshPrimaryUtxos.map(u => `${u.txid}:${u.vout}`));
+    const localPrimarySet = new Set(primaryLocalUtxos.map(u => `${u.txid}:${u.vout}`));
 
-    // Replace: keep untouched UTXOs intact, refresh only the synced addresses' UTXOs.
-    await this.utxoRepository.replaceAll(walletId, [...untouchedUtxos, ...refreshedUtxos]);
+    const spentCount = primaryLocalUtxos.filter(u => !freshPrimarySet.has(`${u.txid}:${u.vout}`)).length;
+    const newCount = freshPrimaryUtxos.filter(u => !localPrimarySet.has(`${u.txid}:${u.vout}`)).length;
+
+    // Build the final UTXO set from all fetched addresses, preserving frozen state.
+    // Addresses where the blockchain returned an empty list had all UTXOs spent — they are
+    // simply not added back, effectively removing them from local storage.
+    const allRefreshedUtxos: Utxo[] = [];
+    for (const [addr, freshUtxos] of freshByAddress) {
+      const localForAddr = localByAddress.get(addr) ?? [];
+      const frozenSet = new Set(localForAddr.filter(u => u.isFrozen).map(u => `${u.txid}:${u.vout}`));
+      for (const utxo of freshUtxos) {
+        allRefreshedUtxos.push({
+          ...utxo,
+          isFrozen: frozenSet.has(`${utxo.txid}:${utxo.vout}`) || utxo.isFrozen,
+        });
+      }
+    }
+
+    await this.utxoRepository.replaceAll(walletId, allRefreshedUtxos);
 
     return { newCount, spentCount };
   }

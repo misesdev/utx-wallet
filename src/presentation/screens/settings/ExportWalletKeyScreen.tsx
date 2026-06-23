@@ -57,6 +57,7 @@ export function ExportWalletKeyScreen() {
     Clipboard.setString(keyValue);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => Clipboard.setString(''), 60_000);
   }, [keyValue]);
 
   const handleShare = useCallback(async () => {

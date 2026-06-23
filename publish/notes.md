@@ -1,56 +1,52 @@
-UTX Wallet v2.0
+UTX Wallet v2.1
 
 ── WHAT'S NEW ──────────────────────────────────────────────
 
-• New layered wallet sync
-  Wallet sync now runs through explicit address, account,
-  wallet, and import sync layers. This keeps sync work
-  scoped, easier to test, and avoids unnecessary duplicate
-  blockchain requests when transaction data was already
-  fetched.
+• Swipe between Mainnet and Testnet
+  The wallet list now lets you swipe left and right to switch
+  between Mainnet and Testnet tabs. The active tab follows a
+  smooth sliding underline indicator. Tapping the tab labels
+  still works as before.
 
-• Per-account sync
-  Each account can now be synced independently from the
-  account details screen. The home sync also shows which
-  account and address are currently being processed, making
-  larger wallets easier to follow during synchronization.
+• Authentication on every app open
+  The app now requires biometric or PIN authentication each
+  time it is opened. The lock screen appears instantly with no
+  flash of the wallet list underneath.
 
-• Per-address sync with safer rules
-  Address rows can be tapped to refresh a single active
-  address. Spent, change, and archived addresses are blocked
-  from manual sync, and address sync now validates that the
-  address belongs to the selected wallet before any network
-  or persistence work is performed.
+• Configurable sync rate and parallel sync
+  A new Sync screen under Global Settings → Network lets you
+  set the maximum requests per second sent to the blockchain
+  API and enable parallel address fetching. Parallel sync is
+  intended for personal node users and is locked when no
+  personal node is configured.
 
-• Better address pool handling
-  Sync refreshes address status using prefetched transaction
-  data and replenishes receive/change pools after status
-  changes. This keeps the wallet aligned with the no-address-
-  reuse policy while reducing extra API calls.
+• PIN keypad improvements
+  Wrong PIN attempts now shake the dots to give clear visual
+  feedback. The error message disappears as soon as you start
+  typing the next attempt, and the keypad can no longer become
+  unresponsive after a rejection.
 
-• Safer partial UTXO refreshes
-  Partial syncs now preserve UTXOs from addresses that were
-  not part of the current sync run. Existing frozen UTXO
-  state is also preserved when the same txid:vout is refreshed
-  from the blockchain provider.
+• Seamless PIN hash upgrade
+  PINs stored with the legacy hash format are automatically
+  upgraded to SHA-256 on the first successful login. No action
+  is required.
 
-• Improved transaction status updates
-  Opening transaction details can refresh pending/confirmed
-  status and persist confirmed updates so the transaction list
-  and home screen reflect the latest known state.
+• Personal node form redesigned
+  The separate port field has been removed — include the port
+  in the URL instead. The auth token is now behind a toggle
+  (similar to the passphrase field) and the network is chosen
+  from a radio list.
 
-• UI refinements
-  Account balances refresh with less flicker after sync,
-  sync progress labels no longer disappear for short account
-  names or addresses, and the Android launcher label now
-  displays "UTX Wallet".
+• Multi-device UTXO sync
+  Sync now re-verifies all addresses that have stored UTXOs,
+  not just the current address pool batch. Spent outputs
+  created on another device are correctly removed.
 
-── PREVIOUS RELEASE (v1.4) ─────────────────────────────────
-
-• BIP84 zpub / vpub export per account
-• Watch-only wallet indicators
-• Watch-only sync fixed to a single account
-• Correct BIP84 key labels (zprv / zpub)
+• Transaction sync fixes
+  Cross-iteration merges no longer produce phantom pending
+  transactions. The home screen and transaction list refresh
+  on every screen focus so stale data is cleared immediately
+  after a sync or navigation event.
 
 ── ABOUT UTX WALLET ────────────────────────────────────────
 

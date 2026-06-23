@@ -109,6 +109,19 @@ describe('SetPinUseCase', () => {
   });
 });
 
+/** Reproduz o djb2 exato usado como fallback antigo no PinHasherAdapter (usa |= 0 signed). */
+function djb2(str: string): string {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) {
+    // eslint-disable-next-line no-bitwise
+    h = ((h << 5) + h) ^ str.charCodeAt(i);
+    // eslint-disable-next-line no-bitwise
+    h |= 0;
+  }
+  // eslint-disable-next-line no-bitwise
+  return (h >>> 0).toString(16).padStart(8, '0');
+}
+
 describe('VerifyPinUseCase', () => {
   it('PIN correto — retorna true', async () => {
     const repo = makeRepo();
@@ -139,6 +152,111 @@ describe('VerifyPinUseCase', () => {
     const hasher = makeHasher('h');
     await new VerifyPinUseCase(repo, hasher).execute('1234');
     expect(hasher.hash).toHaveBeenCalledWith('1234', 'stored-salt');
+  });
+
+  describe('migração djb2 → SHA-256', () => {
+    it('aceita PIN armazenado como djb2 (8 hex chars)', async () => {
+      const salt = 'mysalt';
+      const pin = '1234';
+      const legacyHash = djb2(`${pin}:${salt}`);
+      expect(legacyHash).toMatch(/^[0-9a-f]{8}$/);
+
+      const repo = makeRepo();
+      repo.loadPinCredentials.mockResolvedValue({ hash: legacyHash, salt });
+      const hasher = makeHasher('a'.repeat(64)); // SHA-256 não bate com legacyHash
+      const ok = await new VerifyPinUseCase(repo, hasher).execute(pin);
+      expect(ok).toBe(true);
+    });
+
+    it('faz upgrade do hash para SHA-256 após verificação djb2 bem-sucedida', async () => {
+      const salt = 'upgrade-salt';
+      const pin = '5678';
+      const legacyHash = djb2(`${pin}:${salt}`);
+      const newSha256 = 'b'.repeat(64);
+
+      const repo = makeRepo();
+      repo.loadPinCredentials.mockResolvedValue({ hash: legacyHash, salt });
+      const hasher = makeHasher(newSha256);
+
+      await new VerifyPinUseCase(repo, hasher).execute(pin);
+
+      // Flush void promise before asserting
+      await new Promise<void>(resolve => setTimeout(() => resolve(), 0));
+      expect(repo.savePinCredentials).toHaveBeenCalledWith(newSha256, salt);
+    });
+
+    it('não aceita PIN djb2 errado (PIN incorreto)', async () => {
+      const salt = 'mysalt';
+      const correctPin = '1234';
+      const wrongPin = '9999';
+      const legacyHash = djb2(`${correctPin}:${salt}`);
+
+      const repo = makeRepo();
+      repo.loadPinCredentials.mockResolvedValue({ hash: legacyHash, salt });
+      const hasher = makeHasher('c'.repeat(64)); // SHA-256 diferente do stored
+
+      const ok = await new VerifyPinUseCase(repo, hasher).execute(wrongPin);
+      expect(ok).toBe(false);
+    });
+
+    it('não tenta migração quando stored hash não é djb2 (mais de 8 chars)', async () => {
+      const repo = makeRepo();
+      repo.loadPinCredentials.mockResolvedValue({ hash: 'wronghash_longer', salt: 's' });
+      const hasher = makeHasher('differenthash');
+
+      const ok = await new VerifyPinUseCase(repo, hasher).execute('1234');
+      expect(ok).toBe(false);
+      expect(repo.savePinCredentials).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resiliência quando SHA-256 lança exceção', () => {
+    it('aceita PIN djb2 mesmo que hasher.hash() lance exceção', async () => {
+      const salt = 'resilience-salt';
+      const pin = '4321';
+      const legacyHash = djb2(`${pin}:${salt}`);
+
+      const repo = makeRepo();
+      repo.loadPinCredentials.mockResolvedValue({ hash: legacyHash, salt });
+      const hasher: jest.Mocked<{ hash: (p: string, s: string) => Promise<string> }> = {
+        hash: jest.fn().mockRejectedValue(new Error('SubtleCrypto unavailable')),
+      };
+
+      const ok = await new VerifyPinUseCase(repo, hasher as any).execute(pin);
+      expect(ok).toBe(true);
+    });
+
+    it('retorna false quando hasher lança exceção E djb2 não bate', async () => {
+      const salt = 'resilience-salt';
+      const correctPin = '4321';
+      const wrongPin = '0000';
+      const legacyHash = djb2(`${correctPin}:${salt}`);
+
+      const repo = makeRepo();
+      repo.loadPinCredentials.mockResolvedValue({ hash: legacyHash, salt });
+      const hasher: jest.Mocked<{ hash: (p: string, s: string) => Promise<string> }> = {
+        hash: jest.fn().mockRejectedValue(new Error('SubtleCrypto unavailable')),
+      };
+
+      const ok = await new VerifyPinUseCase(repo, hasher as any).execute(wrongPin);
+      expect(ok).toBe(false);
+    });
+
+    it('não faz upgrade quando hasher lançou exceção (sha256 null)', async () => {
+      const salt = 'no-upgrade-salt';
+      const pin = '1111';
+      const legacyHash = djb2(`${pin}:${salt}`);
+
+      const repo = makeRepo();
+      repo.loadPinCredentials.mockResolvedValue({ hash: legacyHash, salt });
+      const hasher: jest.Mocked<{ hash: (p: string, s: string) => Promise<string> }> = {
+        hash: jest.fn().mockRejectedValue(new Error('SubtleCrypto unavailable')),
+      };
+
+      await new VerifyPinUseCase(repo, hasher as any).execute(pin);
+      await new Promise<void>(resolve => setTimeout(() => resolve(), 0));
+      expect(repo.savePinCredentials).not.toHaveBeenCalled();
+    });
   });
 });
 

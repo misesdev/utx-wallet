@@ -107,6 +107,27 @@ describe('ExportWalletKeyScreen', () => {
     expect(Clipboard.setString).toHaveBeenCalledWith('test-key-value-abc123');
   });
 
+  it('clears clipboard after 60 seconds of copying a sensitive key', async () => {
+    jest.useFakeTimers();
+    const Clipboard = require('@react-native-clipboard/clipboard').default;
+    const { act: reactAct } = require('@testing-library/react-native');
+    const screen = renderWithTheme(<ExportWalletKeyScreen />);
+    await waitFor(() => screen.getByTestId('btn-copy'));
+    fireEvent.press(screen.getByTestId('btn-copy'));
+
+    // Before 60 s: clipboard still has the key
+    await reactAct(async () => { jest.advanceTimersByTime(59_999); });
+    const callsBeforeClear = Clipboard.setString.mock.calls.filter((c: string[]) => c[0] === '');
+    expect(callsBeforeClear).toHaveLength(0);
+
+    // After 60 s: clipboard is wiped
+    await reactAct(async () => { jest.advanceTimersByTime(1); });
+    const callsAfterClear = Clipboard.setString.mock.calls.filter((c: string[]) => c[0] === '');
+    expect(callsAfterClear).toHaveLength(1);
+
+    jest.useRealTimers();
+  });
+
   it('calls Share.share when share button is pressed', async () => {
     const screen = renderWithTheme(<ExportWalletKeyScreen />);
     await waitFor(() => screen.getByTestId('btn-share'));

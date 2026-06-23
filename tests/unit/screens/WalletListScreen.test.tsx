@@ -4,6 +4,12 @@ import { WalletListScreen } from '../../../src/presentation/screens/wallet/Walle
 import { renderWithTheme } from '../../mocks/renderWithProviders';
 import type { Wallet } from '../../../src/core/domain/entities/Wallet';
 
+// Provide a stable window width so swipe offset calculations are predictable
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
+  __esModule: true,
+  default: () => ({ width: 375, height: 812, scale: 1, fontScale: 1 }),
+}));
+
 const mockNavigate = jest.fn();
 const mockSelectWallet = jest.fn();
 const mockListUtxos = jest.fn().mockResolvedValue([]);
@@ -333,6 +339,109 @@ describe('WalletListScreen', () => {
       const screen = renderWithTheme(<WalletListScreen />);
       fireEvent.press(screen.getByTestId('wallet-list-scan-import'));
       expect(mockNavigate).toHaveBeenCalledWith('ScanWalletQr', { network: 'mainnet' });
+    });
+  });
+
+  describe('Swipe navigation', () => {
+    it('renders the wallet pager with testIDs for both pages', () => {
+      const screen = renderWithTheme(<WalletListScreen />);
+      expect(screen.getByTestId('wallet-pager')).toBeTruthy();
+      expect(screen.getByTestId('page-mainnet')).toBeTruthy();
+      expect(screen.getByTestId('page-testnet')).toBeTruthy();
+    });
+
+    it('activates the testnet tab after swiping to the second page', () => {
+      const screen = renderWithTheme(<WalletListScreen />);
+      const pager = screen.getByTestId('wallet-pager');
+      // Simulate swipe: contentOffset.x = 375 (one full page width) → index 1
+      fireEvent(pager, 'momentumScrollEnd', {
+        nativeEvent: { contentOffset: { x: 375, y: 0 } },
+      });
+      const testnetTab = screen.getByRole('tab', { name: 'walletList.testnet' });
+      expect(testnetTab.props.accessibilityState?.selected).toBe(true);
+    });
+
+    it('activates the mainnet tab after swiping back to the first page', () => {
+      const screen = renderWithTheme(<WalletListScreen />);
+      const pager = screen.getByTestId('wallet-pager');
+      // Swipe to testnet
+      fireEvent(pager, 'momentumScrollEnd', {
+        nativeEvent: { contentOffset: { x: 375, y: 0 } },
+      });
+      // Swipe back to mainnet
+      fireEvent(pager, 'momentumScrollEnd', {
+        nativeEvent: { contentOffset: { x: 0, y: 0 } },
+      });
+      const mainnetTab = screen.getByRole('tab', { name: 'walletList.mainnet' });
+      expect(mainnetTab.props.accessibilityState?.selected).toBe(true);
+    });
+
+    it('lazy-mounts testnet content only after navigating to it', () => {
+      mockWallets = [makeWallet({ name: 'Testnet Wallet', network: 'testnet' })];
+      const screen = renderWithTheme(<WalletListScreen />);
+      // Content of unvisited testnet page is NOT in the DOM yet
+      expect(screen.queryByText('Testnet Wallet')).toBeNull();
+      // Navigate to testnet tab
+      fireEvent(screen.getByTestId('wallet-pager'), 'momentumScrollEnd', {
+        nativeEvent: { contentOffset: { x: 375, y: 0 } },
+      });
+      // Now the testnet wallet should be visible
+      expect(screen.getByText('Testnet Wallet')).toBeTruthy();
+    });
+
+    it('keeps both pages rendered once both have been visited', () => {
+      mockWallets = [
+        makeWallet({ id: 'w-main', name: 'Main Wallet', network: 'mainnet' }),
+        makeWallet({ id: 'w-test', name: 'Test Wallet', network: 'testnet' }),
+      ];
+      const screen = renderWithTheme(<WalletListScreen />);
+      // Visit testnet via swipe
+      fireEvent(screen.getByTestId('wallet-pager'), 'momentumScrollEnd', {
+        nativeEvent: { contentOffset: { x: 375, y: 0 } },
+      });
+      // Both wallets should now be in DOM
+      expect(screen.getByText('Main Wallet')).toBeTruthy();
+      expect(screen.getByText('Test Wallet')).toBeTruthy();
+    });
+
+    it('syncs active tab when user taps tab chip while pager shows same page', () => {
+      const screen = renderWithTheme(<WalletListScreen />);
+      // Already on mainnet — tapping mainnet tab does nothing
+      fireEvent.press(screen.getByRole('tab', { name: 'walletList.mainnet' }));
+      expect(screen.getByRole('tab', { name: 'walletList.mainnet' }).props.accessibilityState?.selected).toBe(true);
+      // Now switch to testnet via tap
+      fireEvent.press(screen.getByRole('tab', { name: 'walletList.testnet' }));
+      expect(screen.getByRole('tab', { name: 'walletList.testnet' }).props.accessibilityState?.selected).toBe(true);
+    });
+
+    it('uses mainnet network for ScanWalletQr when on mainnet tab', () => {
+      const screen = renderWithTheme(<WalletListScreen />);
+      fireEvent.press(screen.getByTestId('wallet-list-scan-import'));
+      expect(mockNavigate).toHaveBeenCalledWith('ScanWalletQr', { network: 'mainnet' });
+    });
+
+    it('uses testnet network for ScanWalletQr after swiping to testnet', () => {
+      const screen = renderWithTheme(<WalletListScreen />);
+      fireEvent(screen.getByTestId('wallet-pager'), 'momentumScrollEnd', {
+        nativeEvent: { contentOffset: { x: 375, y: 0 } },
+      });
+      fireEvent.press(screen.getByTestId('wallet-list-scan-import'));
+      expect(mockNavigate).toHaveBeenCalledWith('ScanWalletQr', { network: 'testnet' });
+    });
+
+    it('clamps swipe offset to valid tab index range', () => {
+      const screen = renderWithTheme(<WalletListScreen />);
+      const pager = screen.getByTestId('wallet-pager');
+      // Very large offset — should clamp to last tab (testnet = index 1)
+      fireEvent(pager, 'momentumScrollEnd', {
+        nativeEvent: { contentOffset: { x: 99999, y: 0 } },
+      });
+      expect(screen.getByRole('tab', { name: 'walletList.testnet' }).props.accessibilityState?.selected).toBe(true);
+      // Negative offset — should clamp to first tab (mainnet = index 0)
+      fireEvent(pager, 'momentumScrollEnd', {
+        nativeEvent: { contentOffset: { x: -500, y: 0 } },
+      });
+      expect(screen.getByRole('tab', { name: 'walletList.mainnet' }).props.accessibilityState?.selected).toBe(true);
     });
   });
 });
