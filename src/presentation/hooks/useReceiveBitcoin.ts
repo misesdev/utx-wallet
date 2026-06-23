@@ -18,7 +18,6 @@ export type ReceiveBitcoinState = {
   setAmountSats: (value: string) => void;
   copyAddress: () => void;
   shareAddress: () => Promise<void>;
-  generateNewAddress: () => Promise<void>;
 };
 
 function buildBitcoinUri(address: string, amountSats: string): string {
@@ -33,7 +32,7 @@ function buildBitcoinUri(address: string, amountSats: string): string {
 export function useReceiveBitcoin(originId?: string): ReceiveBitcoinState {
   const { selectedWallet } = useWallet();
   const { t } = useAppTranslation();
-  const { getCurrentReceiveAddress, generateNewReceiveAddress } = useAddress();
+  const { getCurrentReceiveAddress } = useAddress();
   const addressManager = useAddressManager();
 
   const [address, setAddress] = useState<Address | null>(null);
@@ -87,33 +86,6 @@ export function useReceiveBitcoin(originId?: string): ReceiveBitcoinState {
     await Share.share({ message: uri });
   }, [resolvedAddressValue, amountSats]);
 
-  const generateNewAddress = useCallback(async () => {
-    if (!selectedWallet) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      try {
-        const hd = await addressManager.getReceiveAddress(
-          selectedWallet.id,
-          selectedWallet.network,
-          originId,
-          true, // reserve current, get next fresh
-        );
-        setHdAddress(hd);
-        setAddress({ id: hd.id, accountId: selectedWallet.id, value: hd.address, network: selectedWallet.network, type: 'p2wpkh', isChange: false, index: hd.index, isUsed: false });
-        return;
-      } catch {
-        // Fall back to legacy
-      }
-      const addr = await generateNewReceiveAddress(selectedWallet.id);
-      setAddress(addr);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('receive.errorGenerateAddress'));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [selectedWallet, originId, generateNewReceiveAddress, addressManager, t]);
-
   const bitcoinUri = resolvedAddressValue ? buildBitcoinUri(resolvedAddressValue, amountSats) : '';
 
   return {
@@ -126,6 +98,5 @@ export function useReceiveBitcoin(originId?: string): ReceiveBitcoinState {
     setAmountSats,
     copyAddress,
     shareAddress,
-    generateNewAddress,
   };
 }

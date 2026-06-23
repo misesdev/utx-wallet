@@ -6,7 +6,6 @@ import type { ReceiveBitcoinState } from '../../../src/presentation/hooks/useRec
 
 const mockCopyAddress = jest.fn();
 const mockShareAddress = jest.fn().mockResolvedValue(undefined);
-const mockGenerateNewAddress = jest.fn().mockResolvedValue(undefined);
 const mockSetAmountSats = jest.fn();
 
 const DEFAULT_STATE: ReceiveBitcoinState = {
@@ -28,7 +27,6 @@ const DEFAULT_STATE: ReceiveBitcoinState = {
   setAmountSats: mockSetAmountSats,
   copyAddress: mockCopyAddress,
   shareAddress: mockShareAddress,
-  generateNewAddress: mockGenerateNewAddress,
 };
 
 let mockState: ReceiveBitcoinState = DEFAULT_STATE;
@@ -140,18 +138,10 @@ describe('ReceiveScreen', () => {
     });
   });
 
-  describe('generate new address', () => {
-    it('calls generateNewAddress when button is pressed', async () => {
+  describe('new address button removed', () => {
+    it('does not render a new-address button', () => {
       const screen = renderWithTheme(<ReceiveScreen />);
-      fireEvent.press(screen.getByTestId('btn-new-address'));
-      await waitFor(() => expect(mockGenerateNewAddress).toHaveBeenCalledTimes(1));
-    });
-
-    it('disables generate button when isLoading', () => {
-      mockState = { ...DEFAULT_STATE, isLoading: true };
-      const screen = renderWithTheme(<ReceiveScreen />);
-      const btn = screen.getByTestId('btn-new-address');
-      expect(btn.props.accessibilityState?.disabled).toBe(true);
+      expect(screen.queryByTestId('btn-new-address')).toBeNull();
     });
   });
 });

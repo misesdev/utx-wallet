@@ -57,7 +57,8 @@
     "segregation": "Segregation",
     "signature": "Signature",
     "errorLoadWalletData": "Failed to load wallet data. Pull to refresh.",
-    "errorSyncFailed": "Sync failed. Try again."
+    "errorSyncFailed": "Sync failed. Try again.",
+    "testnetBanner": "Testnet — coins have no real value. Do not use for real payments."
   },
   "walletList": {
     "title": "Wallets",
@@ -160,11 +161,9 @@
     "copy": "Copy",
     "share": "Share",
     "amountOptional": "Amount (optional)",
-    "newAddress": "New address",
     "selectAccount": "Select account",
     "selectAccountDesc": "Choose which account should receive the bitcoin.",
-    "errorLoadAddress": "Failed to load address",
-    "errorGenerateAddress": "Failed to generate address"
+    "errorLoadAddress": "Failed to load address"
   },
   "send": {
     "title": "Send",

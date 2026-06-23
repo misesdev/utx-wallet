@@ -19,11 +19,37 @@ import { useWalletSync } from '../../hooks/useWalletSync';
 import { useTemporaryRevealBalance } from '../../hooks/useTemporaryRevealBalance';
 import { useTheme } from '../../hooks/useTheme';
 import { AppRoutes } from '../../../app/navigation/routes';
+import { TESTNET_NETWORKS } from '../../../shared/constants/networks';
 import type { AccountSummary } from '../../../core/domain/services/AccountSummaryService';
 import type { SyncProgress } from '../../../core/domain/usecases/wallet/SyncProgress';
 
 const SATS_PER_BTC = 100_000_000;
 const HIDDEN_PLACEHOLDER = '••••••';
+
+// ─── Testnet banner ───────────────────────────────────────────────────────────
+
+function TestnetBanner() {
+  const { theme } = useTheme();
+  const { t } = useAppTranslation();
+  return (
+    <View
+      testID="testnet-banner"
+      style={[
+        styles.testnetBanner,
+        {
+          backgroundColor: theme.colors.warningMuted,
+          borderColor: theme.colors.warning,
+          borderRadius: theme.radii.md,
+        },
+      ]}
+    >
+      <AppIcon name="warning" size={15} color={theme.colors.warning} />
+      <AppText variant="caption" style={[styles.testnetBannerText, { color: theme.colors.warning }]}>
+        {t('home.testnetBanner' as any)}
+      </AppText>
+    </View>
+  );
+}
 
 // ─── Header ──────────────────────────────────────────────────────────────────
 
@@ -329,6 +355,9 @@ export function HomeScreen() {
           { paddingTop: insets.top + 8, paddingBottom: Math.max(insets.bottom, 16) + 100 },
         ]}
       >
+        {/* Testnet safety banner */}
+        {TESTNET_NETWORKS.includes(networkConfig.network) && <TestnetBanner />}
+
         {/* Header: wallet name left, network + safe mode right */}
         <HomeHeader
           walletName={wallet.name}
@@ -531,6 +560,21 @@ const styles = StyleSheet.create({
   scrollContent: {
     gap: 28,
     paddingHorizontal: 20,
+  },
+
+  // Testnet banner
+  testnetBanner: {
+    alignItems: 'center',
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  testnetBannerText: {
+    flex: 1,
+    fontWeight: '600',
+    lineHeight: 16,
   },
 
   // Header

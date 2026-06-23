@@ -2,7 +2,6 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, type RouteProp } from '@react-navigation/native';
-import { AppButton } from '../../components/base/AppButton';
 import { AppLoading } from '../../components/base/AppLoading';
 import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
@@ -39,7 +38,6 @@ export function ReceiveScreen() {
     setAmountSats,
     copyAddress,
     shareAddress,
-    generateNewAddress,
   } = useReceiveBitcoin(originId);
 
   const resolvedAddress = hdAddress?.address ?? address?.value ?? '';
@@ -168,7 +166,7 @@ export function ReceiveScreen() {
                   },
                 ]}
               >
-                <AppText style={styles.actionIcon}>⎘</AppText>
+                <AppIcon name="copy" size={22} color={theme.colors.text} />
                 <AppText variant="body" style={styles.actionLabel}>{t('common.copy')}</AppText>
               </Pressable>
 
@@ -227,15 +225,6 @@ export function ReceiveScreen() {
               )}
             </View>
 
-            {/* ─── New address ─────────────────────────────────────── */}
-            <AppButton
-              title={t('receive.newAddress')}
-              variant="ghost"
-              size="md"
-              onPress={generateNewAddress}
-              disabled={isLoading}
-              testID="btn-new-address"
-            />
           </>
         ) : null}
       </ScrollView>
@@ -339,9 +328,6 @@ const styles = StyleSheet.create({
     gap: 8,
     justifyContent: 'center',
     paddingVertical: 14,
-  },
-  actionIcon: {
-    fontSize: 18,
   },
   actionLabel: {
     fontWeight: '600',

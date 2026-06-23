@@ -1,6 +1,20 @@
-UTX Wallet v2.1
+UTX Wallet v2.2
 
 ── WHAT'S NEW ──────────────────────────────────────────────
+
+• Personal node works on physical devices
+  Connections to personal nodes over HTTP now work correctly
+  on installed (release) builds, not only in the emulator.
+
+• Testnet safety banner
+  When viewing a testnet wallet the home screen shows a
+  prominent warning that the coins have no real value and
+  should not be used for real payments.
+
+• Receive address is always stable
+  The "New address" button has been removed. The wallet now
+  manages addresses automatically according to BIP-84 policy
+  so the displayed address is always the correct one to share.
 
 • Swipe between Mainnet and Testnet
   The wallet list now lets you swipe left and right to switch

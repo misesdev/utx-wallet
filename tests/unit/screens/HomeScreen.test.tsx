@@ -411,4 +411,32 @@ describe('HomeScreen', () => {
       expect(screen.getByText('home.recentActivity')).toBeTruthy();
     });
   });
+
+  describe('Testnet safety banner', () => {
+    it('shows the testnet banner when network is testnet4', () => {
+      const screen = renderWithTheme(<HomeScreen />);
+      expect(screen.getByTestId('testnet-banner')).toBeTruthy();
+      expect(screen.getByText('home.testnetBanner')).toBeTruthy();
+    });
+
+    it('shows the testnet banner for testnet network', () => {
+      mockHomeState = {
+        ...WALLET_STATE,
+        networkConfig: { ...DEFAULT_NETWORK, network: 'testnet' },
+        wallet: { ...WALLET_STATE.wallet!, network: 'testnet' },
+      };
+      const screen = renderWithTheme(<HomeScreen />);
+      expect(screen.getByTestId('testnet-banner')).toBeTruthy();
+    });
+
+    it('does not show the testnet banner on mainnet', () => {
+      mockHomeState = {
+        ...WALLET_STATE,
+        networkConfig: { ...DEFAULT_NETWORK, network: 'mainnet' },
+        wallet: { ...WALLET_STATE.wallet!, network: 'mainnet' },
+      };
+      const screen = renderWithTheme(<HomeScreen />);
+      expect(screen.queryByTestId('testnet-banner')).toBeNull();
+    });
+  });
 });

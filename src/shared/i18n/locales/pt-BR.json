@@ -57,7 +57,8 @@
     "segregation": "Segregação",
     "signature": "Assinatura",
     "errorLoadWalletData": "Falha ao carregar dados da carteira. Puxe para atualizar.",
-    "errorSyncFailed": "Falha ao sincronizar. Tente novamente."
+    "errorSyncFailed": "Falha ao sincronizar. Tente novamente.",
+    "testnetBanner": "Testnet — moedas sem valor real. Não use para pagamentos reais."
   },
   "walletList": {
     "title": "Carteiras",
@@ -160,11 +161,9 @@
     "copy": "Copiar",
     "share": "Compartilhar",
     "amountOptional": "Valor (opcional)",
-    "newAddress": "Novo endereço",
     "selectAccount": "Selecionar conta",
     "selectAccountDesc": "Escolha qual conta deve receber o bitcoin.",
-    "errorLoadAddress": "Falha ao carregar endereço",
-    "errorGenerateAddress": "Falha ao gerar endereço"
+    "errorLoadAddress": "Falha ao carregar endereço"
   },
   "send": {
     "title": "Enviar",

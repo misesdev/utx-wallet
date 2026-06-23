@@ -367,6 +367,15 @@ describe('i18n resources', () => {
     });
   });
 
+  describe('home.testnetBanner key', () => {
+    it('pt-BR has non-empty home.testnetBanner', () => {
+      expect(ptBR.home.testnetBanner).toBeTruthy();
+    });
+    it('en-US has non-empty home.testnetBanner', () => {
+      expect(enUS.home.testnetBanner).toBeTruthy();
+    });
+  });
+
   describe('syncSettings keys', () => {
     const KEYS = [
       'title', 'sectionRate', 'sectionParallel',

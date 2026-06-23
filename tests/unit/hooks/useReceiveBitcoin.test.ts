@@ -25,7 +25,6 @@ const ADDRESS: Address = {
 };
 
 const mockGetCurrentReceiveAddress = jest.fn<Promise<Address>, [string]>();
-const mockGenerateNewReceiveAddress = jest.fn<Promise<Address>, [string]>();
 const mockMarkAddressUsed = jest.fn();
 
 let mockSelectedWallet: Wallet | null = WALLET;
@@ -37,7 +36,6 @@ jest.mock('../../../src/presentation/hooks/useWallet', () => ({
 jest.mock('../../../src/app/providers/AddressProvider', () => ({
   useAddress: () => ({
     getCurrentReceiveAddress: mockGetCurrentReceiveAddress,
-    generateNewReceiveAddress: mockGenerateNewReceiveAddress,
     markAddressUsed: mockMarkAddressUsed,
   }),
 }));
@@ -60,12 +58,6 @@ describe('useReceiveBitcoin', () => {
     jest.clearAllMocks();
     mockSelectedWallet = WALLET;
     mockGetCurrentReceiveAddress.mockResolvedValue(ADDRESS);
-    mockGenerateNewReceiveAddress.mockResolvedValue({
-      ...ADDRESS,
-      id: 'addr-2',
-      value: 'tb1qreceiveaddress001',
-      index: 1,
-    });
   });
 
   describe('address loading', () => {
@@ -197,34 +189,11 @@ describe('useReceiveBitcoin', () => {
     });
   });
 
-  describe('generate new address', () => {
-    it('replaces address with newly generated one', async () => {
-      const { result } = renderHook(() => useReceiveBitcoin());
-      await waitFor(() => expect(result.current.address?.index).toBe(0));
-
-      await act(async () => { await result.current.generateNewAddress(); });
-
-      expect(result.current.address?.value).toBe('tb1qreceiveaddress001');
-      expect(result.current.address?.index).toBe(1);
-    });
-
-    it('calls generateNewReceiveAddress with the wallet id', async () => {
+  describe('no generateNewAddress in public API', () => {
+    it('does not expose generateNewAddress to callers', async () => {
       const { result } = renderHook(() => useReceiveBitcoin());
       await waitFor(() => expect(result.current.address).not.toBeNull());
-
-      await act(async () => { await result.current.generateNewAddress(); });
-
-      expect(mockGenerateNewReceiveAddress).toHaveBeenCalledWith('wallet-1');
-    });
-
-    it('sets error when generation fails', async () => {
-      mockGenerateNewReceiveAddress.mockRejectedValue(new Error('Derivation failed'));
-      const { result } = renderHook(() => useReceiveBitcoin());
-      await waitFor(() => expect(result.current.address).not.toBeNull());
-
-      await act(async () => { await result.current.generateNewAddress(); });
-
-      expect(result.current.error).toBe('Derivation failed');
+      expect((result.current as Record<string, unknown>).generateNewAddress).toBeUndefined();
     });
   });
 });
