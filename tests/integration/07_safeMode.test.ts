@@ -2,15 +2,14 @@
  * Integration: Safe Mode (Personal Node) Flow
  *
  * Tests the network configuration pipeline for activating/deactivating safe mode.
- * Safe mode = nodeMode: 'personal-node' with a personal node URL.
+ * Safe mode = allowPublicFallback: false (no public API fallback when nodes configured).
  *
  * Tests: NetworkService → NodeRepository → NetworkConfigStorage → InMemorySecureStorage
  *
- * Real: NetworkConfigStorage, NetworkService, ChangeNetworkUseCase
+ * Real: NetworkConfigStorage, NetworkService, NodeConnectionTestUseCase
  * Mocked: SecureStorage (in-memory), NodeConnectionTester
  */
 import { NetworkService } from '../../src/core/application/services/NetworkService';
-import { ChangeNetworkUseCase } from '../../src/core/domain/usecases/network/ChangeNetworkUseCase';
 import { NodeConnectionTestUseCase } from '../../src/core/domain/usecases/network/NodeConnectionTestUseCase';
 import { NetworkConfigStorage } from '../../src/core/infrastructure/storage/NetworkConfigStorage';
 import type { NodeRepository, NodeConnectionTester } from '../../src/core/domain/repositories/NodeRepository';
@@ -18,17 +17,9 @@ import type { NetworkConfig } from '../../src/core/domain/entities/Network';
 import { createSecureStorageMock } from '../mocks/storage';
 
 const DEFAULT_CONFIG: NetworkConfig = {
-  network: 'testnet4',
   connectivityMode: 'online',
-  nodeMode: 'public-api',
-};
-
-const PERSONAL_NODE_CONFIG: NetworkConfig = {
-  network: 'testnet4',
-  connectivityMode: 'online',
-  nodeMode: 'personal-node',
-  personalNodeUrl: 'http://localhost',
-  personalNodePort: 8332,
+  personalNodes: [],
+  allowPublicFallback: false,
 };
 
 function makeNodeRepository(storage: NetworkConfigStorage): NodeRepository {
@@ -66,56 +57,61 @@ function makeNetworkService() {
   const nodeRepository = makeNodeRepository(networkConfigStorage);
   const tester = makeConnectionTester();
 
-  const changeNetworkUseCase = new ChangeNetworkUseCase(nodeRepository);
   const nodeConnectionTestUseCase = new NodeConnectionTestUseCase(tester);
 
-  const service = new NetworkService(nodeRepository, nodeConnectionTestUseCase, changeNetworkUseCase, tester);
+  const service = new NetworkService(nodeRepository, nodeConnectionTestUseCase, tester);
   return { service, networkConfigStorage, tester };
 }
 
 describe('Integration: Safe Mode (Network Config)', () => {
-  it('returns default public-api config when no config is stored', async () => {
+  it('returns default config when no config is stored', async () => {
     const { service } = makeNetworkService();
     const config = await service.getConfig();
 
-    expect(config.nodeMode).toBe('public-api');
-    expect(config.network).toBe('testnet4');
+    expect(config.connectivityMode).toBe('online');
+    expect(config.allowPublicFallback).toBe(false);
+    expect(config.personalNodes).toEqual([]);
   });
 
-  it('stores personal-node config when setConfig is called', async () => {
+  it('stores personal nodes when setConfig is called', async () => {
     const { service } = makeNetworkService();
-    await service.setConfig(PERSONAL_NODE_CONFIG);
+    const configWithNode: NetworkConfig = {
+      connectivityMode: 'online',
+      personalNodes: [{ id: 'n1', label: 'Node', url: 'http://localhost:8332', network: 'testnet4', priority: 1 }],
+      allowPublicFallback: false,
+    };
+    await service.setConfig(configWithNode);
 
     const config = await service.getConfig();
-    expect(config.nodeMode).toBe('personal-node');
-    // Legacy fields are migrated to personalNodes on load
-    const node = config.personalNodes?.[0];
-    expect(node?.url).toBe('http://localhost');
-    expect(node?.port).toBe(8332);
+    expect(config.personalNodes).toHaveLength(1);
+    expect(config.personalNodes[0].url).toBe('http://localhost:8332');
   });
 
-  it('isSafeModeEnabled = nodeMode === personal-node', async () => {
+  it('isSafeModeEnabled = !allowPublicFallback', async () => {
     const { service } = makeNetworkService();
-    await service.setConfig(PERSONAL_NODE_CONFIG);
 
     const config = await service.getConfig();
-    const isSafeModeEnabled = config.nodeMode === 'personal-node';
+    const isSafeModeEnabled = !config.allowPublicFallback;
     expect(isSafeModeEnabled).toBe(true);
   });
 
-  it('resets to public-api when safe mode is deactivated', async () => {
+  it('deactivates safe mode by enabling public fallback', async () => {
     const { service } = makeNetworkService();
-    await service.setConfig(PERSONAL_NODE_CONFIG);
-    await service.setConfig({
-      network: 'testnet4',
-      connectivityMode: 'online',
-      nodeMode: 'public-api',
-    });
+    await service.setPublicFallback(true);
 
     const config = await service.getConfig();
-    expect(config.nodeMode).toBe('public-api');
-    const isSafeModeEnabled = config.nodeMode === 'personal-node';
+    const isSafeModeEnabled = !config.allowPublicFallback;
     expect(isSafeModeEnabled).toBe(false);
+  });
+
+  it('reactivates safe mode by disabling public fallback', async () => {
+    const { service } = makeNetworkService();
+    await service.setPublicFallback(true);
+    await service.setPublicFallback(false);
+
+    const config = await service.getConfig();
+    const isSafeModeEnabled = !config.allowPublicFallback;
+    expect(isSafeModeEnabled).toBe(true);
   });
 
   it('persists config across service re-creation (same storage)', async () => {
@@ -123,25 +119,34 @@ describe('Integration: Safe Mode (Network Config)', () => {
     const storage1 = new NetworkConfigStorage(secureStorage);
     const repo1 = makeNodeRepository(storage1);
     const t1 = makeConnectionTester();
-    const svc1 = new NetworkService(repo1, new NodeConnectionTestUseCase(t1), new ChangeNetworkUseCase(repo1), t1);
+    const svc1 = new NetworkService(repo1, new NodeConnectionTestUseCase(t1), t1);
 
-    await svc1.setConfig(PERSONAL_NODE_CONFIG);
+    await svc1.setConfig({
+      connectivityMode: 'online',
+      personalNodes: [{ id: 'n1', label: 'Node', url: 'http://localhost:8081', network: 'testnet4', priority: 1 }],
+      allowPublicFallback: false,
+    });
 
     // Create a new service backed by the same storage
     const storage2 = new NetworkConfigStorage(secureStorage);
     const repo2 = makeNodeRepository(storage2);
     const t2 = makeConnectionTester();
-    const svc2 = new NetworkService(repo2, new NodeConnectionTestUseCase(t2), new ChangeNetworkUseCase(repo2), t2);
+    const svc2 = new NetworkService(repo2, new NodeConnectionTestUseCase(t2), t2);
 
     const config = await svc2.getConfig();
-    expect(config.nodeMode).toBe('personal-node');
+    expect(config.personalNodes).toHaveLength(1);
   });
 
   it('testNodeConnection delegates to NodeConnectionTester', async () => {
     const { service, tester } = makeNetworkService();
-    const result = await service.testNodeConnection(PERSONAL_NODE_CONFIG);
+    const config: NetworkConfig = {
+      connectivityMode: 'online',
+      personalNodes: [],
+      allowPublicFallback: false,
+    };
+    const result = await service.testNodeConnection(config);
 
-    expect(tester.testConnection).toHaveBeenCalledWith(PERSONAL_NODE_CONFIG);
+    expect(tester.testConnection).toHaveBeenCalledWith(config);
     expect(result.status).toBe('connected');
   });
 
@@ -153,28 +158,17 @@ describe('Integration: Safe Mode (Network Config)', () => {
     const service = new NetworkService(
       repo,
       new NodeConnectionTestUseCase(tester),
-      new ChangeNetworkUseCase(repo),
       tester,
     );
 
-    const result = await service.testNodeConnection(PERSONAL_NODE_CONFIG);
+    const config: NetworkConfig = { connectivityMode: 'online', personalNodes: [], allowPublicFallback: false };
+    const result = await service.testNodeConnection(config);
     expect(result.status).toBe('disconnected');
   });
 
-  it('changeNetwork updates the network while keeping nodeMode', async () => {
-    const { service } = makeNetworkService();
-    await service.setConfig({ network: 'testnet4', connectivityMode: 'online', nodeMode: 'public-api' });
-
-    await service.changeNetwork('mainnet');
-    const config = await service.getConfig();
-    expect(config.network).toBe('mainnet');
-    expect(config.nodeMode).toBe('public-api');
-  });
-
-  describe('addPersonalNode — auto-activation', () => {
-    it('auto-activates personal-node mode when adding first node for active network', async () => {
+  describe('addPersonalNode', () => {
+    it('adds a node to the personal nodes list', async () => {
       const { service } = makeNetworkService();
-      // Active network is testnet4 (from DEFAULT_CONFIG)
       await service.addPersonalNode({
         label: 'My Node',
         url: 'http://192.168.1.100:8081',
@@ -183,12 +177,12 @@ describe('Integration: Safe Mode (Network Config)', () => {
       });
 
       const config = await service.getConfig();
-      expect(config.nodeMode).toBe('personal-node');
+      expect(config.personalNodes).toHaveLength(1);
+      expect(config.personalNodes[0].url).toBe('http://192.168.1.100:8081');
     });
 
-    it('does NOT change nodeMode when adding node for a different network', async () => {
+    it('does NOT change allowPublicFallback when adding a node', async () => {
       const { service } = makeNetworkService();
-      // Active network is testnet4 (from DEFAULT_CONFIG), but node is for mainnet
       await service.addPersonalNode({
         label: 'Mainnet Node',
         url: 'http://192.168.1.100:8081',
@@ -197,23 +191,21 @@ describe('Integration: Safe Mode (Network Config)', () => {
       });
 
       const config = await service.getConfig();
-      expect(config.nodeMode).toBe('public-api');
+      expect(config.allowPublicFallback).toBe(false);
     });
 
-    it('does NOT change nodeMode when adding a second node for the active network (already active)', async () => {
+    it('can add multiple nodes for different networks', async () => {
       const { service } = makeNetworkService();
       await service.addPersonalNode({ label: 'Node 1', url: 'http://node1:8081', network: 'testnet4', priority: 1 });
-      // nodeMode is now personal-node; add a second node — should not revert or re-activate
-      await service.addPersonalNode({ label: 'Node 2', url: 'http://node2:8081', network: 'testnet4', priority: 2 });
+      await service.addPersonalNode({ label: 'Node 2', url: 'http://node2:8081', network: 'mainnet', priority: 1 });
 
       const config = await service.getConfig();
-      expect(config.nodeMode).toBe('personal-node');
       expect(config.personalNodes).toHaveLength(2);
     });
   });
 
-  describe('removePersonalNode — auto-deactivation', () => {
-    it('auto-deactivates personal-node mode when last node for active network is removed', async () => {
+  describe('removePersonalNode', () => {
+    it('removes a node from the personal nodes list', async () => {
       const { service } = makeNetworkService();
       const node = await service.addPersonalNode({
         label: 'My Node',
@@ -221,72 +213,39 @@ describe('Integration: Safe Mode (Network Config)', () => {
         network: 'testnet4',
         priority: 1,
       });
-      expect((await service.getConfig()).nodeMode).toBe('personal-node');
 
       await service.removePersonalNode(node.id);
       const config = await service.getConfig();
-      expect(config.nodeMode).toBe('public-api');
       expect(config.personalNodes).toHaveLength(0);
     });
 
-    it('keeps personal-node mode when a second node still exists for active network', async () => {
-      const { service } = makeNetworkService();
-      const node1 = await service.addPersonalNode({ label: 'N1', url: 'http://n1:8081', network: 'testnet4', priority: 1 });
-      await service.addPersonalNode({ label: 'N2', url: 'http://n2:8081', network: 'testnet4', priority: 2 });
-
-      await service.removePersonalNode(node1.id);
-      const config = await service.getConfig();
-      expect(config.nodeMode).toBe('personal-node');
-      expect(config.personalNodes).toHaveLength(1);
-    });
-
-    it('does NOT change nodeMode when removing a node for a different network', async () => {
-      const { service } = makeNetworkService();
-      // Add a mainnet node (no auto-activate since active network is testnet4)
-      const mainnetNode = await service.addPersonalNode({
-        label: 'Mainnet',
-        url: 'http://n1:8081',
-        network: 'mainnet',
-        priority: 1,
-      });
-      // Manually activate for this test
-      await service.setConfig({ ...(await service.getConfig()), nodeMode: 'personal-node' });
-
-      // Remove the mainnet node — should not deactivate because active network is testnet4
-      await service.removePersonalNode(mainnetNode.id);
-      const config = await service.getConfig();
-      expect(config.nodeMode).toBe('personal-node');
-    });
-  });
-
-  describe('normalizeTestnet — cross-variant matching', () => {
-    it('auto-activates when adding "testnet" node while active network is "testnet4"', async () => {
-      const { service } = makeNetworkService();
-      // DEFAULT_CONFIG has network: 'testnet4'. Adding a node saved as 'testnet' must still activate.
-      await service.addPersonalNode({
-        label: 'Legacy Node',
-        url: 'http://192.168.1.1:8081',
-        network: 'testnet',
-        priority: 1,
-      });
-
-      const config = await service.getConfig();
-      expect(config.nodeMode).toBe('personal-node');
-    });
-
-    it('auto-deactivates when removing last "testnet" node while active network is "testnet4"', async () => {
+    it('does NOT change allowPublicFallback when removing a node', async () => {
       const { service } = makeNetworkService();
       const node = await service.addPersonalNode({
-        label: 'Legacy Node',
-        url: 'http://192.168.1.1:8081',
-        network: 'testnet',
+        label: 'My Node',
+        url: 'http://192.168.1.100:8081',
+        network: 'testnet4',
         priority: 1,
       });
-      expect((await service.getConfig()).nodeMode).toBe('personal-node');
 
       await service.removePersonalNode(node.id);
       const config = await service.getConfig();
-      expect(config.nodeMode).toBe('public-api');
+      expect(config.allowPublicFallback).toBe(false);
+    });
+  });
+
+  describe('setPublicFallback', () => {
+    it('enables public fallback', async () => {
+      const { service } = makeNetworkService();
+      await service.setPublicFallback(true);
+      expect((await service.getConfig()).allowPublicFallback).toBe(true);
+    });
+
+    it('disables public fallback (activates safe mode)', async () => {
+      const { service } = makeNetworkService();
+      await service.setPublicFallback(true);
+      await service.setPublicFallback(false);
+      expect((await service.getConfig()).allowPublicFallback).toBe(false);
     });
   });
 });

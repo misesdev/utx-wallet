@@ -38,8 +38,8 @@ const OFFLINE_TX: OfflineTransaction = {
   createdAt: '2026-06-06T00:00:00.000Z',
 };
 
-const ONLINE_CONFIG: NetworkConfig = { network: 'testnet4', connectivityMode: 'online', nodeMode: 'public-api' };
-const OFFLINE_CONFIG: NetworkConfig = { network: 'testnet4', connectivityMode: 'offline', nodeMode: 'public-api' };
+const ONLINE_CONFIG: NetworkConfig = { connectivityMode: 'online', personalNodes: [], allowPublicFallback: false };
+const OFFLINE_CONFIG: NetworkConfig = { connectivityMode: 'offline', personalNodes: [], allowPublicFallback: false };
 
 const mockListTransactions = jest.fn<Promise<Transaction[]>, [string]>();
 const mockListUtxos = jest.fn<Promise<Utxo[]>, [string]>();

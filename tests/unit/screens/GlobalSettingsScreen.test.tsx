@@ -8,9 +8,9 @@ import type { NetworkConfig } from '../../../src/core/domain/entities/Network';
 const mockNavigate = jest.fn();
 
 const DEFAULT_NETWORK: NetworkConfig = {
-  network: 'testnet4',
   connectivityMode: 'online',
-  nodeMode: 'public-api',
+  personalNodes: [],
+  allowPublicFallback: false,
 };
 
 jest.mock('../../../src/presentation/hooks/useAppNavigation', () => ({

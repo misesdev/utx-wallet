@@ -5,9 +5,9 @@ import type { NetworkConfig } from '../../../src/core/domain/entities/Network';
 import type { Wallet } from '../../../src/core/domain/entities/Wallet';
 
 const DEFAULT_NETWORK: NetworkConfig = {
-  network: 'testnet4',
   connectivityMode: 'online',
-  nodeMode: 'public-api',
+  personalNodes: [],
+  allowPublicFallback: false,
 };
 
 const WALLET: Wallet = {
@@ -57,7 +57,7 @@ describe('WalletDetailsScreen', () => {
 
   it('displays the network config info', () => {
     const screen = renderWithTheme(<WalletDetailsScreen />);
-    expect(screen.getByText('testnet4 / online / public-api')).toBeTruthy();
+    expect(screen.getByText('online / nodes-only')).toBeTruthy();
   });
 
   it('displays the wallet count', () => {

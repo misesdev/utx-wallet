@@ -10,8 +10,7 @@ const mockNavigate = jest.fn();
 
 const BASE_STATE: UseSafeModeState = {
   isSafeModeEnabled: false,
-  activeNodeCount: 0,
-  activeNetworkNodeCount: 0,
+  totalNodeCount: 0,
   status: 'disconnected',
   statusLabel: 'desconectado',
   activateSafeMode: mockActivate,
@@ -55,7 +54,7 @@ describe('SafeModeScreen', () => {
     });
 
     it('calls activateSafeMode when activate button is pressed', () => {
-      mockState = { ...BASE_STATE, activeNetworkNodeCount: 1 };
+      mockState = { ...BASE_STATE, totalNodeCount: 1 };
       const screen = renderWithTheme(<SafeModeScreen />);
       fireEvent.press(screen.getByTestId('btn-enable-safe-mode'));
       expect(mockActivate).toHaveBeenCalledTimes(1);
@@ -72,7 +71,7 @@ describe('SafeModeScreen', () => {
       mockState = {
         ...BASE_STATE,
         isSafeModeEnabled: true,
-        activeNetworkNodeCount: 2,
+        totalNodeCount: 2,
         status: 'connected',
         statusLabel: 'conectado',
       };
@@ -113,7 +112,7 @@ describe('SafeModeScreen', () => {
     });
 
     it('shows nodes configured count when nodes exist', () => {
-      mockState = { ...BASE_STATE, activeNetworkNodeCount: 3 };
+      mockState = { ...BASE_STATE, totalNodeCount: 3 };
       const screen = renderWithTheme(<SafeModeScreen />);
       expect(screen.getByTestId('safe-mode-node-count')).toBeTruthy();
     });

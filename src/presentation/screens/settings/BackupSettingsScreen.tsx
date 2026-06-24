@@ -18,7 +18,7 @@ export function BackupSettingsScreen() {
   const { networkConfig } = useNetwork();
   const { wallets } = useWallet();
 
-  const networkSummary = `${networkConfig.network} / ${networkConfig.connectivityMode} / ${networkConfig.nodeMode}`;
+  const networkSummary = `${networkConfig.connectivityMode} / ${networkConfig.allowPublicFallback ? 'public-fallback' : 'nodes-only'}`;
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>

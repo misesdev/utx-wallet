@@ -4,8 +4,7 @@ import { useNetwork } from './useNetwork';
 
 export type UseSafeModeState = {
   isSafeModeEnabled: boolean;
-  activeNodeCount: number;
-  activeNetworkNodeCount: number;
+  totalNodeCount: number;
   status: NodeConnectionStatus;
   statusLabel: string;
   activateSafeMode: () => Promise<void>;
@@ -20,36 +19,33 @@ const STATUS_LABELS: Record<NodeConnectionStatus, string> = {
 };
 
 export function useSafeMode(): UseSafeModeState {
-  const { networkConfig, setNetworkConfig } = useNetwork();
+  const { networkConfig, setPublicFallback } = useNetwork();
 
-  const isSafeModeEnabled = networkConfig.nodeMode === 'personal-node';
-  const nodes = networkConfig.personalNodes ?? [];
-  const activeNodeCount = nodes.length;
-  const activeNetworkNodeCount = nodes.filter(n => n.network === networkConfig.network).length;
+  const isSafeModeEnabled = !networkConfig.allowPublicFallback;
+  const nodes = networkConfig.personalNodes;
+  const totalNodeCount = nodes.length;
 
   const status: NodeConnectionStatus =
-    isSafeModeEnabled && activeNetworkNodeCount > 0 ? 'connected' : 'disconnected';
+    isSafeModeEnabled && totalNodeCount > 0 ? 'connected' : 'disconnected';
 
   const activateSafeMode = useCallback(async (): Promise<void> => {
-    await setNetworkConfig({ ...networkConfig, nodeMode: 'personal-node' });
-  }, [networkConfig, setNetworkConfig]);
+    await setPublicFallback(false);
+  }, [setPublicFallback]);
 
   const deactivateSafeMode = useCallback(async (): Promise<void> => {
-    await setNetworkConfig({ ...networkConfig, nodeMode: 'public-api' });
-  }, [networkConfig, setNetworkConfig]);
+    await setPublicFallback(true);
+  }, [setPublicFallback]);
 
   return useMemo(() => ({
     isSafeModeEnabled,
-    activeNodeCount,
-    activeNetworkNodeCount,
+    totalNodeCount,
     status,
     statusLabel: STATUS_LABELS[status],
     activateSafeMode,
     deactivateSafeMode,
   }), [
     isSafeModeEnabled,
-    activeNodeCount,
-    activeNetworkNodeCount,
+    totalNodeCount,
     status,
     activateSafeMode,
     deactivateSafeMode,

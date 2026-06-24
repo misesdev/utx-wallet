@@ -3,9 +3,9 @@ import type { NodeConnectionTester } from '../../../src/core/domain/repositories
 import type { NetworkConfig } from '../../../src/core/domain/entities/Network';
 
 const CONFIG: NetworkConfig = {
-  network: 'testnet4',
   connectivityMode: 'online',
-  nodeMode: 'personal-node',
+  personalNodes: [{ id: 'n1', label: 'Node', url: 'http://127.0.0.1', port: 3000, network: 'testnet4', priority: 1 }],
+  allowPublicFallback: false,
   personalNodeUrl: 'http://127.0.0.1',
   personalNodePort: 3000,
 };

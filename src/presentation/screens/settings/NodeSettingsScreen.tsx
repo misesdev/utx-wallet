@@ -12,7 +12,6 @@ import { AppIcon } from '../../components/base/AppIcon';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { usePersonalNodes } from '../../hooks/usePersonalNodes';
-import { useNetwork } from '../../hooks/useNetwork';
 import { useTheme } from '../../hooks/useTheme';
 import type { AppStackParamList } from '../../../app/navigation/routes';
 import type { RouteProp } from '@react-navigation/native';
@@ -27,7 +26,6 @@ export function NodeSettingsScreen() {
   const navigation = useAppNavigation();
   const route = useRoute<NodeSettingsRoute>();
 
-  const { networkConfig } = useNetwork();
   const { nodes, addNode, updateNode, testNode } = usePersonalNodes();
 
   const editingNode = route.params?.nodeId
@@ -37,7 +35,7 @@ export function NodeSettingsScreen() {
   const [label, setLabel] = useState(editingNode?.label ?? '');
   const [url, setUrl] = useState(editingNode?.url ?? '');
   const [network, setNetwork] = useState<BitcoinNetwork>(
-    editingNode?.network ?? networkConfig.network ?? DEFAULT_NETWORK,
+    editingNode?.network ?? DEFAULT_NETWORK,
   );
   const [authEnabled, setAuthEnabled] = useState(!!editingNode?.authToken);
   const [authToken, setAuthToken] = useState(editingNode?.authToken ?? '');

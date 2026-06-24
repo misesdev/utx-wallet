@@ -72,9 +72,10 @@ export class PersonalNodeAdapter implements NodeRepository, NodeConnectionTester
   async testConnection(config: NetworkConfig): Promise<NodeConnectionTestResult> {
     const baseUrl = normalizeBaseUrl(config);
     if (!baseUrl) {
-      return { status: 'disconnected', expectedNetwork: config.network };
+      return { status: 'disconnected', expectedNetwork: this.cachedConfig.personalNodes[0]?.network ?? 'mainnet' };
     }
-    return this.probeUrl(baseUrl, authHeaders(config), config.network);
+    const expectedNetwork = this.cachedConfig.personalNodes[0]?.network ?? 'mainnet';
+    return this.probeUrl(baseUrl, authHeaders(config), expectedNetwork);
   }
 
   async testNode(node: PersonalNode): Promise<NodeConnectionTestResult> {
@@ -132,7 +133,7 @@ export class PersonalNodeAdapter implements NodeRepository, NodeConnectionTester
   }
 
   async getTransactionStatus(txid: string): Promise<RemoteTransactionStatus> {
-    const tx = await this.clientFor(this.cachedConfig.network).getTransaction(txid);
+    const tx = await this.legacyClient().getTransaction(txid);
     return {
       txid: tx.txid,
       confirmed: tx.status.confirmed,
@@ -142,11 +143,11 @@ export class PersonalNodeAdapter implements NodeRepository, NodeConnectionTester
   }
 
   async getCurrentBlockHeight(): Promise<number> {
-    return this.clientFor(this.cachedConfig.network).getCurrentBlockHeight();
+    return this.legacyClient().getCurrentBlockHeight();
   }
 
   async getFeeRates(): Promise<FeeRates> {
-    const rates = await this.clientFor(this.cachedConfig.network).getFeeRates();
+    const rates = await this.legacyClient().getFeeRates();
     return {
       fastSatsPerVByte: rates.fastestFee,
       halfHourSatsPerVByte: rates.halfHourFee,
@@ -157,23 +158,26 @@ export class PersonalNodeAdapter implements NodeRepository, NodeConnectionTester
   }
 
   async broadcastTransaction(rawHex: string): Promise<string> {
-    return this.clientFor(this.cachedConfig.network).broadcastTransaction(rawHex);
+    return this.legacyClient().broadcastTransaction(rawHex);
   }
 
   async getRawTransaction(txid: string): Promise<RawTransaction> {
-    return this.clientFor(this.cachedConfig.network).getRawTransaction(txid);
+    return this.legacyClient().getRawTransaction(txid);
   }
 
-  private clientFor(network: BitcoinNetwork): MempoolApiClient {
-    if (network !== this.cachedConfig.network) {
-      throw new AppError('Personal node network is incompatible with the active wallet network', 'NETWORK_INCOMPATIBLE');
-    }
-
+  private legacyClient(): MempoolApiClient {
     const baseUrl = normalizeBaseUrl(this.cachedConfig);
     if (!baseUrl) {
       throw new AppError('Personal node URL is not configured', 'PERSONAL_NODE_NOT_CONFIGURED');
     }
+    return new MempoolApiClient(this.httpClient, baseUrl, authHeaders(this.cachedConfig));
+  }
 
+  private clientFor(_network: BitcoinNetwork): MempoolApiClient {
+    const baseUrl = normalizeBaseUrl(this.cachedConfig);
+    if (!baseUrl) {
+      throw new AppError('Personal node URL is not configured', 'PERSONAL_NODE_NOT_CONFIGURED');
+    }
     return new MempoolApiClient(this.httpClient, baseUrl, authHeaders(this.cachedConfig));
   }
 

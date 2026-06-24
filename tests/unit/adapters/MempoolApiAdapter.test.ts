@@ -12,9 +12,9 @@ import type {
 } from '../../../src/core/infrastructure/api/MempoolApiClient';
 
 const defaultConfig: NetworkConfig = {
-  network: 'testnet4',
   connectivityMode: 'online',
-  nodeMode: 'public-api',
+  personalNodes: [],
+  allowPublicFallback: false,
 };
 
 function createMockHttpClient(): jest.Mocked<HttpClient> {
@@ -57,14 +57,14 @@ describe('MempoolApiAdapter — NodeRepository', () => {
   describe('setNetworkConfig() / getNetworkConfig()', () => {
     it('persists config and returns it on next get', async () => {
       const { adapter } = createAdapter();
-      const mainnet: NetworkConfig = { network: 'mainnet', connectivityMode: 'online', nodeMode: 'public-api' };
+      const mainnet: NetworkConfig = { connectivityMode: 'online', personalNodes: [], allowPublicFallback: true };
       await adapter.setNetworkConfig(mainnet);
       await expect(adapter.getNetworkConfig()).resolves.toEqual(mainnet);
     });
 
     it('reads persisted config from storage', async () => {
       const { configStorage, httpClient } = createAdapter();
-      const mainnet: NetworkConfig = { network: 'mainnet', connectivityMode: 'online', nodeMode: 'public-api' };
+      const mainnet: NetworkConfig = { connectivityMode: 'online', personalNodes: [], allowPublicFallback: true };
       await configStorage.save(mainnet);
       const adapter = new MempoolApiAdapter(httpClient, configStorage, defaultConfig);
       await expect(adapter.getNetworkConfig()).resolves.toEqual(mainnet);
@@ -80,7 +80,7 @@ describe('MempoolApiAdapter — NodeRepository', () => {
 
 
   describe('network endpoint selection', () => {
-    it('uses the mainnet endpoint after network config changes to mainnet', async () => {
+    it('getFeeRates always uses mainnet endpoint (network-agnostic fee API)', async () => {
       const { adapter, httpClient } = createAdapter();
       httpClient.get.mockResolvedValue({
         fastestFee: 12,
@@ -90,26 +90,9 @@ describe('MempoolApiAdapter — NodeRepository', () => {
         minimumFee: 1,
       });
 
-      await adapter.setNetworkConfig({ network: 'mainnet', connectivityMode: 'online', nodeMode: 'public-api' });
       await adapter.getFeeRates();
 
       expect(httpClient.get).toHaveBeenCalledWith('https://mempool.space/api/v1/fees/recommended', expect.any(Object));
-    });
-
-    it('uses the testnet3 endpoint after network config changes to testnet3', async () => {
-      const { adapter, httpClient } = createAdapter();
-      httpClient.get.mockResolvedValue({
-        fastestFee: 12,
-        halfHourFee: 10,
-        hourFee: 8,
-        economyFee: 4,
-        minimumFee: 1,
-      });
-
-      await adapter.setNetworkConfig({ network: 'testnet3', connectivityMode: 'online', nodeMode: 'public-api' });
-      await adapter.getFeeRates();
-
-      expect(httpClient.get).toHaveBeenCalledWith('https://mempool.space/testnet/api/v1/fees/recommended', expect.any(Object));
     });
   });
 
@@ -389,9 +372,11 @@ describe('MempoolApiAdapter — BlockchainProvider', () => {
       const configStorage = new NetworkConfigStorage(createSecureStorageMock());
       const httpClient = createMockHttpClient();
       const adapter = new MempoolApiAdapter(httpClient, configStorage, {
-        network: 'testnet4',
         connectivityMode: 'online',
-        nodeMode: 'personal-node', // even if nodeMode is personal-node, this adapter is public-only
+        personalNodes: [{ id: 'n1', label: 'N', url: 'http://mynode:8081', network: 'testnet4', priority: 1 }],
+        allowPublicFallback: false,
+        // Even when personal nodes are configured, MempoolApiAdapter is the public-only implementation.
+        // Routing to personal nodes is handled by NodeProviderSelector / MultiNodeBlockchainProvider.
       });
       httpClient.get.mockResolvedValue([]);
       await adapter.getUtxos(ADDRESS, 'testnet4');

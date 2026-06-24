@@ -47,7 +47,7 @@ jest.mock('../../../src/presentation/hooks/useWallet', () => ({
 }));
 
 jest.mock('../../../src/presentation/hooks/useNetwork', () => ({
-  useNetwork: () => ({ networkConfig: { network: 'mainnet', connectivityMode: 'online', nodeMode: 'public-api' } }),
+  useNetwork: () => ({ networkConfig: { connectivityMode: 'online', personalNodes: [], allowPublicFallback: false } }),
 }));
 
 // ─── React Navigation route mock ─────────────────────────────────────────────

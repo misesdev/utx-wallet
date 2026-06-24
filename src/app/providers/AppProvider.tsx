@@ -60,7 +60,6 @@ import { FetchHttpClient } from '../../core/infrastructure/api/HttpClient';
 import { MempoolApiAdapter } from '../../core/infrastructure/adapters/MempoolApiAdapter';
 import { BlockchainAddressActivityChecker } from '../../core/infrastructure/adapters/BlockchainAddressActivityChecker';
 import { WalletDiscoveryUseCase } from '../../core/domain/usecases/wallet/WalletDiscoveryUseCase';
-import { ChangeNetworkUseCase } from '../../core/domain/usecases/network/ChangeNetworkUseCase';
 import { NodeConnectionTestUseCase } from '../../core/domain/usecases/network/NodeConnectionTestUseCase';
 import { NodeProviderSelector } from '../../core/infrastructure/adapters/NodeProviderSelector';
 import { PersonalNodeAdapter } from '../../core/infrastructure/adapters/PersonalNodeAdapter';
@@ -97,7 +96,6 @@ import { TransactionStorage } from '../../core/infrastructure/storage/Transactio
 import { UtxoStorage } from '../../core/infrastructure/storage/UtxoStorage';
 import { WalletKeyStorage } from '../../core/infrastructure/storage/WalletKeyStorage';
 import { WalletStorage } from '../../core/infrastructure/storage/WalletStorage';
-import { DEFAULT_NETWORK } from '../../shared/constants/networks';
 import { SYNC_REQUEST_DELAY_MS } from '../../shared/config/syncConfig';
 import { SyncSettingsStorage } from '../../core/infrastructure/storage/SyncSettingsStorage';
 import { SyncSettingsRepositoryImpl } from '../../core/infrastructure/repositories/SyncSettingsRepositoryImpl';
@@ -114,7 +112,6 @@ import { SendProvider } from './SendProvider';
 import { ThemeProvider } from './ThemeProvider';
 import { TransactionHistoryProvider } from './TransactionHistoryProvider';
 import { WalletProvider } from './WalletProvider';
-import { WalletNetworkSync } from './WalletNetworkSync';
 import { SignatureProvider } from './SignatureProvider';
 import { ScreenshotGuard } from './ScreenshotGuard';
 import { MessageSigningService } from '../../core/domain/services/MessageSigningService';
@@ -164,9 +161,9 @@ export function AppProvider({ children }: PropsWithChildren) {
     const networkConfigStorage = new NetworkConfigStorage(secureStorage);
     const httpClient = new FetchHttpClient();
     const defaultNetworkConfig = {
-      network: DEFAULT_NETWORK,
       connectivityMode: 'online' as const,
-      nodeMode: 'public-api' as const,
+      personalNodes: [] as import('../../core/domain/entities/PersonalNode').PersonalNode[],
+      allowPublicFallback: false,
     };
     const publicNodeAdapter = new MempoolApiAdapter(httpClient, networkConfigStorage, defaultNetworkConfig);
     const personalNodeAdapter = new PersonalNodeAdapter(httpClient, networkConfigStorage, defaultNetworkConfig);
@@ -314,7 +311,6 @@ export function AppProvider({ children }: PropsWithChildren) {
     const networkService = new NetworkService(
       nodeRepository,
       nodeConnectionTestUseCase,
-      new ChangeNetworkUseCase(nodeRepository),
       personalNodeAdapter,
     );
 
@@ -423,8 +419,7 @@ export function AppProvider({ children }: PropsWithChildren) {
         <NetworkProvider networkService={networkService}>
           <SyncSettingsProvider loadUseCase={loadSyncSettings} saveUseCase={saveSyncSettings}>
           <WalletProvider walletService={walletService}>
-            <WalletNetworkSync />
-            <AddressManagerProvider service={addressManagerService}>
+              <AddressManagerProvider service={addressManagerService}>
             <AddressProvider addressService={addressService}>
               <SendProvider sendService={sendService}>
                 <AccelerateProvider useCase={accelerateUseCase}>

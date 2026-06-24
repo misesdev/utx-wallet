@@ -32,10 +32,9 @@ const MAINNET_NODE_OTHER: PersonalNode = {
 };
 
 const BASE_CONFIG: NetworkConfig = {
-  network: 'testnet4',
   connectivityMode: 'online',
-  nodeMode: 'personal-node',
   personalNodes: [MAINNET_NODE, SECONDARY_NODE, MAINNET_NODE_OTHER],
+  allowPublicFallback: false,
 };
 
 function createHttpClient(): jest.Mocked<HttpClient> {
@@ -137,17 +136,18 @@ describe('MultiNodeBlockchainProvider', () => {
   });
 
   describe('No nodes configured', () => {
-    it('throws when no nodes are configured for the network', async () => {
-      const { provider } = await makeProvider({
+    it('uses public fallback when no nodes are configured for the network', async () => {
+      const { provider, publicFallback } = await makeProvider({
         ...BASE_CONFIG,
         personalNodes: [],
       });
-      await expect(provider.getUtxos('tb1qtest', 'testnet4')).rejects.toThrow(
-        'No personal nodes configured',
-      );
+      publicFallback.getUtxos.mockResolvedValue([]);
+      const result = await provider.getUtxos('tb1qtest', 'testnet4');
+      expect(result).toEqual([]);
+      expect(publicFallback.getUtxos).toHaveBeenCalledTimes(1);
     });
 
-    it('uses public fallback when no nodes configured and fallback is enabled', async () => {
+    it('uses public fallback when no nodes configured and fallback is explicitly enabled', async () => {
       const { provider, publicFallback } = await makeProvider({
         ...BASE_CONFIG,
         personalNodes: [],

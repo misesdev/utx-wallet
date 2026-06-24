@@ -22,47 +22,38 @@ export class NodeProviderSelector implements NodeRepository, BlockchainProvider 
   }
 
   async ping(): Promise<boolean> {
-    const config = await this.getNetworkConfig();
-    if (config.nodeMode === 'personal-node') {
-      return this.personalProvider.ping();
-    }
     return this.configRepository.ping();
   }
 
   async getBalance(address: string, network: BitcoinNetwork): Promise<AddressBalance> {
-    return this.selectProvider().then(provider => provider.getBalance(address, network));
+    return this.multiNodeProvider.getBalance(address, network);
   }
 
   async getUtxos(address: string, network: BitcoinNetwork): Promise<Utxo[]> {
-    return this.selectProvider().then(provider => provider.getUtxos(address, network));
+    return this.multiNodeProvider.getUtxos(address, network);
   }
 
   async getTransactions(address: string, network: BitcoinNetwork): Promise<Transaction[]> {
-    return this.selectProvider().then(provider => provider.getTransactions(address, network));
+    return this.multiNodeProvider.getTransactions(address, network);
   }
 
   async getTransactionStatus(txid: string): Promise<RemoteTransactionStatus> {
-    return this.selectProvider().then(provider => provider.getTransactionStatus(txid));
+    return this.multiNodeProvider.getTransactionStatus(txid);
   }
 
   async getCurrentBlockHeight(): Promise<number> {
-    return this.selectProvider().then(provider => provider.getCurrentBlockHeight());
+    return this.multiNodeProvider.getCurrentBlockHeight();
   }
 
   async getFeeRates(): Promise<FeeRates> {
-    return this.selectProvider().then(provider => provider.getFeeRates());
+    return this.multiNodeProvider.getFeeRates();
   }
 
   async broadcastTransaction(rawHex: string): Promise<string> {
-    return this.selectProvider().then(provider => provider.broadcastTransaction(rawHex));
+    return this.multiNodeProvider.broadcastTransaction(rawHex);
   }
 
   async getRawTransaction(txid: string): Promise<RawTransaction> {
-    return this.selectProvider().then(provider => provider.getRawTransaction(txid));
-  }
-
-  private async selectProvider(): Promise<BlockchainProvider> {
-    const config = await this.getNetworkConfig();
-    return config.nodeMode === 'personal-node' ? this.multiNodeProvider : this.publicProvider;
+    return this.multiNodeProvider.getRawTransaction(txid);
   }
 }

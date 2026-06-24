@@ -6,9 +6,9 @@ import type { HttpClient } from '../../../src/core/infrastructure/api/HttpClient
 import type { NetworkConfig } from '../../../src/core/domain/entities/Network';
 
 const DEFAULT_CONFIG: NetworkConfig = {
-  network: 'testnet4',
   connectivityMode: 'online',
-  nodeMode: 'personal-node',
+  personalNodes: [{ id: 'test-node', label: 'Test', url: 'node.local', port: 3000, network: 'testnet4', priority: 1 }],
+  allowPublicFallback: false,
   personalNodeUrl: 'node.local',
   personalNodePort: 3000,
 };

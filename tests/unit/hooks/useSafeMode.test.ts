@@ -3,8 +3,12 @@ import { useSafeMode } from '../../../src/presentation/hooks/useSafeMode';
 import type { NetworkConfig } from '../../../src/core/domain/entities/Network';
 import type { PersonalNode } from '../../../src/core/domain/entities/PersonalNode';
 
-const mockSetNetworkConfig = jest.fn<Promise<void>, [NetworkConfig]>();
-let mockNetworkConfig: NetworkConfig = { network: 'testnet4', connectivityMode: 'online', nodeMode: 'public-api' };
+const mockSetPublicFallback = jest.fn<Promise<void>, [boolean]>();
+let mockNetworkConfig: NetworkConfig = {
+  connectivityMode: 'online',
+  personalNodes: [],
+  allowPublicFallback: false,
+};
 
 const TESTNET_NODE: PersonalNode = {
   id: 'node-1',
@@ -18,58 +22,58 @@ jest.mock('../../../src/presentation/hooks/useNetwork', () => ({
   useNetwork: () => ({
     networkConfig: mockNetworkConfig,
     isOnline: mockNetworkConfig.connectivityMode === 'online',
-    setNetworkConfig: mockSetNetworkConfig,
+    setPublicFallback: mockSetPublicFallback,
   }),
 }));
 
 describe('useSafeMode', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockNetworkConfig = { network: 'testnet4', connectivityMode: 'online', nodeMode: 'public-api' };
-    mockSetNetworkConfig.mockResolvedValue(undefined);
+    mockNetworkConfig = {
+      connectivityMode: 'online',
+      personalNodes: [],
+      allowPublicFallback: false,
+    };
+    mockSetPublicFallback.mockResolvedValue(undefined);
   });
 
-  it('isSafeModeEnabled is false when nodeMode is public-api', () => {
-    const { result } = renderHook(() => useSafeMode());
-    expect(result.current.isSafeModeEnabled).toBe(false);
-  });
-
-  it('isSafeModeEnabled is true when nodeMode is personal-node', () => {
-    mockNetworkConfig = { ...mockNetworkConfig, nodeMode: 'personal-node' };
+  it('isSafeModeEnabled is true when allowPublicFallback is false', () => {
     const { result } = renderHook(() => useSafeMode());
     expect(result.current.isSafeModeEnabled).toBe(true);
   });
 
-  it('activateSafeMode sets nodeMode to personal-node', async () => {
+  it('isSafeModeEnabled is false when allowPublicFallback is true', () => {
+    mockNetworkConfig = { ...mockNetworkConfig, allowPublicFallback: true };
+    const { result } = renderHook(() => useSafeMode());
+    expect(result.current.isSafeModeEnabled).toBe(false);
+  });
+
+  it('activateSafeMode calls setPublicFallback(false)', async () => {
+    mockNetworkConfig = { ...mockNetworkConfig, allowPublicFallback: true };
     const { result } = renderHook(() => useSafeMode());
     await act(async () => { await result.current.activateSafeMode(); });
-    expect(mockSetNetworkConfig).toHaveBeenCalledWith(
-      expect.objectContaining({ nodeMode: 'personal-node' }),
-    );
+    expect(mockSetPublicFallback).toHaveBeenCalledWith(false);
   });
 
-  it('deactivateSafeMode sets nodeMode to public-api', async () => {
-    mockNetworkConfig = { ...mockNetworkConfig, nodeMode: 'personal-node' };
+  it('deactivateSafeMode calls setPublicFallback(true)', async () => {
     const { result } = renderHook(() => useSafeMode());
     await act(async () => { await result.current.deactivateSafeMode(); });
-    expect(mockSetNetworkConfig).toHaveBeenCalledWith(
-      expect.objectContaining({ nodeMode: 'public-api' }),
-    );
+    expect(mockSetPublicFallback).toHaveBeenCalledWith(true);
   });
 
-  it('activeNetworkNodeCount reflects nodes matching the active network', () => {
+  it('totalNodeCount reflects all configured nodes', () => {
     mockNetworkConfig = {
       ...mockNetworkConfig,
       personalNodes: [TESTNET_NODE, { ...TESTNET_NODE, id: 'node-2', network: 'mainnet' }],
     };
     const { result } = renderHook(() => useSafeMode());
-    expect(result.current.activeNetworkNodeCount).toBe(1);
+    expect(result.current.totalNodeCount).toBe(2);
   });
 
-  it('status is connected when safe mode enabled and nodes configured for network', () => {
+  it('status is connected when safe mode enabled (no fallback) and nodes configured', () => {
     mockNetworkConfig = {
       ...mockNetworkConfig,
-      nodeMode: 'personal-node',
+      allowPublicFallback: false,
       personalNodes: [TESTNET_NODE],
     };
     const { result } = renderHook(() => useSafeMode());
@@ -77,10 +81,10 @@ describe('useSafeMode', () => {
     expect(result.current.statusLabel).toBe('conectado');
   });
 
-  it('status is disconnected when safe mode enabled but no nodes for network', () => {
+  it('status is disconnected when safe mode enabled but no nodes configured', () => {
     mockNetworkConfig = {
       ...mockNetworkConfig,
-      nodeMode: 'personal-node',
+      allowPublicFallback: false,
       personalNodes: [],
     };
     const { result } = renderHook(() => useSafeMode());
@@ -88,7 +92,12 @@ describe('useSafeMode', () => {
     expect(result.current.statusLabel).toBe('desconectado');
   });
 
-  it('status is disconnected when safe mode is disabled', () => {
+  it('status is disconnected when safe mode is disabled (public fallback allowed)', () => {
+    mockNetworkConfig = {
+      ...mockNetworkConfig,
+      allowPublicFallback: true,
+      personalNodes: [TESTNET_NODE],
+    };
     const { result } = renderHook(() => useSafeMode());
     expect(result.current.status).toBe('disconnected');
   });

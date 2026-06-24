@@ -35,7 +35,7 @@ export class MempoolApiAdapter implements NodeRepository, BlockchainProvider {
 
   async ping(): Promise<boolean> {
     try {
-      await this.clientFor(this.cachedConfig.network).healthcheck();
+      await this.clientFor('mainnet').healthcheck();
       return true;
     } catch {
       return false;
@@ -63,7 +63,7 @@ export class MempoolApiAdapter implements NodeRepository, BlockchainProvider {
   }
 
   async getTransactionStatus(txid: string): Promise<RemoteTransactionStatus> {
-    const tx = await this.clientFor(this.cachedConfig.network).getTransaction(txid);
+    const tx = await this.clientFor('mainnet').getTransaction(txid);
     return {
       txid: tx.txid,
       confirmed: tx.status.confirmed,
@@ -73,7 +73,7 @@ export class MempoolApiAdapter implements NodeRepository, BlockchainProvider {
   }
 
   async getFeeRates(): Promise<FeeRates> {
-    const rates = await this.clientFor(this.cachedConfig.network).getFeeRates();
+    const rates = await this.clientFor('mainnet').getFeeRates();
     return {
       fastSatsPerVByte: rates.fastestFee,
       halfHourSatsPerVByte: rates.halfHourFee,
@@ -84,15 +84,15 @@ export class MempoolApiAdapter implements NodeRepository, BlockchainProvider {
   }
 
   async getCurrentBlockHeight(): Promise<number> {
-    return this.clientFor(this.cachedConfig.network).getCurrentBlockHeight();
+    return this.clientFor('mainnet').getCurrentBlockHeight();
   }
 
   async broadcastTransaction(rawHex: string): Promise<string> {
-    return this.clientFor(this.cachedConfig.network).broadcastTransaction(rawHex);
+    return this.clientFor('mainnet').broadcastTransaction(rawHex);
   }
 
   async getRawTransaction(txid: string): Promise<RawTransaction> {
-    return this.clientFor(this.cachedConfig.network).getRawTransaction(txid);
+    return this.clientFor('mainnet').getRawTransaction(txid);
   }
 
   // ── Private helpers ─────────────────────────────────────────────────────────

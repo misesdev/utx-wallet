@@ -4,8 +4,6 @@ export type BitcoinNetwork = 'mainnet' | 'testnet' | 'testnet3' | 'testnet4';
 
 export type ConnectivityMode = 'online' | 'offline';
 
-export type NodeMode = 'public-api' | 'personal-node';
-
 export type NodeConnectionStatus =
   | 'connected'
   | 'disconnected'
@@ -13,16 +11,13 @@ export type NodeConnectionStatus =
   | 'authentication-error';
 
 export type NetworkConfig = {
-  network: BitcoinNetwork;
   connectivityMode: ConnectivityMode;
-  nodeMode: NodeMode;
-  // Legacy single-node fields kept for backward compatibility — use personalNodes instead
+  personalNodes: PersonalNode[];
+  allowPublicFallback: boolean;
+  // Legacy single-node fields kept only for migration (read-and-strip)
   personalNodeUrl?: string;
   personalNodePort?: number;
   personalNodeAuthToken?: string;
-  // Multi-node configuration
-  personalNodes?: PersonalNode[];
-  allowPublicFallback?: boolean; // default false (privacy-first: don't fall back to public API)
 };
 
 export type NodeConnectionTestResult = {

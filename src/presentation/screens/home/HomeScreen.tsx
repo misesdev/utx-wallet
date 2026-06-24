@@ -55,7 +55,8 @@ function TestnetBanner() {
 
 type HomeHeaderProps = {
   walletName: string;
-  networkConfig: ReturnType<typeof useHomeWallet>['networkConfig'];
+  walletNetwork?: string;
+  connectivityMode?: ReturnType<typeof useHomeWallet>['networkConfig']['connectivityMode'];
   isSafeMode: boolean;
   isWatchOnly: boolean;
   hideBalanceEnabled: boolean;
@@ -63,7 +64,7 @@ type HomeHeaderProps = {
   onToggleReveal: () => void;
 };
 
-function HomeHeader({ walletName, networkConfig, isSafeMode, isWatchOnly, hideBalanceEnabled, hidden, onToggleReveal }: HomeHeaderProps) {
+function HomeHeader({ walletName, walletNetwork, connectivityMode, isSafeMode, isWatchOnly, hideBalanceEnabled, hidden, onToggleReveal }: HomeHeaderProps) {
   const { theme } = useTheme();
   const { t } = useAppTranslation();
   return (
@@ -83,7 +84,7 @@ function HomeHeader({ walletName, networkConfig, isSafeMode, isWatchOnly, hideBa
         {hideBalanceEnabled && (
           <BalanceEyeButton hidden={hidden} onPress={onToggleReveal} testID="home-eye-btn" />
         )}
-        <NetworkBadge config={networkConfig} />
+        <NetworkBadge network={walletNetwork as import('../../../core/domain/entities/Network').BitcoinNetwork | undefined} connectivityMode={connectivityMode} />
       </View>
     </View>
   );
@@ -308,6 +309,7 @@ export function HomeScreen() {
     refresh,
   } = useHomeWallet();
 
+
   const { isSyncing, lastSyncAt, syncError, syncProgress, sync } = useWalletSync();
 
   useFocusEffect(
@@ -356,12 +358,13 @@ export function HomeScreen() {
         ]}
       >
         {/* Testnet safety banner */}
-        {TESTNET_NETWORKS.includes(networkConfig.network) && <TestnetBanner />}
+        {wallet && TESTNET_NETWORKS.includes(wallet.network) && <TestnetBanner />}
 
         {/* Header: wallet name left, network + safe mode right */}
         <HomeHeader
           walletName={wallet.name}
-          networkConfig={networkConfig}
+          walletNetwork={wallet.network}
+          connectivityMode={networkConfig.connectivityMode}
           isSafeMode={isSafeMode}
           isWatchOnly={wallet.status === 'watch-only'}
           hideBalanceEnabled={hideBalanceEnabled}

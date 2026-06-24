@@ -16,7 +16,7 @@ export function SafeModeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useAppNavigation();
 
-  const { isSafeModeEnabled, activeNetworkNodeCount, statusLabel, activateSafeMode, deactivateSafeMode } = useSafeMode();
+  const { isSafeModeEnabled, totalNodeCount, statusLabel, activateSafeMode, deactivateSafeMode } = useSafeMode();
 
   const statusColor = statusLabel === 'conectado' ? theme.colors.success : theme.colors.textMuted;
 
@@ -87,8 +87,8 @@ export function SafeModeScreen() {
           <View style={styles.infoRow}>
             <AppText variant="caption" color="muted">{t('safeMode.nodesLabel')}</AppText>
             <AppText variant="body" testID="safe-mode-node-count">
-              {activeNetworkNodeCount > 0
-                ? t('safeMode.nodesConfigured', { count: activeNetworkNodeCount })
+              {totalNodeCount > 0
+                ? t('safeMode.nodesConfigured', { count: totalNodeCount })
                 : t('safeMode.noNodesConfigured')}
             </AppText>
           </View>
@@ -133,7 +133,7 @@ export function SafeModeScreen() {
         {isSafeModeEnabled ? (
           <AppButton title={t('safeMode.disable')} variant="secondary" onPress={deactivateSafeMode} testID="btn-disable-safe-mode" />
         ) : (
-          <AppButton title={t('safeMode.enable')} onPress={activateSafeMode} testID="btn-enable-safe-mode" disabled={activeNetworkNodeCount === 0} />
+          <AppButton title={t('safeMode.enable')} onPress={activateSafeMode} testID="btn-enable-safe-mode" disabled={totalNodeCount === 0} />
         )}
       </ScrollView>
     </View>

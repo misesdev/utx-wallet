@@ -16,7 +16,7 @@ export function WalletDetailsScreen() {
       <AppCard>
         <AppText variant="subtitle">{t('walletDetails.subtitle')}</AppText>
         <AppText color="muted">
-          {networkConfig.network} / {networkConfig.connectivityMode} / {networkConfig.nodeMode}
+          {networkConfig.connectivityMode} / {networkConfig.allowPublicFallback ? 'public-fallback' : 'nodes-only'}
         </AppText>
         <AppText color="muted">{t('walletDetails.walletsLoaded', { count: wallets.length })}</AppText>
       </AppCard>

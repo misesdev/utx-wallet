@@ -19,9 +19,9 @@ const mockSync = jest.fn().mockResolvedValue(undefined);
 const mockReloadAccounts = jest.fn().mockResolvedValue(undefined);
 
 const DEFAULT_NETWORK: NetworkConfig = {
-  network: 'testnet4',
   connectivityMode: 'online',
-  nodeMode: 'public-api',
+  personalNodes: [],
+  allowPublicFallback: false,
 };
 
 const WALLET_STATE: HomeWalletState = {
@@ -422,7 +422,6 @@ describe('HomeScreen', () => {
     it('shows the testnet banner for testnet network', () => {
       mockHomeState = {
         ...WALLET_STATE,
-        networkConfig: { ...DEFAULT_NETWORK, network: 'testnet' },
         wallet: { ...WALLET_STATE.wallet!, network: 'testnet' },
       };
       const screen = renderWithTheme(<HomeScreen />);
@@ -432,7 +431,6 @@ describe('HomeScreen', () => {
     it('does not show the testnet banner on mainnet', () => {
       mockHomeState = {
         ...WALLET_STATE,
-        networkConfig: { ...DEFAULT_NETWORK, network: 'mainnet' },
         wallet: { ...WALLET_STATE.wallet!, network: 'mainnet' },
       };
       const screen = renderWithTheme(<HomeScreen />);

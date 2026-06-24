@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Transaction } from '../../core/domain/entities/Transaction';
 import type { Wallet } from '../../core/domain/entities/Wallet';
 import type { NetworkConfig } from '../../core/domain/entities/Network';
@@ -23,18 +23,7 @@ export function useHomeWallet(): HomeWalletState {
   const { selectedWallet, listTransactions, listUtxos } = useWallet();
   const { t } = useAppTranslation();
   const { networkConfig, isOnline } = useNetwork();
-  const isSafeMode = networkConfig.nodeMode === 'personal-node';
-
-  // Use wallet's own network as the authoritative display value.
-  // networkConfig.network can lag behind during wallet switches because
-  // WalletNetworkSync runs asynchronously after navigation renders.
-  const displayNetworkConfig = useMemo<NetworkConfig>(
-    () => ({
-      ...networkConfig,
-      network: selectedWallet?.network ?? networkConfig.network,
-    }),
-    [networkConfig, selectedWallet?.network],
-  );
+  const isSafeMode = !networkConfig.allowPublicFallback && networkConfig.personalNodes.length > 0;
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [confirmedBalanceSats, setConfirmedBalanceSats] = useState(0);
@@ -83,7 +72,7 @@ export function useHomeWallet(): HomeWalletState {
     wallet: selectedWallet,
     confirmedBalanceSats,
     pendingBalanceSats,
-    networkConfig: displayNetworkConfig,
+    networkConfig,
     isOnline,
     isSafeMode,
     transactions,

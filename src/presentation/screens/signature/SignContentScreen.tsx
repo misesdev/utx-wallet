@@ -17,7 +17,6 @@ import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
 import { useSignature } from '../../../app/providers/SignatureProvider';
 import { useWallet } from '../../hooks/useWallet';
-import { useNetwork } from '../../hooks/useNetwork';
 import { AppRoutes } from '../../../app/navigation/routes';
 import type { BitcoinNetwork } from '../../../core/domain/entities/Network';
 
@@ -28,8 +27,7 @@ export function SignContentScreen() {
   const navigation = useAppNavigation();
   const { signMessage, encodeSignedMessage } = useSignature();
   const { selectedWallet } = useWallet();
-  const { networkConfig } = useNetwork();
-  const network = networkConfig.network as BitcoinNetwork;
+  const network = (selectedWallet?.network ?? 'mainnet') as BitcoinNetwork;
 
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);

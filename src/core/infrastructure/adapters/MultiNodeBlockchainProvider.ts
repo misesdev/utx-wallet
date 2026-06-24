@@ -66,10 +66,8 @@ export class MultiNodeBlockchainProvider implements BlockchainProvider {
   }
 
   async getTransactionStatus(txid: string): Promise<RemoteTransactionStatus> {
-    const config = await this.configStorage.load();
-    const network = config?.network ?? 'mainnet';
     return this.withPriority(
-      network,
+      null,
       client => client.getTransaction(txid).then(tx => ({
         txid: tx.txid,
         confirmed: tx.status.confirmed,
@@ -81,20 +79,16 @@ export class MultiNodeBlockchainProvider implements BlockchainProvider {
   }
 
   async getCurrentBlockHeight(): Promise<number> {
-    const config = await this.configStorage.load();
-    const network = config?.network ?? 'mainnet';
     return this.withPriority(
-      network,
+      null,
       client => client.getCurrentBlockHeight(),
       () => this.publicFallback.getCurrentBlockHeight(),
     );
   }
 
   async getFeeRates(): Promise<FeeRates> {
-    const config = await this.configStorage.load();
-    const network = config?.network ?? 'mainnet';
     return this.withPriority(
-      network,
+      null,
       client => client.getFeeRates().then(rates => ({
         fastSatsPerVByte: rates.fastestFee,
         halfHourSatsPerVByte: rates.halfHourFee,
@@ -107,38 +101,35 @@ export class MultiNodeBlockchainProvider implements BlockchainProvider {
   }
 
   async broadcastTransaction(rawHex: string): Promise<string> {
-    const config = await this.configStorage.load();
-    const network = config?.network ?? 'mainnet';
     return this.withPriority(
-      network,
+      null,
       client => client.broadcastTransaction(rawHex),
       () => this.publicFallback.broadcastTransaction(rawHex),
     );
   }
 
   async getRawTransaction(txid: string): Promise<RawTransaction> {
-    const config = await this.configStorage.load();
-    const network = config?.network ?? 'mainnet';
     return this.withPriority(
-      network,
+      null,
       client => client.getRawTransaction(txid),
       () => this.publicFallback.getRawTransaction(txid),
     );
   }
 
   private async withPriority<T>(
-    network: BitcoinNetwork,
+    network: BitcoinNetwork | null,
     fn: (client: MempoolApiClient) => Promise<T>,
     fallback: () => Promise<T>,
   ): Promise<T> {
     const config = await this.configStorage.load();
-    const nodes = (config?.personalNodes ?? [])
-      .filter(n => normalizeTestnet(n.network) === normalizeTestnet(network))
-      .sort((a, b) => a.priority - b.priority);
+    const allNodes = config?.personalNodes ?? [];
+    const nodes = (network !== null
+      ? allNodes.filter(n => normalizeTestnet(n.network) === normalizeTestnet(network))
+      : allNodes
+    ).sort((a, b) => a.priority - b.priority);
 
     if (nodes.length === 0) {
-      if (config?.allowPublicFallback === true) return fallback();
-      throw new AppError(`No personal nodes configured for ${network}`, 'PERSONAL_NODE_NOT_CONFIGURED');
+      return fallback();
     }
 
     let lastError: unknown;

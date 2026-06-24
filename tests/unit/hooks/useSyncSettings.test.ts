@@ -3,16 +3,10 @@ import { useSyncSettings } from '../../../src/presentation/hooks/useSyncSettings
 import { DEFAULT_SYNC_SETTINGS } from '../../../src/core/domain/entities/SyncSettings';
 import type { SyncSettings } from '../../../src/core/domain/entities/SyncSettings';
 import type { PersonalNode } from '../../../src/core/domain/entities/PersonalNode';
-import type { NetworkConfig } from '../../../src/core/domain/entities/Network';
 
 const mockSave = jest.fn<Promise<void>, [SyncSettings]>().mockResolvedValue(undefined);
 let mockSettings: SyncSettings = { ...DEFAULT_SYNC_SETTINGS };
 let mockNodes: PersonalNode[] = [];
-let mockNetworkConfig: NetworkConfig = {
-  network: 'testnet4',
-  connectivityMode: 'online',
-  nodeMode: 'public-api',
-};
 
 jest.mock('../../../src/app/providers/SyncSettingsProvider', () => ({
   useSyncSettingsContext: () => ({
@@ -26,10 +20,6 @@ jest.mock('../../../src/presentation/hooks/usePersonalNodes', () => ({
   usePersonalNodes: () => ({ nodes: mockNodes }),
 }));
 
-jest.mock('../../../src/presentation/hooks/useNetwork', () => ({
-  useNetwork: () => ({ networkConfig: mockNetworkConfig }),
-}));
-
 const TESTNET4_NODE: PersonalNode = {
   id: 'n1',
   label: 'Node',
@@ -38,18 +28,11 @@ const TESTNET4_NODE: PersonalNode = {
   priority: 1,
 };
 
-const PERSONAL_NODE_CONFIG: NetworkConfig = {
-  network: 'testnet4',
-  connectivityMode: 'online',
-  nodeMode: 'personal-node',
-};
-
 describe('useSyncSettings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSettings = { ...DEFAULT_SYNC_SETTINGS };
     mockNodes = [];
-    mockNetworkConfig = { network: 'testnet4', connectivityMode: 'online', nodeMode: 'public-api' };
   });
 
   it('returns the current settings', () => {
@@ -74,37 +57,14 @@ describe('useSyncSettings', () => {
       expect(result.current.canEnableParallelSync).toBe(false);
     });
 
-    it('is false when nodes exist but nodeMode is public-api', () => {
+    it('is true when at least one node is configured', () => {
       mockNodes = [TESTNET4_NODE];
-      mockNetworkConfig = { ...PERSONAL_NODE_CONFIG, nodeMode: 'public-api' };
       const { result } = renderHook(() => useSyncSettings());
-      expect(result.current.canEnableParallelSync).toBe(false);
+      expect(result.current.canEnableParallelSync).toBe(true);
     });
 
-    it('is false when nodeMode is personal-node but node is for a different network', () => {
+    it('is true regardless of node network', () => {
       mockNodes = [{ ...TESTNET4_NODE, network: 'mainnet' }];
-      mockNetworkConfig = PERSONAL_NODE_CONFIG; // active network is testnet4
-      const { result } = renderHook(() => useSyncSettings());
-      expect(result.current.canEnableParallelSync).toBe(false);
-    });
-
-    it('is true when nodeMode is personal-node AND node matches active network', () => {
-      mockNodes = [TESTNET4_NODE];
-      mockNetworkConfig = PERSONAL_NODE_CONFIG;
-      const { result } = renderHook(() => useSyncSettings());
-      expect(result.current.canEnableParallelSync).toBe(true);
-    });
-
-    it('is true when node is "testnet" and active network is "testnet4" (normalizeTestnet)', () => {
-      mockNodes = [{ ...TESTNET4_NODE, network: 'testnet' as const }];
-      mockNetworkConfig = PERSONAL_NODE_CONFIG; // active network is testnet4
-      const { result } = renderHook(() => useSyncSettings());
-      expect(result.current.canEnableParallelSync).toBe(true);
-    });
-
-    it('is true when node is "testnet4" and active network is "testnet" (normalizeTestnet)', () => {
-      mockNodes = [TESTNET4_NODE]; // node.network = 'testnet4'
-      mockNetworkConfig = { ...PERSONAL_NODE_CONFIG, network: 'testnet' as const };
       const { result } = renderHook(() => useSyncSettings());
       expect(result.current.canEnableParallelSync).toBe(true);
     });
@@ -145,7 +105,7 @@ describe('useSyncSettings', () => {
   });
 
   describe('toggleParallelSync', () => {
-    it('does not enable parallel sync when no personal node is configured for active network', async () => {
+    it('does not enable parallel sync when no personal node is configured', async () => {
       const { result } = renderHook(() => useSyncSettings());
       await act(async () => {
         await result.current.toggleParallelSync();
@@ -153,19 +113,8 @@ describe('useSyncSettings', () => {
       expect(mockSave).not.toHaveBeenCalled();
     });
 
-    it('does not enable parallel sync when nodeMode is public-api even with nodes', async () => {
+    it('enables parallel sync when personal node is configured', async () => {
       mockNodes = [TESTNET4_NODE];
-      mockNetworkConfig = { ...PERSONAL_NODE_CONFIG, nodeMode: 'public-api' };
-      const { result } = renderHook(() => useSyncSettings());
-      await act(async () => {
-        await result.current.toggleParallelSync();
-      });
-      expect(mockSave).not.toHaveBeenCalled();
-    });
-
-    it('enables parallel sync when personal node is active for the current network', async () => {
-      mockNodes = [TESTNET4_NODE];
-      mockNetworkConfig = PERSONAL_NODE_CONFIG;
       const { result } = renderHook(() => useSyncSettings());
       await act(async () => {
         await result.current.toggleParallelSync();
@@ -173,7 +122,7 @@ describe('useSyncSettings', () => {
       expect(mockSave).toHaveBeenCalledWith({ ...DEFAULT_SYNC_SETTINGS, parallelSync: true });
     });
 
-    it('can disable parallel sync even without a personal node for current network', async () => {
+    it('can disable parallel sync even without a personal node', async () => {
       mockSettings = { maxRequestsPerSecond: 1, parallelSync: true };
       const { result } = renderHook(() => useSyncSettings());
       await act(async () => {

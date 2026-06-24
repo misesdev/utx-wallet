@@ -12,7 +12,7 @@ jest.mock('../../../src/presentation/hooks/useAppNavigation', () => ({
 
 jest.mock('../../../src/presentation/hooks/useNetwork', () => ({
   useNetwork: () => ({
-    networkConfig: { network: 'testnet4', connectivityMode: 'online', nodeMode: 'public-api' },
+    networkConfig: { connectivityMode: 'online', personalNodes: [], allowPublicFallback: false },
     isOnline: true,
     setNetworkConfig: jest.fn(),
   }),

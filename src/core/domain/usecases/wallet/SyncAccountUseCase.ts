@@ -124,8 +124,7 @@ export class SyncAccountUseCase {
   private async hasPersonalNodeForNetwork(network: BitcoinNetwork): Promise<boolean> {
     if (!this.nodeRepository) return false;
     const config = await this.nodeRepository.getNetworkConfig();
-    if (config.nodeMode !== 'personal-node') return false;
-    return (config.personalNodes ?? []).some(
+    return config.personalNodes.some(
       n => normalizeTestnet(n.network) === normalizeTestnet(network),
     );
   }

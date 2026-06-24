@@ -25,9 +25,9 @@ const EXISTING_NODE_WITH_TOKEN: PersonalNode = {
 };
 
 const DEFAULT_CONFIG: NetworkConfig = {
-  network: 'testnet4',
   connectivityMode: 'online',
-  nodeMode: 'public-api',
+  personalNodes: [],
+  allowPublicFallback: false,
 };
 
 let mockNodeId: string | undefined;

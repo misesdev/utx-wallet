@@ -1,39 +1,42 @@
 import type { NetworkConfig } from '../../domain/entities/Network';
 import type { PersonalNode } from '../../domain/entities/PersonalNode';
 import type { SecureStorage } from './SecureStorage';
-import { TESTNET_NETWORKS } from '../../../shared/constants/networks';
-
-const VALID_NETWORK_CONFIG_NETWORKS = ['mainnet', ...TESTNET_NETWORKS] as const;
+import { DEFAULT_NETWORK } from '../../../shared/constants/networks';
 
 const NETWORK_CONFIG_KEY = 'network_config';
 
 function isValidNetworkConfig(obj: unknown): obj is NetworkConfig {
   if (!obj || typeof obj !== 'object') return false;
   const c = obj as Record<string, unknown>;
-  return (
-    VALID_NETWORK_CONFIG_NETWORKS.includes(c.network as typeof VALID_NETWORK_CONFIG_NETWORKS[number]) &&
-    (c.connectivityMode === 'online' || c.connectivityMode === 'offline') &&
-    (c.nodeMode === 'public-api' || c.nodeMode === 'personal-node')
-  );
+  return c.connectivityMode === 'online' || c.connectivityMode === 'offline';
 }
 
-function migratePersonalNodes(config: NetworkConfig): NetworkConfig {
-  if (config.personalNodes && config.personalNodes.length > 0) return config;
-  if (!config.personalNodeUrl?.trim()) return config;
+function migrateConfig(raw: Record<string, unknown>): NetworkConfig {
+  const legacyUrl = raw.personalNodeUrl as string | undefined;
+  const legacyPort = raw.personalNodePort as number | undefined;
+  const legacyAuthToken = raw.personalNodeAuthToken as string | undefined;
+  const legacyNetwork = raw.network as string | undefined;
 
-  const migratedNode: PersonalNode = {
-    id: `node_migrated_${Date.now()}`,
-    label: 'My Node',
-    url: config.personalNodeUrl.trim(),
-    port: config.personalNodePort,
-    authToken: config.personalNodeAuthToken,
-    network: config.network,
-    priority: 1,
+  let personalNodes = (raw.personalNodes as PersonalNode[] | undefined) ?? [];
+
+  if (personalNodes.length === 0 && legacyUrl?.trim()) {
+    const migratedNode: PersonalNode = {
+      id: `node_migrated_${Date.now()}`,
+      label: 'My Node',
+      url: legacyUrl.trim(),
+      port: legacyPort,
+      authToken: legacyAuthToken,
+      network: (legacyNetwork as PersonalNode['network']) ?? DEFAULT_NETWORK,
+      priority: 1,
+    };
+    personalNodes = [migratedNode];
+  }
+
+  return {
+    connectivityMode: (raw.connectivityMode as NetworkConfig['connectivityMode']) ?? 'online',
+    personalNodes,
+    allowPublicFallback: typeof raw.allowPublicFallback === 'boolean' ? raw.allowPublicFallback : false,
   };
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { personalNodeUrl, personalNodePort, personalNodeAuthToken, ...rest } = config;
-  return { ...rest, personalNodes: [migratedNode] };
 }
 
 export class NetworkConfigStorage {
@@ -45,8 +48,11 @@ export class NetworkConfigStorage {
     try {
       const parsed: unknown = JSON.parse(value);
       if (!isValidNetworkConfig(parsed)) return null;
-      const migrated = migratePersonalNodes(parsed);
-      if (migrated !== parsed) {
+      const raw = parsed as Record<string, unknown>;
+      const needsMigration =
+        'network' in raw || 'nodeMode' in raw || 'personalNodeUrl' in raw;
+      const migrated = migrateConfig(raw);
+      if (needsMigration) {
         await this.save(migrated);
       }
       return migrated;

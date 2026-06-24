@@ -396,9 +396,9 @@ describe('SyncAccountUseCase with SyncSettingsRepository', () => {
 
   function makeNodeRepo(config: Partial<NetworkConfig> = {}): jest.Mocked<NodeRepository> {
     const defaults: NetworkConfig = {
-      network: 'testnet',
       connectivityMode: 'online',
-      nodeMode: 'public-api',
+      personalNodes: [],
+      allowPublicFallback: false,
       ...config,
     };
     return {
@@ -489,7 +489,6 @@ describe('SyncAccountUseCase with SyncSettingsRepository', () => {
       const syncUtxos = makeSyncUtxos();
       const settingsRepo = makeSyncSettingsRepo({ maxRequestsPerSecond: 5, parallelSync: true });
       const nodeRepo = makeNodeRepo({
-        nodeMode: 'personal-node',
         personalNodes: [{ id: 'n1', label: 'Node', url: 'http://node:8081', network: 'testnet', priority: 1 }],
       });
       const useCase = new SyncAccountUseCase(
@@ -520,7 +519,6 @@ describe('SyncAccountUseCase with SyncSettingsRepository', () => {
       const settingsRepo = makeSyncSettingsRepo({ maxRequestsPerSecond: 5, parallelSync: true });
       // Node is for mainnet, wallet.network = 'testnet' (truly different networks)
       const nodeRepo = makeNodeRepo({
-        nodeMode: 'personal-node',
         personalNodes: [{ id: 'n1', label: 'Node', url: 'http://node:8081', network: 'mainnet', priority: 1 }],
       });
       const useCase = new SyncAccountUseCase(
@@ -551,7 +549,6 @@ describe('SyncAccountUseCase with SyncSettingsRepository', () => {
       const settingsRepo = makeSyncSettingsRepo({ maxRequestsPerSecond: 5, parallelSync: true });
       // Node stored as 'testnet4', wallet stored as 'testnet' — must match after normalization
       const nodeRepo = makeNodeRepo({
-        nodeMode: 'personal-node',
         personalNodes: [{ id: 'n1', label: 'Node', url: 'http://node:8081', network: 'testnet4', priority: 1 }],
       });
       const useCase = new SyncAccountUseCase(
@@ -575,43 +572,12 @@ describe('SyncAccountUseCase with SyncSettingsRepository', () => {
       );
     });
 
-    it('keeps parallel:false when nodeMode is public-api even with personal nodes', async () => {
-      const receiveAddr = makeAddress('addr-A', 'receive');
-      const addressRepo = makeAddressRepo([receiveAddr], []);
-      const syncUtxos = makeSyncUtxos();
-      const settingsRepo = makeSyncSettingsRepo({ maxRequestsPerSecond: 5, parallelSync: true });
-      const nodeRepo = makeNodeRepo({
-        nodeMode: 'public-api', // safe mode not activated
-        personalNodes: [{ id: 'n1', label: 'Node', url: 'http://node:8081', network: 'testnet', priority: 1 }],
-      });
-      const useCase = new SyncAccountUseCase(
-        makeWalletRepo(), // wallet.network = 'testnet'
-        addressRepo,
-        syncUtxos,
-        makeSyncTransactions(),
-        makeSyncBalance(),
-        makeSyncStateRepo(),
-        null,
-        settingsRepo,
-        nodeRepo,
-      );
-      await useCase.execute(WALLET_ID, ORIGIN_ID);
-      expect(syncUtxos.execute).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(Array),
-        expect.any(String),
-        undefined,
-        expect.objectContaining({ parallel: false }),
-      );
-    });
-
     it('keeps parallel:false when parallelSync setting is false, even with a personal node', async () => {
       const receiveAddr = makeAddress('addr-A', 'receive');
       const addressRepo = makeAddressRepo([receiveAddr], []);
       const syncUtxos = makeSyncUtxos();
       const settingsRepo = makeSyncSettingsRepo({ maxRequestsPerSecond: 5, parallelSync: false });
       const nodeRepo = makeNodeRepo({
-        nodeMode: 'personal-node',
         personalNodes: [{ id: 'n1', label: 'Node', url: 'http://node:8081', network: 'testnet', priority: 1 }],
       });
       const useCase = new SyncAccountUseCase(

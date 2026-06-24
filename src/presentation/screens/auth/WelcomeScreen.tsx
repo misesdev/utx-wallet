@@ -51,7 +51,7 @@ export function WelcomeScreen() {
       </View>
 
       <View style={styles.footer}>
-        <NetworkBadge config={networkConfig} />
+        <NetworkBadge connectivityMode={networkConfig.connectivityMode} />
       </View>
     </View>
   );

@@ -35,21 +35,19 @@ function createPersonalProvider(): jest.Mocked<BlockchainProvider & NodeReposito
   };
 }
 
-const PUBLIC_CONFIG: NetworkConfig = { network: 'testnet4', connectivityMode: 'online', nodeMode: 'public-api' };
-const SAFE_CONFIG: NetworkConfig = {
-  network: 'testnet4',
+const BASE_CONFIG: NetworkConfig = {
   connectivityMode: 'online',
-  nodeMode: 'personal-node',
-  personalNodeUrl: 'node.local',
+  personalNodes: [],
+  allowPublicFallback: false,
 };
 
 describe('NodeProviderSelector', () => {
-  it('selects the public provider when safe mode is disabled', async () => {
-    const configRepository = createNodeRepository(PUBLIC_CONFIG);
+  it('always delegates to the multi-node provider', async () => {
+    const configRepository = createNodeRepository(BASE_CONFIG);
     const publicProvider = createProvider();
     const personalProvider = createPersonalProvider();
     const multiNodeProvider = createProvider();
-    publicProvider.getFeeRates.mockResolvedValue({
+    multiNodeProvider.getFeeRates.mockResolvedValue({
       fastSatsPerVByte: 10,
       halfHourSatsPerVByte: 8,
       hourSatsPerVByte: 6,
@@ -60,26 +58,26 @@ describe('NodeProviderSelector', () => {
 
     await selector.getFeeRates();
 
-    expect(publicProvider.getFeeRates).toHaveBeenCalledTimes(1);
-    expect(multiNodeProvider.getFeeRates).not.toHaveBeenCalled();
+    expect(multiNodeProvider.getFeeRates).toHaveBeenCalledTimes(1);
+    expect(publicProvider.getFeeRates).not.toHaveBeenCalled();
   });
 
-  it('selects the multi-node provider when safe mode is enabled', async () => {
-    const configRepository = createNodeRepository(SAFE_CONFIG);
+  it('delegates getUtxos to multi-node provider', async () => {
+    const configRepository = createNodeRepository(BASE_CONFIG);
     const publicProvider = createProvider();
     const personalProvider = createPersonalProvider();
     const multiNodeProvider = createProvider();
-    multiNodeProvider.getCurrentBlockHeight.mockResolvedValue(840_000);
+    multiNodeProvider.getUtxos.mockResolvedValue([]);
     const selector = new NodeProviderSelector(configRepository, publicProvider, personalProvider, multiNodeProvider);
 
-    await selector.getCurrentBlockHeight();
+    await selector.getUtxos('tb1qaddress', 'testnet4');
 
-    expect(multiNodeProvider.getCurrentBlockHeight).toHaveBeenCalledTimes(1);
-    expect(publicProvider.getCurrentBlockHeight).not.toHaveBeenCalled();
+    expect(multiNodeProvider.getUtxos).toHaveBeenCalledTimes(1);
+    expect(publicProvider.getUtxos).not.toHaveBeenCalled();
   });
 
-  it('errors propagate from the multi-node provider in safe mode', async () => {
-    const configRepository = createNodeRepository(SAFE_CONFIG);
+  it('errors propagate from the multi-node provider', async () => {
+    const configRepository = createNodeRepository(BASE_CONFIG);
     const publicProvider = createProvider();
     const personalProvider = createPersonalProvider();
     const multiNodeProvider = createProvider();
@@ -93,15 +91,30 @@ describe('NodeProviderSelector', () => {
   });
 
   it('persists config and updates the personal provider cache', async () => {
-    const configRepository = createNodeRepository(PUBLIC_CONFIG);
+    const configRepository = createNodeRepository(BASE_CONFIG);
     const publicProvider = createProvider();
     const personalProvider = createPersonalProvider();
     const multiNodeProvider = createProvider();
     const selector = new NodeProviderSelector(configRepository, publicProvider, personalProvider, multiNodeProvider);
 
-    await selector.setNetworkConfig(SAFE_CONFIG);
+    const newConfig: NetworkConfig = { ...BASE_CONFIG, allowPublicFallback: true };
+    await selector.setNetworkConfig(newConfig);
 
-    expect(configRepository.setNetworkConfig).toHaveBeenCalledWith(SAFE_CONFIG);
-    expect(personalProvider.setNetworkConfig).toHaveBeenCalledWith(SAFE_CONFIG);
+    expect(configRepository.setNetworkConfig).toHaveBeenCalledWith(newConfig);
+    expect(personalProvider.setNetworkConfig).toHaveBeenCalledWith(newConfig);
+  });
+
+  it('getCurrentBlockHeight delegates to multi-node provider', async () => {
+    const configRepository = createNodeRepository(BASE_CONFIG);
+    const publicProvider = createProvider();
+    const personalProvider = createPersonalProvider();
+    const multiNodeProvider = createProvider();
+    multiNodeProvider.getCurrentBlockHeight.mockResolvedValue(840_000);
+    const selector = new NodeProviderSelector(configRepository, publicProvider, personalProvider, multiNodeProvider);
+
+    await selector.getCurrentBlockHeight();
+
+    expect(multiNodeProvider.getCurrentBlockHeight).toHaveBeenCalledTimes(1);
+    expect(publicProvider.getCurrentBlockHeight).not.toHaveBeenCalled();
   });
 });

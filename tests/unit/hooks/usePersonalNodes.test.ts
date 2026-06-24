@@ -15,9 +15,7 @@ const mockSetPublicFallback = jest.fn<Promise<void>, [boolean]>();
 const mockTestPersonalNode = jest.fn();
 
 let mockNetworkConfig: NetworkConfig = {
-  network: 'testnet4',
   connectivityMode: 'online',
-  nodeMode: 'personal-node',
   personalNodes: [NODE_1, NODE_2, NODE_3],
   allowPublicFallback: false,
 };
@@ -38,9 +36,7 @@ describe('usePersonalNodes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockNetworkConfig = {
-      network: 'testnet4',
       connectivityMode: 'online',
-      nodeMode: 'personal-node',
       personalNodes: [NODE_1, NODE_2, NODE_3],
       allowPublicFallback: false,
     };

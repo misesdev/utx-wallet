@@ -9,9 +9,9 @@ const mockListTransactions = jest.fn<Promise<Transaction[]>, [string]>();
 const mockListUtxos = jest.fn<Promise<Utxo[]>, [string]>();
 
 const DEFAULT_NETWORK_CONFIG: NetworkConfig = {
-  network: 'testnet4',
   connectivityMode: 'online',
-  nodeMode: 'public-api',
+  personalNodes: [],
+  allowPublicFallback: false,
 };
 
 const WALLET: Wallet = {
@@ -80,33 +80,29 @@ describe('useHomeWallet', () => {
     expect(result.current.isOnline).toBe(true);
   });
 
-  it('derives networkConfig.network from wallet when global config lags behind', async () => {
-    // Simulate race: wallet is testnet4 but global config still shows mainnet (stale)
-    mockNetworkConfig = { ...DEFAULT_NETWORK_CONFIG, network: 'mainnet' };
-    mockSelectedWallet = { ...WALLET, network: 'testnet4' };
-    const { result } = renderHook(() => useHomeWallet());
-    await act(async () => {});
-    expect(result.current.networkConfig.network).toBe('testnet4');
-    // Connectivity mode and nodeMode still come from the global config
-    expect(result.current.networkConfig.connectivityMode).toBe('online');
-  });
-
-  it('falls back to networkConfig.network when no wallet is selected', async () => {
-    mockSelectedWallet = null;
-    mockNetworkConfig = { ...DEFAULT_NETWORK_CONFIG, network: 'mainnet' };
-    const { result } = renderHook(() => useHomeWallet());
-    await act(async () => {});
-    expect(result.current.networkConfig.network).toBe('mainnet');
-  });
-
-  it('derives isSafeMode from nodeMode personal-node', async () => {
-    mockNetworkConfig = { ...DEFAULT_NETWORK_CONFIG, nodeMode: 'personal-node' };
+  it('derives isSafeMode from personalNodes and allowPublicFallback', async () => {
+    mockNetworkConfig = {
+      connectivityMode: 'online',
+      personalNodes: [{ id: 'n1', label: 'Node', url: 'http://n.local', network: 'testnet4', priority: 1 }],
+      allowPublicFallback: false,
+    };
     const { result } = renderHook(() => useHomeWallet());
     await act(async () => {});
     expect(result.current.isSafeMode).toBe(true);
   });
 
-  it('isSafeMode is false when nodeMode is public-api', async () => {
+  it('isSafeMode is false when allowPublicFallback is true', async () => {
+    mockNetworkConfig = {
+      connectivityMode: 'online',
+      personalNodes: [{ id: 'n1', label: 'Node', url: 'http://n.local', network: 'testnet4', priority: 1 }],
+      allowPublicFallback: true,
+    };
+    const { result } = renderHook(() => useHomeWallet());
+    await act(async () => {});
+    expect(result.current.isSafeMode).toBe(false);
+  });
+
+  it('isSafeMode is false when no personal nodes configured', async () => {
     const { result } = renderHook(() => useHomeWallet());
     await act(async () => {});
     expect(result.current.isSafeMode).toBe(false);
