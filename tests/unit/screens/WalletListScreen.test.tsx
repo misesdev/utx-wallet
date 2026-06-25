@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import { WalletListScreen } from '../../../src/presentation/screens/wallet/WalletListScreen';
 import { renderWithTheme } from '../../mocks/renderWithProviders';
 import type { Wallet } from '../../../src/core/domain/entities/Wallet';
@@ -14,6 +14,9 @@ const mockNavigate = jest.fn();
 const mockSelectWallet = jest.fn();
 const mockListUtxos = jest.fn().mockResolvedValue([]);
 const mockGetOrigins = jest.fn().mockResolvedValue([]);
+
+const mockIsWalletBlocked = jest.fn<boolean, [string]>().mockReturnValue(false);
+const mockDeactivateSafeMode = jest.fn().mockResolvedValue(undefined);
 
 function makeWallet(overrides: Partial<Wallet> = {}): Wallet {
   return {
@@ -57,6 +60,18 @@ jest.mock('../../../src/presentation/hooks/useAppNavigation', () => ({
   useAppNavigation: () => ({ navigate: mockNavigate, goBack: jest.fn() }),
 }));
 
+jest.mock('../../../src/presentation/hooks/useSafeMode', () => ({
+  useSafeMode: () => ({
+    isSafeModeEnabled: false,
+    totalNodeCount: 0,
+    status: 'disconnected',
+    statusLabel: 'disconnected',
+    isWalletBlocked: mockIsWalletBlocked,
+    activateSafeMode: jest.fn(),
+    deactivateSafeMode: mockDeactivateSafeMode,
+  }),
+}));
+
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
@@ -71,6 +86,8 @@ describe('WalletListScreen', () => {
     mockWallets = [];
     mockListUtxos.mockResolvedValue([]);
     mockGetOrigins.mockResolvedValue([]);
+    mockIsWalletBlocked.mockReturnValue(false);
+    mockDeactivateSafeMode.mockResolvedValue(undefined);
   });
 
   describe('Header', () => {
@@ -442,6 +459,86 @@ describe('WalletListScreen', () => {
         nativeEvent: { contentOffset: { x: -500, y: 0 } },
       });
       expect(screen.getByRole('tab', { name: 'walletList.mainnet' }).props.accessibilityState?.selected).toBe(true);
+    });
+  });
+
+  describe('Safe mode wallet blocking', () => {
+    it('does not show warning banner when wallet is not blocked', () => {
+      mockWallets = [makeWallet({ id: 'w1', name: 'Main Wallet', network: 'mainnet' })];
+      mockIsWalletBlocked.mockReturnValue(false);
+      const screen = renderWithTheme(<WalletListScreen />);
+      expect(screen.queryByTestId('safe-mode-warning-w1')).toBeNull();
+    });
+
+    it('shows warning banner on wallet card when safe mode blocks it', () => {
+      mockWallets = [makeWallet({ id: 'w1', name: 'Main Wallet', network: 'mainnet' })];
+      mockIsWalletBlocked.mockReturnValue(true);
+      const screen = renderWithTheme(<WalletListScreen />);
+      expect(screen.getByTestId('safe-mode-warning-w1')).toBeTruthy();
+    });
+
+    it('shows safe mode blocked modal when pressing a blocked wallet', () => {
+      mockWallets = [makeWallet({ id: 'w1', name: 'Main Wallet', network: 'mainnet' })];
+      mockIsWalletBlocked.mockReturnValue(true);
+      const screen = renderWithTheme(<WalletListScreen />);
+      fireEvent.press(screen.getByLabelText('Open wallet Main Wallet'));
+      expect(screen.getByTestId('safe-mode-blocked-modal')).toBeTruthy();
+      expect(screen.getByTestId('safe-mode-blocked-title')).toBeTruthy();
+    });
+
+    it('does not open wallet directly when pressing a blocked wallet', () => {
+      mockWallets = [makeWallet({ id: 'w1', name: 'Main Wallet', network: 'mainnet' })];
+      mockIsWalletBlocked.mockReturnValue(true);
+      const screen = renderWithTheme(<WalletListScreen />);
+      fireEvent.press(screen.getByLabelText('Open wallet Main Wallet'));
+      expect(mockSelectWallet).not.toHaveBeenCalled();
+      expect(mockNavigate).not.toHaveBeenCalledWith('Home');
+    });
+
+    it('opens wallet and navigates to Home normally when not blocked', () => {
+      mockWallets = [makeWallet({ id: 'w1', name: 'Main Wallet', network: 'mainnet' })];
+      mockIsWalletBlocked.mockReturnValue(false);
+      const screen = renderWithTheme(<WalletListScreen />);
+      fireEvent.press(screen.getByLabelText('Open wallet Main Wallet'));
+      expect(mockSelectWallet).toHaveBeenCalledWith('w1');
+      expect(mockNavigate).toHaveBeenCalledWith('Home');
+    });
+
+    it('dismisses modal when cancel is pressed', () => {
+      mockWallets = [makeWallet({ id: 'w1', name: 'Main Wallet', network: 'mainnet' })];
+      mockIsWalletBlocked.mockReturnValue(true);
+      const screen = renderWithTheme(<WalletListScreen />);
+      fireEvent.press(screen.getByLabelText('Open wallet Main Wallet'));
+      expect(screen.getByTestId('safe-mode-blocked-modal')).toBeTruthy();
+      fireEvent.press(screen.getByTestId('btn-safe-mode-blocked-cancel'));
+      expect(screen.queryByTestId('safe-mode-blocked-modal')).toBeFalsy();
+    });
+
+    it('navigates to ManageNodes and dismisses modal when manage nodes is pressed', () => {
+      mockWallets = [makeWallet({ id: 'w1', name: 'Main Wallet', network: 'mainnet' })];
+      mockIsWalletBlocked.mockReturnValue(true);
+      const screen = renderWithTheme(<WalletListScreen />);
+      fireEvent.press(screen.getByLabelText('Open wallet Main Wallet'));
+      fireEvent.press(screen.getByTestId('btn-safe-mode-manage-nodes'));
+      expect(mockNavigate).toHaveBeenCalledWith('ManageNodes');
+      expect(screen.queryByTestId('safe-mode-blocked-modal')).toBeFalsy();
+    });
+
+    it('disables safe mode and opens wallet when "disable and open" is pressed', async () => {
+      mockWallets = [makeWallet({ id: 'w1', name: 'Main Wallet', network: 'mainnet' })];
+      mockIsWalletBlocked.mockReturnValue(true);
+      const screen = renderWithTheme(<WalletListScreen />);
+      fireEvent.press(screen.getByLabelText('Open wallet Main Wallet'));
+      fireEvent.press(screen.getByTestId('btn-disable-safe-mode-and-open'));
+      await waitFor(() => expect(mockDeactivateSafeMode).toHaveBeenCalled());
+      expect(mockSelectWallet).toHaveBeenCalledWith('w1');
+      expect(mockNavigate).toHaveBeenCalledWith('Home');
+    });
+
+    it('modal is not visible initially', () => {
+      mockWallets = [makeWallet({ id: 'w1', name: 'Main Wallet', network: 'mainnet' })];
+      const screen = renderWithTheme(<WalletListScreen />);
+      expect(screen.queryByTestId('safe-mode-blocked-modal')).toBeFalsy();
     });
   });
 });

@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
-import type { NodeConnectionStatus } from '../../core/domain/entities/Network';
+import type { BitcoinNetwork, NodeConnectionStatus } from '../../core/domain/entities/Network';
+import { normalizeTestnet } from '../../shared/constants/networks';
 import { useNetwork } from './useNetwork';
 
 export type UseSafeModeState = {
@@ -7,6 +8,7 @@ export type UseSafeModeState = {
   totalNodeCount: number;
   status: NodeConnectionStatus;
   statusLabel: string;
+  isWalletBlocked: (network: BitcoinNetwork) => boolean;
   activateSafeMode: () => Promise<void>;
   deactivateSafeMode: () => Promise<void>;
 };
@@ -28,6 +30,11 @@ export function useSafeMode(): UseSafeModeState {
   const status: NodeConnectionStatus =
     isSafeModeEnabled && totalNodeCount > 0 ? 'connected' : 'disconnected';
 
+  const isWalletBlocked = useCallback((network: BitcoinNetwork): boolean => {
+    if (!isSafeModeEnabled) return false;
+    return !nodes.some(n => normalizeTestnet(n.network) === normalizeTestnet(network));
+  }, [isSafeModeEnabled, nodes]);
+
   const activateSafeMode = useCallback(async (): Promise<void> => {
     await setPublicFallback(false);
   }, [setPublicFallback]);
@@ -41,12 +48,14 @@ export function useSafeMode(): UseSafeModeState {
     totalNodeCount,
     status,
     statusLabel: STATUS_LABELS[status],
+    isWalletBlocked,
     activateSafeMode,
     deactivateSafeMode,
   }), [
     isSafeModeEnabled,
     totalNodeCount,
     status,
+    isWalletBlocked,
     activateSafeMode,
     deactivateSafeMode,
   ]);

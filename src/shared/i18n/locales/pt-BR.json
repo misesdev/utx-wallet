@@ -586,7 +586,11 @@
     "manageNodes": "Gerenciar nodes",
     "info": "O modo seguro roteia todo o tráfego blockchain pelos seus nodes Bitcoin pessoais, garantindo máxima privacidade e verificação independente.",
     "disable": "Desativar modo seguro",
-    "enable": "Ativar modo seguro"
+    "enable": "Ativar modo seguro",
+    "walletBlocked": "Modo seguro ativo",
+    "walletBlockedDesc": "Nenhum node pessoal configurado para {{network}}. Desative o modo seguro para acessar via API pública, ou configure um node primeiro.",
+    "disableSafeModeAndOpen": "Desativar modo seguro e abrir",
+    "noNodeForNetwork": "Modo seguro — sem node para {{network}}"
   },
   "pinModal": {
     "setNewTitle": "Criar PIN",

@@ -586,7 +586,11 @@
     "manageNodes": "Manage nodes",
     "info": "Safe mode routes all blockchain traffic through your personal Bitcoin nodes, ensuring maximum privacy and independent verification.",
     "disable": "Disable safe mode",
-    "enable": "Enable safe mode"
+    "enable": "Enable safe mode",
+    "walletBlocked": "Safe mode active",
+    "walletBlockedDesc": "No personal node configured for {{network}}. Disable safe mode to access via the public API, or configure a node first.",
+    "disableSafeModeAndOpen": "Disable safe mode & open",
+    "noNodeForNetwork": "Safe mode — no node for {{network}}"
   },
   "pinModal": {
     "setNewTitle": "Create PIN",

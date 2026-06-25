@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
@@ -12,9 +13,11 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Wallet } from '../../../core/domain/entities/Wallet';
+import type { BitcoinNetwork } from '../../../core/domain/entities/Network';
 import { TESTNET_NETWORKS } from '../../../shared/constants/networks';
 import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
 import { AppBottomDock } from '../../components/base/AppBottomDock';
+import { AppButton } from '../../components/base/AppButton';
 import { AppLoading } from '../../components/base/AppLoading';
 import { AppLogo } from '../../components/base/AppLogo';
 import { AppText } from '../../components/base/AppText';
@@ -23,6 +26,7 @@ import { BalanceEyeButton } from '../../components/security/BalanceEyeButton';
 import { PinInputModal } from '../../components/security/PinInputModal';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
+import { useSafeMode } from '../../hooks/useSafeMode';
 import { useTemporaryRevealBalance } from '../../hooks/useTemporaryRevealBalance';
 import { useTheme } from '../../hooks/useTheme';
 import { useWallet } from '../../hooks/useWallet';
@@ -76,6 +80,11 @@ function formatBalance(sats: number): string {
   return `${sats.toLocaleString()} sats`;
 }
 
+function networkDisplayName(network: BitcoinNetwork): string {
+  if (network === 'mainnet') return 'Mainnet';
+  return 'Testnet4';
+}
+
 // ---------------------------------------------------------------------------
 // StatPill — centered stat with value above label
 // ---------------------------------------------------------------------------
@@ -116,10 +125,11 @@ type WalletCardProps = {
   wallet: Wallet;
   summary: WalletSummary | undefined;
   hidden: boolean;
+  isBlocked: boolean;
   onOpen: () => void;
 };
 
-function WalletCard({ wallet, summary, hidden, onOpen }: WalletCardProps) {
+function WalletCard({ wallet, summary, hidden, isBlocked, onOpen }: WalletCardProps) {
   const { theme } = useTheme();
   const { t } = useAppTranslation();
   const accent = walletAccent(wallet);
@@ -140,14 +150,22 @@ function WalletCard({ wallet, summary, hidden, onOpen }: WalletCardProps) {
         styles.card,
         {
           backgroundColor: theme.colors.surfaceRaised,
-          borderColor: theme.colors.border,
+          borderColor: isBlocked ? theme.colors.warning : theme.colors.border,
           borderRadius: theme.radii.xl,
           opacity: pressed ? 0.88 : 1,
         },
       ]}
+      testID={`wallet-card-${wallet.id}`}
     >
       {/* Top accent strip */}
-      <View style={[styles.accentStrip, { backgroundColor: accent, borderTopLeftRadius: theme.radii.xl, borderTopRightRadius: theme.radii.xl }]} />
+      <View style={[
+        styles.accentStrip,
+        {
+          backgroundColor: isBlocked ? theme.colors.warning : accent,
+          borderTopLeftRadius: theme.radii.xl,
+          borderTopRightRadius: theme.radii.xl,
+        },
+      ]} />
 
       <View style={styles.cardBody}>
         {/* Identity row */}
@@ -155,10 +173,14 @@ function WalletCard({ wallet, summary, hidden, onOpen }: WalletCardProps) {
           <View
             style={[
               styles.walletIconWrap,
-              { backgroundColor: accent + '22', borderRadius: theme.radii.md },
+              { backgroundColor: (isBlocked ? theme.colors.warning : accent) + '22', borderRadius: theme.radii.md },
             ]}
           >
-            <AppIcon name="wallet" size={22} color={accent} />
+            <AppIcon
+              name={isBlocked ? 'safeMode' : 'wallet'}
+              size={22}
+              color={isBlocked ? theme.colors.warning : accent}
+            />
           </View>
 
           <View style={styles.identityText}>
@@ -188,7 +210,11 @@ function WalletCard({ wallet, summary, hidden, onOpen }: WalletCardProps) {
             ) : null}
           </View>
 
-          <AppIcon name="chevronRight" size={18} color={theme.colors.textMuted} />
+          <AppIcon
+            name={isBlocked ? 'safeMode' : 'chevronRight'}
+            size={18}
+            color={isBlocked ? theme.colors.warning : theme.colors.textMuted}
+          />
         </View>
 
         {/* Stats box */}
@@ -215,8 +241,112 @@ function WalletCard({ wallet, summary, hidden, onOpen }: WalletCardProps) {
             />
           </View>
         </View>
+
+        {/* Safe mode warning banner */}
+        {isBlocked && (
+          <View
+            style={[
+              styles.safeModeWarning,
+              {
+                backgroundColor: theme.colors.warningMuted,
+                borderColor: theme.colors.warning,
+                borderRadius: theme.radii.md,
+              },
+            ]}
+            testID={`safe-mode-warning-${wallet.id}`}
+          >
+            <AppIcon name="warning" size={14} color={theme.colors.warning} />
+            <AppText variant="caption" style={[styles.safeModeWarningText, { color: theme.colors.warning }]}>
+              {t('safeMode.noNodeForNetwork', { network: networkDisplayName(wallet.network) })}
+            </AppText>
+          </View>
+        )}
       </View>
     </Pressable>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// SafeModeBlockedModal
+// ---------------------------------------------------------------------------
+
+type SafeModeBlockedModalProps = {
+  visible: boolean;
+  walletNetwork: BitcoinNetwork;
+  onDisableAndOpen: () => void;
+  onManageNodes: () => void;
+  onCancel: () => void;
+};
+
+function SafeModeBlockedModal({
+  visible,
+  walletNetwork,
+  onDisableAndOpen,
+  onManageNodes,
+  onCancel,
+}: SafeModeBlockedModalProps) {
+  const { theme } = useTheme();
+  const { t } = useAppTranslation();
+  const networkName = networkDisplayName(walletNetwork);
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <View style={styles.modalOverlay}>
+        <View
+          style={[
+            styles.modalContainer,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.warning,
+              borderRadius: theme.radii.xl,
+            },
+          ]}
+          testID="safe-mode-blocked-modal"
+        >
+          {/* Icon */}
+          <View
+            style={[
+              styles.modalIconWrap,
+              { backgroundColor: theme.colors.warningMuted, borderRadius: theme.radii.lg },
+            ]}
+          >
+            <AppIcon name="safeMode" size={32} color={theme.colors.warning} />
+          </View>
+
+          {/* Title */}
+          <AppText variant="subtitle" style={styles.modalTitle} testID="safe-mode-blocked-title">
+            {t('safeMode.walletBlocked')}
+          </AppText>
+
+          {/* Description */}
+          <AppText variant="body" color="muted" style={styles.modalDesc} testID="safe-mode-blocked-desc">
+            {t('safeMode.walletBlockedDesc', { network: networkName })}
+          </AppText>
+
+          {/* Actions */}
+          <View style={styles.modalActions}>
+            <AppButton
+              title={t('safeMode.disableSafeModeAndOpen')}
+              variant="primary"
+              onPress={onDisableAndOpen}
+              testID="btn-disable-safe-mode-and-open"
+            />
+            <AppButton
+              title={t('safeMode.manageNodes')}
+              variant="secondary"
+              onPress={onManageNodes}
+              testID="btn-safe-mode-manage-nodes"
+            />
+            <AppButton
+              title={t('common.cancel')}
+              variant="ghost"
+              onPress={onCancel}
+              testID="btn-safe-mode-blocked-cancel"
+            />
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -296,13 +426,12 @@ export function WalletListScreen() {
   const { getOrigins } = useAddressManager();
   const { hidden, hideBalanceEnabled, toggleReveal, pinModalVisible, pinError, submitPin, cancelAuth } =
     useTemporaryRevealBalance();
+  const { isWalletBlocked, deactivateSafeMode } = useSafeMode();
 
   const [activeTabIndex, setActiveTabIndex] = useState(0);
-  // Lazy-mount: only render page content after the user first navigates there.
-  // This avoids duplicate DOM nodes (e.g. two empty-state CTAs) that would
-  // break getByText assertions while keeping swipe UX smooth for visited pages.
   const [visitedTabs, setVisitedTabs] = useState<Set<number>>(new Set([0]));
   const [summaries, setSummaries] = useState<Record<string, WalletSummary>>({});
+  const [blockedWallet, setBlockedWallet] = useState<Wallet | null>(null);
   const pagerRef = useRef<ScrollView>(null);
   const indicatorAnim = useRef(new Animated.Value(0)).current;
 
@@ -383,9 +512,30 @@ export function WalletListScreen() {
     }, [loadSummaries]),
   );
 
-  function handleOpenWallet(wallet: Wallet) {
+  function openWalletDirect(wallet: Wallet) {
     selectWallet(wallet.id);
     navigation.navigate(AppRoutes.Home);
+  }
+
+  function handleOpenWallet(wallet: Wallet) {
+    if (isWalletBlocked(wallet.network)) {
+      setBlockedWallet(wallet);
+      return;
+    }
+    openWalletDirect(wallet);
+  }
+
+  async function handleDisableSafeModeAndOpen() {
+    if (!blockedWallet) return;
+    const wallet = blockedWallet;
+    setBlockedWallet(null);
+    await deactivateSafeMode();
+    openWalletDirect(wallet);
+  }
+
+  function handleBlockedManageNodes() {
+    setBlockedWallet(null);
+    navigation.navigate(AppRoutes.ManageNodes);
   }
 
   function handleNavigateCreate() {
@@ -421,6 +571,7 @@ export function WalletListScreen() {
         wallet={wallet}
         summary={summaries[wallet.id]}
         hidden={hidden}
+        isBlocked={isWalletBlocked(wallet.network)}
         onOpen={() => handleOpenWallet(wallet)}
       />
     ));
@@ -434,6 +585,14 @@ export function WalletListScreen() {
         error={pinError}
         onSubmit={submitPin}
         onCancel={cancelAuth}
+      />
+
+      <SafeModeBlockedModal
+        visible={blockedWallet !== null}
+        walletNetwork={blockedWallet?.network ?? 'mainnet'}
+        onDisableAndOpen={handleDisableSafeModeAndOpen}
+        onManageNodes={handleBlockedManageNodes}
+        onCancel={() => setBlockedWallet(null)}
       />
 
       {/* Header */}
@@ -748,6 +907,56 @@ const styles = StyleSheet.create({
   statDivider: {
     alignSelf: 'stretch',
     width: StyleSheet.hairlineWidth,
+  },
+
+  // Safe mode warning on card
+  safeModeWarning: {
+    alignItems: 'center',
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  safeModeWarningText: {
+    flex: 1,
+    fontWeight: '600',
+  },
+
+  // Safe mode blocked modal
+  modalOverlay: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalContainer: {
+    alignItems: 'center',
+    borderWidth: 1,
+    gap: 12,
+    maxWidth: 360,
+    padding: 28,
+    width: '100%',
+  },
+  modalIconWrap: {
+    alignItems: 'center',
+    height: 64,
+    justifyContent: 'center',
+    marginBottom: 4,
+    width: 64,
+  },
+  modalTitle: {
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  modalDesc: {
+    textAlign: 'center',
+  },
+  modalActions: {
+    alignSelf: 'stretch',
+    gap: 10,
+    marginTop: 8,
   },
 
   // Empty state

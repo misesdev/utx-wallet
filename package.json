@@ -1,6 +1,6 @@
 {
   "name": "utxwallet",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "private": true,
   "scripts": {
     "dev": "react-native run-android && react-native start",

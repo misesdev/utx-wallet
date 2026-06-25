@@ -61,7 +61,7 @@ const GROUPS: NavGroup[] = [
   {
     labelKey: 'globalSettings.groupAdvanced',
     items: [
-      { icon: 'offline', titleKey: 'settings.offline', descKey: 'settings.offlineDesc', route: 'OfflineMode', testID: 'global-settings-offline' },
+      /* { icon: 'offline', titleKey: 'settings.offline', descKey: 'settings.offlineDesc', route: 'OfflineMode', testID: 'global-settings-offline' }, */
       { icon: 'safeMode', titleKey: 'settings.safeMode', descKey: 'settings.safeModeDesc', route: 'SafeMode', testID: 'global-settings-safe-mode' },
     ],
   },

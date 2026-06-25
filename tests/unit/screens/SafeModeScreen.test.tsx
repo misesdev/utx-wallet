@@ -13,6 +13,7 @@ const BASE_STATE: UseSafeModeState = {
   totalNodeCount: 0,
   status: 'disconnected',
   statusLabel: 'desconectado',
+  isWalletBlocked: jest.fn().mockReturnValue(false),
   activateSafeMode: mockActivate,
   deactivateSafeMode: mockDeactivate,
 };

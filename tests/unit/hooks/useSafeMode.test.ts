@@ -101,4 +101,78 @@ describe('useSafeMode', () => {
     const { result } = renderHook(() => useSafeMode());
     expect(result.current.status).toBe('disconnected');
   });
+
+  describe('isWalletBlocked', () => {
+    it('returns false when safe mode is disabled', () => {
+      mockNetworkConfig = {
+        ...mockNetworkConfig,
+        allowPublicFallback: true,
+        personalNodes: [],
+      };
+      const { result } = renderHook(() => useSafeMode());
+      expect(result.current.isWalletBlocked('mainnet')).toBe(false);
+      expect(result.current.isWalletBlocked('testnet4')).toBe(false);
+    });
+
+    it('returns true when safe mode is enabled and no nodes configured', () => {
+      mockNetworkConfig = {
+        ...mockNetworkConfig,
+        allowPublicFallback: false,
+        personalNodes: [],
+      };
+      const { result } = renderHook(() => useSafeMode());
+      expect(result.current.isWalletBlocked('mainnet')).toBe(true);
+      expect(result.current.isWalletBlocked('testnet4')).toBe(true);
+    });
+
+    it('returns false when safe mode is enabled and a matching node exists', () => {
+      mockNetworkConfig = {
+        ...mockNetworkConfig,
+        allowPublicFallback: false,
+        personalNodes: [TESTNET_NODE],
+      };
+      const { result } = renderHook(() => useSafeMode());
+      expect(result.current.isWalletBlocked('testnet4')).toBe(false);
+    });
+
+    it('returns true when safe mode is enabled and only a non-matching node exists', () => {
+      mockNetworkConfig = {
+        ...mockNetworkConfig,
+        allowPublicFallback: false,
+        personalNodes: [TESTNET_NODE],
+      };
+      const { result } = renderHook(() => useSafeMode());
+      expect(result.current.isWalletBlocked('mainnet')).toBe(true);
+    });
+
+    it('normalizes legacy testnet values — testnet node covers testnet4 wallet', () => {
+      mockNetworkConfig = {
+        ...mockNetworkConfig,
+        allowPublicFallback: false,
+        personalNodes: [{ ...TESTNET_NODE, network: 'testnet' }],
+      };
+      const { result } = renderHook(() => useSafeMode());
+      expect(result.current.isWalletBlocked('testnet4')).toBe(false);
+    });
+
+    it('normalizes legacy testnet3 — testnet3 node covers testnet4 wallet', () => {
+      mockNetworkConfig = {
+        ...mockNetworkConfig,
+        allowPublicFallback: false,
+        personalNodes: [{ ...TESTNET_NODE, network: 'testnet3' }],
+      };
+      const { result } = renderHook(() => useSafeMode());
+      expect(result.current.isWalletBlocked('testnet4')).toBe(false);
+    });
+
+    it('does not unblock mainnet wallet with a testnet node', () => {
+      mockNetworkConfig = {
+        ...mockNetworkConfig,
+        allowPublicFallback: false,
+        personalNodes: [TESTNET_NODE, { ...TESTNET_NODE, id: 'n2', network: 'testnet3' }],
+      };
+      const { result } = renderHook(() => useSafeMode());
+      expect(result.current.isWalletBlocked('mainnet')).toBe(true);
+    });
+  });
 });

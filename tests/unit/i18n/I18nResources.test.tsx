@@ -319,6 +319,18 @@ describe('i18n resources', () => {
     });
   });
 
+  describe('safeMode wallet blocking keys', () => {
+    const KEYS: Array<keyof typeof ptBR.safeMode> = [
+      'walletBlocked', 'walletBlockedDesc', 'disableSafeModeAndOpen', 'noNodeForNetwork',
+    ];
+    it.each(KEYS)('pt-BR has non-empty safeMode.%s', (key) => {
+      expect(ptBR.safeMode[key]).toBeTruthy();
+    });
+    it.each(KEYS)('en-US has non-empty safeMode.%s', (key) => {
+      expect(enUS.safeMode[key]).toBeTruthy();
+    });
+  });
+
   describe('accountPolicy keys', () => {
     const KEYS: Array<keyof typeof ptBR.accountPolicy> = [
       'title', 'heroTitle', 'heroDesc',
