@@ -56,9 +56,15 @@ export function useHomeWallet(): HomeWalletState {
         listTransactions(selectedWallet.id),
         listUtxos(selectedWallet.id),
       ]);
-      const sorted = [...txs].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
+      // Pending transactions always appear above confirmed ones regardless of timestamp,
+      // because they represent the most recent user action. Within each group, sort by
+      // createdAt descending so the newest tx in each group comes first.
+      const statusPriority = (s: string) => (s === 'pending' ? 0 : 1);
+      const sorted = [...txs].sort((a, b) => {
+        const statusDiff = statusPriority(a.status) - statusPriority(b.status);
+        if (statusDiff !== 0) return statusDiff;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
       setWalletData({
         transactions: sorted,
         utxos,

@@ -110,5 +110,20 @@ describe('FeeSelector', () => {
       const screen = renderWithTheme(<FeeSelector {...DEFAULT_PROPS} feeRates={null} />);
       expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     });
+
+    it('clamps displayed rate to minimumSatsPerVByte when tier rate is lower', () => {
+      // economy=1, minimum=3 → tile must show 3 (not 1) so the user sees the actual rate
+      const ratesWithHighMin: FeeRates = { ...FEE_RATES, economySatsPerVByte: 1, minimumSatsPerVByte: 3 };
+      const screen = renderWithTheme(<FeeSelector {...DEFAULT_PROPS} feeRates={ratesWithHighMin} selected="economy" />);
+      expect(screen.getByText('3 sat/vB')).toBeTruthy();
+      expect(screen.queryByText('1 sat/vB')).toBeNull();
+    });
+
+    it('does not change displayed rate when tier rate is already above minimum', () => {
+      // fast=20, minimum=3 → tile shows 20 unchanged
+      const ratesWithHighMin: FeeRates = { ...FEE_RATES, minimumSatsPerVByte: 3 };
+      const screen = renderWithTheme(<FeeSelector {...DEFAULT_PROPS} feeRates={ratesWithHighMin} selected="fast" />);
+      expect(screen.getByText('20 sat/vB')).toBeTruthy();
+    });
   });
 });

@@ -112,7 +112,16 @@ export class SyncTransactionsUseCase {
       // which would overwrite the recipient — breaking RBF recipient identification.
       // Preserve the locally stored recipient address for outgoing transactions.
       if (localTx?.direction === 'outgoing' && localTx.address && freshTx.direction === 'outgoing') {
-        return { ...freshTx, address: localTx.address };
+        // Also preserve createdAt for still-pending txs so the original broadcast timestamp
+        // is not overwritten by the sync time on each poll — this keeps the list order stable.
+        const createdAt = (freshTx.status === 'pending' && localTx.createdAt) ? localTx.createdAt : freshTx.createdAt;
+        return { ...freshTx, address: localTx.address, createdAt };
+      }
+      // Preserve original broadcast createdAt for locally-known pending txs that are still
+      // pending in the mempool. Without this, each sync would reset createdAt to now,
+      // causing ordering instability among multiple in-flight transactions.
+      if (localTx && freshTx.status === 'pending' && localTx.status === 'pending') {
+        return { ...freshTx, createdAt: localTx.createdAt };
       }
       return freshTx;
     });

@@ -208,6 +208,22 @@ describe('useHomeWallet', () => {
       expect(ids).toEqual(['tx-new', 'tx-mid', 'tx-old']);
     });
 
+    it('places a pending tx above confirmed txs even when its createdAt is older', async () => {
+      // Scenario: user sent tx-pending at 15:00. A previous tx confirmed at block_time=15:02.
+      // The pending tx createdAt (15:00) < confirmed createdAt (15:02), but pending must appear first.
+      const txs: Transaction[] = [
+        { id: 'tx-confirmed-recent', amountSats: 50_000, direction: 'incoming', status: 'confirmed', createdAt: '2026-06-10T15:02:00.000Z' },
+        { id: 'tx-pending-older', amountSats: 10_000, direction: 'outgoing', status: 'pending', createdAt: '2026-06-10T15:00:00.000Z' },
+        { id: 'tx-confirmed-old', amountSats: 1_000, direction: 'incoming', status: 'confirmed', createdAt: '2026-06-09T10:00:00.000Z' },
+      ];
+      mockListTransactions.mockResolvedValue(txs);
+      const { result } = renderHook(() => useHomeWallet());
+      await act(async () => {});
+      const ids = result.current.transactions.map(tx => tx.id);
+      // pending always first, then confirmed by date
+      expect(ids).toEqual(['tx-pending-older', 'tx-confirmed-recent', 'tx-confirmed-old']);
+    });
+
     it('does not mutate the original array from listTransactions', async () => {
       const txs: Transaction[] = [
         { id: 'tx-1', amountSats: 1_000, direction: 'incoming', status: 'confirmed', createdAt: '2026-06-01T00:00:00.000Z' },

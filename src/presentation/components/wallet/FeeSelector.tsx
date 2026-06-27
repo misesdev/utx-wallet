@@ -50,7 +50,9 @@ export function FeeSelector({
       <View style={styles.presetsRow}>
         {PRESET_TILES.map(tile => {
           const isActive = selected === tile.tier;
-          const rateLabel = feeRates ? `${tile.rate(feeRates)} sat/vB` : '—';
+          const minimum = feeRates ? Math.max(1, feeRates.minimumSatsPerVByte) : 1;
+          const effectiveRate = feeRates ? Math.max(tile.rate(feeRates), minimum) : null;
+          const rateLabel = effectiveRate !== null ? `${effectiveRate} sat/vB` : '—';
 
           return (
             <Pressable

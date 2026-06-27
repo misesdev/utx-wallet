@@ -443,6 +443,85 @@ describe('SyncTransactionsUseCase', () => {
     });
   });
 
+  describe('createdAt preservation for pending transactions', () => {
+    const TXID = 'aabb';
+
+    it('preserves original createdAt when a locally-known pending tx is still pending in mempool', async () => {
+      const originalCreatedAt = '2026-06-10T10:00:00.000Z';
+      const localPending: Transaction = {
+        id: TXID, txid: TXID, amountSats: 5_000, direction: 'outgoing',
+        status: 'pending', createdAt: originalCreatedAt,
+      };
+      // Fresh fetch returns a sync-time createdAt (newer) — should be ignored
+      const freshPending: Transaction = {
+        id: TXID, txid: TXID, amountSats: 5_000, direction: 'outgoing',
+        status: 'pending', createdAt: '2026-06-10T10:05:00.000Z',
+      };
+      const repo = makeRepo([localPending]);
+      const useCase = new SyncTransactionsUseCase(repo, makeProvider([freshPending]));
+      await useCase.execute(WALLET_ID, [ADDRESS], NETWORK);
+
+      const [, savedTxs] = (repo.upsertAll as jest.Mock).mock.calls[0] as [string, Transaction[]];
+      const saved = savedTxs.find(tx => tx.txid === TXID);
+      expect(saved?.createdAt).toBe(originalCreatedAt);
+    });
+
+    it('allows createdAt to update when a pending tx confirms (block_time takes over)', async () => {
+      const localPending: Transaction = {
+        id: TXID, txid: TXID, amountSats: 5_000, direction: 'outgoing',
+        status: 'pending', createdAt: '2026-06-10T10:00:00.000Z',
+      };
+      const freshConfirmed: Transaction = {
+        id: TXID, txid: TXID, amountSats: 5_000, direction: 'outgoing',
+        status: 'confirmed', createdAt: '2026-06-10T10:03:00.000Z',
+      };
+      const repo = makeRepo([localPending]);
+      const useCase = new SyncTransactionsUseCase(repo, makeProvider([freshConfirmed]));
+      await useCase.execute(WALLET_ID, [ADDRESS], NETWORK);
+
+      const [, savedTxs] = (repo.upsertAll as jest.Mock).mock.calls[0] as [string, Transaction[]];
+      const saved = savedTxs.find(tx => tx.txid === TXID);
+      expect(saved?.status).toBe('confirmed');
+      expect(saved?.createdAt).toBe('2026-06-10T10:03:00.000Z');
+    });
+
+    it('preserves createdAt and recipient address together for outgoing pending txs', async () => {
+      const originalCreatedAt = '2026-06-10T10:00:00.000Z';
+      const localPending: Transaction = {
+        id: TXID, txid: TXID, amountSats: 5_000, direction: 'outgoing',
+        status: 'pending', createdAt: originalCreatedAt,
+        address: 'bc1qrecipient',
+      };
+      const freshPending: Transaction = {
+        id: TXID, txid: TXID, amountSats: 5_000, direction: 'outgoing',
+        status: 'pending', createdAt: '2026-06-10T10:05:00.000Z',
+        address: 'tb1qwalletaddress', // scan address — should NOT replace recipient
+      };
+      const repo = makeRepo([localPending]);
+      const useCase = new SyncTransactionsUseCase(repo, makeProvider([freshPending]));
+      await useCase.execute(WALLET_ID, [ADDRESS], NETWORK);
+
+      const [, savedTxs] = (repo.upsertAll as jest.Mock).mock.calls[0] as [string, Transaction[]];
+      const saved = savedTxs.find(tx => tx.txid === TXID);
+      expect(saved?.address).toBe('bc1qrecipient');
+      expect(saved?.createdAt).toBe(originalCreatedAt);
+    });
+
+    it('uses fresh createdAt for brand-new pending tx not seen before locally', async () => {
+      const freshPending: Transaction = {
+        id: TXID, txid: TXID, amountSats: 5_000, direction: 'incoming',
+        status: 'pending', createdAt: '2026-06-10T10:05:00.000Z',
+      };
+      const repo = makeRepo([]); // no local tx
+      const useCase = new SyncTransactionsUseCase(repo, makeProvider([freshPending]));
+      await useCase.execute(WALLET_ID, [ADDRESS], NETWORK);
+
+      const [, savedTxs] = (repo.upsertAll as jest.Mock).mock.calls[0] as [string, Transaction[]];
+      const saved = savedTxs.find(tx => tx.txid === TXID);
+      expect(saved?.createdAt).toBe('2026-06-10T10:05:00.000Z');
+    });
+  });
+
   describe('parallel mode', () => {
     it('fetches all addresses simultaneously when parallel is true', async () => {
       const ADDR_B = 'tb1qaddr2';
