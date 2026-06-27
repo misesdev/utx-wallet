@@ -14,6 +14,7 @@ import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useTheme } from '../../hooks/useTheme';
 import { useTransactionDetails } from '../../hooks/useTransactionDetails';
 import { useTransactionHistory } from '../../../app/providers/TransactionHistoryProvider';
+import { useWallet } from '../../hooks/useWallet';
 import type { TransactionDetail } from '../../../core/domain/entities/TransactionDetail';
 import type { RawTransaction } from '../../../core/domain/repositories/BlockchainProvider';
 import type { AppStackParamList } from '../../../app/navigation/routes';
@@ -131,7 +132,7 @@ function TxCard({ tx, rawTx }: TxCardProps) {
           <View style={styles.metaRow}>
             <AppText variant="caption" color="muted">{t('txDetails.networkFee')}</AppText>
             <AppText variant="caption" testID={`tx-fee-${tx.id}`}>
-              {formatSats(tx.feeSats)} sats
+              {formatSats(tx.feeSats)} {t('common.sats')}
             </AppText>
           </View>
         )}
@@ -205,7 +206,7 @@ function TxCard({ tx, rawTx }: TxCardProps) {
                       {inp.prevoutAddress}
                     </AppText>
                     <AppText variant="caption" color="muted">
-                      {inp.prevoutValue.toLocaleString('pt-BR')} sats
+                      {inp.prevoutValue.toLocaleString('pt-BR')} {t('common.sats')}
                     </AppText>
                   </View>
                 ))}
@@ -222,7 +223,7 @@ function TxCard({ tx, rawTx }: TxCardProps) {
                       {out.address}
                     </AppText>
                     <AppText variant="caption" color="muted">
-                      {out.valueSats.toLocaleString('pt-BR')} sats
+                      {out.valueSats.toLocaleString('pt-BR')} {t('common.sats')}
                     </AppText>
                   </View>
                 ))}
@@ -296,6 +297,7 @@ export function TransactionDetailsScreen() {
   const route = useRoute<RouteProp<AppStackParamList, 'TransactionDetails'>>();
   const { transactions, isLoading, error, refresh } = useTransactionDetails();
   const { getRawTransaction } = useTransactionHistory();
+  const { selectedWallet } = useWallet();
 
   const selectedTxid = route.params?.txid;
   const visible = selectedTxid
@@ -306,10 +308,10 @@ export function TransactionDetailsScreen() {
   const [rawTx, setRawTx] = useState<RawTransaction | null>(null);
 
   useEffect(() => {
-    if (!selectedTxid) return;
+    if (!selectedTxid || !selectedWallet) return;
     setRawTx(null);
-    getRawTransaction(selectedTxid).then(setRawTx).catch(() => { /* non-critical */ });
-  }, [selectedTxid, getRawTransaction]);
+    getRawTransaction(selectedTxid, selectedWallet.network).then(setRawTx).catch(() => { /* non-critical */ });
+  }, [selectedTxid, selectedWallet, getRawTransaction]);
 
   const title = selectedTxid ? t('txDetails.title') : t('txDetails.history');
 

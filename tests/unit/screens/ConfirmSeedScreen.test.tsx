@@ -127,7 +127,7 @@ describe('ConfirmSeedScreen', () => {
     expect(screen.getByLabelText('confirmSeed.confirmCreate')).toBeTruthy();
   });
 
-  it('shows progress modal and navigates to WalletList after save and sync complete', async () => {
+  it('shows progress modal and navigates to Home after save and sync complete', async () => {
     const wallet = { id: 'w1', name: 'My Wallet', network: 'testnet', status: 'locked', createdAt: new Date().toISOString() };
     mockSave.mockResolvedValue(wallet);
 
@@ -136,7 +136,7 @@ describe('ConfirmSeedScreen', () => {
 
     await waitFor(() => expect(screen.getByText('walletSetup.done')).toBeTruthy());
     fireEvent.press(screen.getByTestId('wallet-setup-done-btn'));
-    await waitFor(() => expect(mockNavigationReset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'WalletList' }] }));
+    await waitFor(() => expect(mockNavigationReset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'Home' }] }));
     expect(mockReset).toHaveBeenCalled();
   });
 

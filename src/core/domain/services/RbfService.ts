@@ -1,5 +1,7 @@
 export const RBF_SEQUENCE_THRESHOLD = 0xFFFFFFFE;
 
+const DUST_THRESHOLD_SATS = 546;
+
 /**
  * Check if a raw transaction is RBF-eligible based on input sequences.
  * A transaction signals RBF if any input has sequence < 0xFFFFFFFE.
@@ -16,31 +18,32 @@ export function calcNewFeeSats(estimatedVBytes: number, newFeeRateSatsPerVByte: 
 }
 
 /**
- * Calculate the new change output value after applying the bumped fee.
+ * Calculate the new recipient output value after applying the bumped fee.
+ * The fee increase is always deducted from the recipient, keeping change unchanged.
  */
-export function calcNewChangeSats(
+export function calcNewRecipientSats(
   totalInputSats: number,
-  recipientAmountSats: number,
+  changeAmountSats: number,
   newFeeSats: number,
 ): number {
-  return totalInputSats - recipientAmountSats - newFeeSats;
+  return totalInputSats - changeAmountSats - newFeeSats;
 }
 
 export type FeeValidationResult =
   | { valid: true }
-  | { valid: false; reason: 'fee-not-higher' | 'insufficient-change' };
+  | { valid: false; reason: 'fee-not-higher' | 'recipient-below-dust' };
 
 /**
  * Validate that the proposed fee bump is valid:
  * - New fee must be strictly higher than current fee
- * - New change must be non-negative (inputs cover the new fee)
+ * - New recipient amount must be at or above dust threshold (546 sats)
  */
 export function validateFeeBump(
   currentFeeSats: number,
   newFeeSats: number,
-  newChangeSats: number,
+  newRecipientSats: number,
 ): FeeValidationResult {
   if (newFeeSats <= currentFeeSats) return { valid: false, reason: 'fee-not-higher' };
-  if (newChangeSats < 0) return { valid: false, reason: 'insufficient-change' };
+  if (newRecipientSats < DUST_THRESHOLD_SATS) return { valid: false, reason: 'recipient-below-dust' };
   return { valid: true };
 }

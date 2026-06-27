@@ -56,7 +56,7 @@ describe('NodeProviderSelector', () => {
     });
     const selector = new NodeProviderSelector(configRepository, publicProvider, personalProvider, multiNodeProvider);
 
-    await selector.getFeeRates();
+    await selector.getFeeRates('testnet4');
 
     expect(multiNodeProvider.getFeeRates).toHaveBeenCalledTimes(1);
     expect(publicProvider.getFeeRates).not.toHaveBeenCalled();
@@ -112,7 +112,7 @@ describe('NodeProviderSelector', () => {
     multiNodeProvider.getCurrentBlockHeight.mockResolvedValue(840_000);
     const selector = new NodeProviderSelector(configRepository, publicProvider, personalProvider, multiNodeProvider);
 
-    await selector.getCurrentBlockHeight();
+    await selector.getCurrentBlockHeight('testnet4');
 
     expect(multiNodeProvider.getCurrentBlockHeight).toHaveBeenCalledTimes(1);
     expect(publicProvider.getCurrentBlockHeight).not.toHaveBeenCalled();

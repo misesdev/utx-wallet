@@ -1,10 +1,11 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import type { SyncResult } from '../../core/domain/usecases/wallet/SyncWalletUseCase';
 import type { SyncProgress } from '../../core/domain/usecases/wallet/SyncProgress';
 import { AppError } from '../../core/application/errors/AppError';
 import { useNetwork } from './useNetwork';
 import { useWallet } from './useWallet';
 import { useAppTranslation } from './useAppTranslation';
+import { useActiveWalletStore } from '../store/activeWalletStore';
 
 export type WalletSyncState = {
   isSyncing: boolean;
@@ -19,32 +20,37 @@ export function useWalletSync(): WalletSyncState {
   const { selectedWallet, syncWallet } = useWallet();
   const { t } = useAppTranslation();
   const { isOnline } = useNetwork();
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
-  const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
-  const [syncError, setSyncError] = useState<string | null>(null);
-  const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null);
+
+  const {
+    isSyncing,
+    lastSyncAt,
+    syncResult,
+    syncError,
+    syncProgress,
+    setSyncState,
+  } = useActiveWalletStore();
 
   const sync = useCallback(async () => {
     if (!selectedWallet || isSyncing) return;
     if (!isOnline) {
-      setSyncError(t('networkSettings.errorNoInternet'));
+      setSyncState({ syncError: t('networkSettings.errorNoInternet') });
       return;
     }
-    setIsSyncing(true);
-    setSyncError(null);
-    setSyncProgress(null);
+    setSyncState({ isSyncing: true, syncError: null, syncProgress: null });
     try {
-      const result = await syncWallet(selectedWallet.id, setSyncProgress);
-      setSyncResult(result);
-      setLastSyncAt(result.syncedAt);
+      const result = await syncWallet(
+        selectedWallet.id,
+        (progress: SyncProgress) => setSyncState({ syncProgress: progress }),
+      );
+      setSyncState({ syncResult: result, lastSyncAt: result.syncedAt });
     } catch (err) {
-      setSyncError(err instanceof AppError ? err.message : t('home.errorSyncFailed'));
+      setSyncState({
+        syncError: err instanceof AppError ? err.message : t('home.errorSyncFailed'),
+      });
     } finally {
-      setIsSyncing(false);
-      setSyncProgress(null);
+      setSyncState({ isSyncing: false, syncProgress: null });
     }
-  }, [selectedWallet, syncWallet, isOnline, isSyncing, t]);
+  }, [selectedWallet, syncWallet, isOnline, isSyncing, t, setSyncState]);
 
   return { isSyncing, lastSyncAt, syncResult, syncError, syncProgress, sync };
 }

@@ -141,6 +141,7 @@ const BASE_PARAMS: GetRbfInfoParams = {
   toAddress: TO_ADDRESS,
   walletIsWatchOnly: false,
   isConfirmed: false,
+  walletNetwork: 'testnet4',
 };
 
 describe('AccelerateTransactionUseCase', () => {
@@ -191,10 +192,10 @@ describe('AccelerateTransactionUseCase', () => {
       const useCase = makeUseCase(makeBlockchainProvider(rawTx));
       const info = await useCase.getRbfInfo(BASE_PARAMS);
       expect(info.isRbfEligible).toBe(false);
-      expect(info.ineligibilityReason).toBe('no-change');
+      expect(info.ineligibilityReason).toBe('recipient-not-identified');
     });
 
-    it('returns ineligible when no change output exists', async () => {
+    it('returns eligible when no change output exists (fee deducted from recipient)', async () => {
       const rawTx: RawTransaction = {
         ...RBF_RAW_TX,
         outputs: [
@@ -202,10 +203,14 @@ describe('AccelerateTransactionUseCase', () => {
           // no change output
         ],
       };
-      const useCase = makeUseCase(makeBlockchainProvider(rawTx));
+      const feeEstimation = makeFeeEstimation(141); // 1-output tx is smaller
+      const useCase = makeUseCase(makeBlockchainProvider(rawTx), feeEstimation);
       const info = await useCase.getRbfInfo(BASE_PARAMS);
-      expect(info.isRbfEligible).toBe(false);
-      expect(info.ineligibilityReason).toBe('no-change');
+      expect(info.isRbfEligible).toBe(true);
+      expect(info.changeAmountSats).toBe(0);
+      expect(info.changeAddress).toBe('');
+      expect(info.recipientAmountSats).toBe(996_000);
+      expect(info.estimatedVBytes).toBe(141);
     });
 
     it('returns correct info for an eligible transaction', async () => {
@@ -274,15 +279,15 @@ describe('AccelerateTransactionUseCase', () => {
       ).rejects.toThrow(AppError);
     });
 
-    it('throws INSUFFICIENT_FUNDS when change would be negative', async () => {
+    it('throws INSUFFICIENT_FUNDS when recipient would fall below dust threshold', async () => {
       const useCase = makeUseCase(undefined, makeFeeEstimation(180));
-      // totalInput=1_000_000, recipient=800_000, fee=180*1200=216_000 → change=-16_000
+      // totalInput=1_000_000, change=196_000, fee=180*5000=900_000 → recipient=1_000_000-196_000-900_000=-96_000 < 546
       await expect(
         useCase.execute({
           walletId: WALLET_ID,
           walletNetwork: 'testnet',
           rbfInfo: ELIGIBLE_INFO,
-          newFeeRateSatsPerVByte: 1200,
+          newFeeRateSatsPerVByte: 5000,
         }),
       ).rejects.toThrow(AppError);
     });
@@ -315,43 +320,83 @@ describe('AccelerateTransactionUseCase', () => {
       expect(result.txid).toBe(BROADCAST_RESULT.txid);
     });
 
-    it('omits change output when change < DUST_THRESHOLD', async () => {
+    it('omits change output when original tx had no change output', async () => {
       const signUseCase = makeSignUseCase();
-      const useCase = makeUseCase(undefined, makeFeeEstimation(180), signUseCase);
+      const useCase = makeUseCase(undefined, makeFeeEstimation(141), signUseCase);
 
-      // Adjust to leave change just below dust: total=1_000_000, recipient=800_000
-      // need fee such that change < 546: fee > 199_454
-      // 180 * 1109 = 199620 → change = 1_000_000 - 800_000 - 199_620 = 380 < 546
+      // No-change tx: totalInput=1_000_000, changeAmountSats=0
+      const noChangeInfo = { ...ELIGIBLE_INFO, changeAmountSats: 0, changeAddress: '', estimatedVBytes: 141 };
+      // fee = 141*30 = 4230, newRecipient = 1_000_000 - 0 - 4230 = 995_770 ≥ 546
       await useCase.execute({
         walletId: WALLET_ID,
         walletNetwork: 'testnet',
-        rbfInfo: ELIGIBLE_INFO,
-        newFeeRateSatsPerVByte: 1109,
+        rbfInfo: noChangeInfo,
+        newFeeRateSatsPerVByte: 30,
       });
 
       const callArgs = signUseCase.execute.mock.calls[0][0];
       const builtTx = callArgs.builtTransaction;
-      // Change output should be omitted since change < DUST_THRESHOLD_SATS
       const changeOutput = builtTx.outputs.find((o: { isChange: boolean }) => o.isChange);
       expect(changeOutput).toBeUndefined();
     });
 
-    it('includes change output when change >= DUST_THRESHOLD', async () => {
+    it('preserves original change output amount when tx had change', async () => {
       const signUseCase = makeSignUseCase();
       const useCase = makeUseCase(undefined, makeFeeEstimation(180), signUseCase);
 
+      // change stays at original changeAmountSats (196_000), not derived from fee
       await useCase.execute({
         walletId: WALLET_ID,
         walletNetwork: 'testnet',
         rbfInfo: ELIGIBLE_INFO,
-        newFeeRateSatsPerVByte: 30, // change = 1_000_000 - 800_000 - 5400 = 194600
+        newFeeRateSatsPerVByte: 30,
       });
 
       const callArgs = signUseCase.execute.mock.calls[0][0];
       const builtTx = callArgs.builtTransaction;
       const changeOutput = builtTx.outputs.find((o: { isChange: boolean }) => o.isChange);
       expect(changeOutput).toBeDefined();
-      expect(changeOutput!.amountSats).toBe(194_600);
+      expect(changeOutput!.amountSats).toBe(196_000);
+    });
+
+    it('reuses the exact same change address from the original transaction (no new address created)', async () => {
+      // RBF rebuilds the transaction from the raw tx data — the change address comes from
+      // rbfInfo.changeAddress which is extracted from the original tx outputs. No new change
+      // address is generated; the HD address manager is never called during acceleration.
+      const signUseCase = makeSignUseCase();
+      const useCase = makeUseCase(undefined, makeFeeEstimation(180), signUseCase);
+
+      await useCase.execute({
+        walletId: WALLET_ID,
+        walletNetwork: 'testnet',
+        rbfInfo: ELIGIBLE_INFO,
+        newFeeRateSatsPerVByte: 30,
+      });
+
+      const callArgs = signUseCase.execute.mock.calls[0][0];
+      const builtTx = callArgs.builtTransaction;
+      const changeOutput = builtTx.outputs.find((o: { isChange: boolean }) => o.isChange);
+      expect(changeOutput).toBeDefined();
+      // Must be the ORIGINAL change address, not a freshly generated one
+      expect(changeOutput!.address).toBe(CHANGE_ADDRESS);
+    });
+
+    it('reduces recipient amount by the fee increase', async () => {
+      const signUseCase = makeSignUseCase();
+      const useCase = makeUseCase(undefined, makeFeeEstimation(180), signUseCase);
+
+      // newFee = 180*30=5400, newRecipient = 1_000_000 - 196_000 - 5400 = 798_600
+      await useCase.execute({
+        walletId: WALLET_ID,
+        walletNetwork: 'testnet',
+        rbfInfo: ELIGIBLE_INFO,
+        newFeeRateSatsPerVByte: 30,
+      });
+
+      const callArgs = signUseCase.execute.mock.calls[0][0];
+      const builtTx = callArgs.builtTransaction;
+      const recipientOutput = builtTx.outputs.find((o: { isChange: boolean }) => !o.isChange);
+      expect(recipientOutput!.amountSats).toBe(798_600);
     });
 
     it('passes walletId and walletNetwork to signTransaction', async () => {

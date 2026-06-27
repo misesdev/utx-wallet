@@ -1,5 +1,6 @@
 import React, { createContext, PropsWithChildren, useContext } from 'react';
 import type { FeeRates } from '../../core/domain/repositories/BlockchainProvider';
+import type { BitcoinNetwork } from '../../core/domain/entities/Network';
 import type { TransactionPreview } from '../../core/domain/entities/TransactionPreview';
 import type { PreviewTransactionParams } from '../../core/domain/usecases/transaction/PreviewTransactionUseCase';
 import type { BroadcastResult } from '../../core/domain/usecases/transaction/BroadcastTransactionUseCase';
@@ -8,7 +9,7 @@ import { SendService } from '../../core/application/services/SendService';
 
 type SendContextValue = {
   validateAddress: (address: string) => { valid: boolean; error: string | null };
-  fetchFeeRates: () => Promise<FeeRates>;
+  fetchFeeRates: (network: BitcoinNetwork) => Promise<FeeRates>;
   preview: (params: PreviewTransactionParams) => Promise<TransactionPreview>;
   send: (params: SendTransactionParams) => Promise<BroadcastResult>;
 };
@@ -22,7 +23,7 @@ type SendProviderProps = PropsWithChildren<{
 export function SendProvider({ children, sendService }: SendProviderProps) {
   const value: SendContextValue = {
     validateAddress: (address: string) => sendService.validateAddress(address),
-    fetchFeeRates: () => sendService.fetchFeeRates(),
+    fetchFeeRates: (network) => sendService.fetchFeeRates(network),
     preview: (params: PreviewTransactionParams) => sendService.preview(params),
     send: (params: SendTransactionParams) => sendService.send(params),
   };

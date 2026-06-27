@@ -61,7 +61,9 @@ Cada origem deve possuir seu próprio pool de receive e change.
 Para cada origem, a carteira deve manter sempre:
 
 - 3 endereços fresh de recebimento
-- 3 endereços fresh de troco
+- 5 endereços fresh de troco
+
+O pool de troco usa um mínimo maior que o de recebimento (5 > 3) porque endereços de troco são selecionados automaticamente durante envios, sem interação do usuário. Esse tamanho é suficiente para múltiplas transações em andamento e fica dentro do gap limit (20), garantindo que a importação da carteira descubra todos os fundos.
 
 Após qualquer sync, criação de origem, recebimento, envio ou alteração de status, o Address Manager deve garantir novamente o pool mínimo.
 
@@ -69,25 +71,31 @@ Após qualquer sync, criação de origem, recebimento, envio ou alteração de s
 
 A carteira deve usar gap limit para descoberta de endereços.
 
-Configuração inicial:
+Configuração:
 
-- minAvailableReceive = 3
-- minAvailableChange = 3
-- gapLimit = 20
+- minAvailableReceive = 3  (pool operacional para recebimento)
+- minAvailableChange  = 5  (pool operacional para troco)
+- gapLimit = 20             (janela de descoberta durante importação)
 
-O gap limit evita derivação infinita e garante compatibilidade com carteiras HD.
+O gap limit de 20 define quantos endereços consecutivos sem transação o importador verifica antes de parar. O pool de troco (5) é intencionalmente menor que o gap limit para evitar sobrecarga de sincronização em APIs públicas (mempool: 1 req/s). Como o pool < gap limit, a importação sempre encontra todos os endereços usados.
 
 6. Status de endereço
 
-Estados recomendados:
+Estados:
 
 - fresh: endereço nunca teve transação
-- reserved: endereço foi reservado para uso, mas ainda não teve transação confirmada
+- reserved: endereço foi selecionado como destino de troco em uma transação sendo montada, mas a transação ainda não foi transmitida
 - received: endereço recebeu fundos e nunca foi usado como input
 - spent_once: endereço já foi usado como input em uma transação
-- change: endereço de troco usado ou reservado
+- change: endereço de troco que recebeu fundos
 - archived: endereço antigo, apenas histórico
 - inconsistent: estado inesperado detectado pelo sync
+
+Ciclo de vida do status reserved:
+
+Um endereço só pode ser marcado como reserved DEPOIS de calcular que o troco é necessário (changeSats >= 546 sats, limite de dust). Se a transação não gerar troco (envio de valor exato, drain, ou troco absorvido por dust), nenhum endereço deve ser reservado.
+
+No sync, se um endereço está como reserved mas não tem transações na blockchain, ele é liberado de volta para fresh. Isso garante que endereços reservados em transações canceladas ou não-transmitidas não criem lacunas permanentes no pool.
 
 7. Regra de recebimento
 
@@ -162,13 +170,14 @@ O sync deve atualizar:
 
 Regras de status no sync:
 
-- sem transações: fresh
+- sem transações e status fresh: fresh (mantém)
+- sem transações e status reserved: fresh (libera — a tx não foi transmitida)
 - recebeu e nunca gastou: received
 - apareceu como input: spent_once
-- endereço de troco usado: change
+- endereço de troco com transações: change
 - spent_once com UTXO residual: inconsistent
 
-Após o sync, o Address Manager deve garantir 3 receive fresh e 3 change fresh por origem.
+Após o sync, o Address Manager deve garantir 3 receive fresh e 5 change fresh por origem.
 
 11. Segurança
 
@@ -212,4 +221,4 @@ Exemplo:
 Ao criar uma nova origem, o Address Manager deve gerar automaticamente:
 
 - 3 endereços receive fresh
-- 3 endereços change fresh
+- 5 endereços change fresh

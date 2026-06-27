@@ -34,6 +34,10 @@ export type WalletAddress = {
 
 export const ADDRESS_POLICY = {
   minAvailableReceive: 3,
-  minAvailableChange: 3,
+  // Change pool uses a larger target than receive because change addresses are created
+  // automatically during sends. 5 provides enough buffer for in-flight transactions
+  // while staying well within the BIP44 gap-limit (20) so wallet import always
+  // discovers all funds.
+  minAvailableChange: 5,
   gapLimit: 20,
 } as const;

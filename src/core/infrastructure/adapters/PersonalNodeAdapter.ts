@@ -132,7 +132,7 @@ export class PersonalNodeAdapter implements NodeRepository, NodeConnectionTester
     return txs.map(tx => this.mapTransaction(tx, address));
   }
 
-  async getTransactionStatus(txid: string): Promise<RemoteTransactionStatus> {
+  async getTransactionStatus(txid: string, _network: BitcoinNetwork): Promise<RemoteTransactionStatus> {
     const tx = await this.legacyClient().getTransaction(txid);
     return {
       txid: tx.txid,
@@ -142,11 +142,11 @@ export class PersonalNodeAdapter implements NodeRepository, NodeConnectionTester
     };
   }
 
-  async getCurrentBlockHeight(): Promise<number> {
+  async getCurrentBlockHeight(_network: BitcoinNetwork): Promise<number> {
     return this.legacyClient().getCurrentBlockHeight();
   }
 
-  async getFeeRates(): Promise<FeeRates> {
+  async getFeeRates(_network: BitcoinNetwork): Promise<FeeRates> {
     const rates = await this.legacyClient().getFeeRates();
     return {
       fastSatsPerVByte: rates.fastestFee,
@@ -157,11 +157,11 @@ export class PersonalNodeAdapter implements NodeRepository, NodeConnectionTester
     };
   }
 
-  async broadcastTransaction(rawHex: string): Promise<string> {
+  async broadcastTransaction(rawHex: string, _network: BitcoinNetwork): Promise<string> {
     return this.legacyClient().broadcastTransaction(rawHex);
   }
 
-  async getRawTransaction(txid: string): Promise<RawTransaction> {
+  async getRawTransaction(txid: string, _network: BitcoinNetwork): Promise<RawTransaction> {
     return this.legacyClient().getRawTransaction(txid);
   }
 

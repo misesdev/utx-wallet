@@ -15,10 +15,10 @@ export class TransactionHistoryService {
     return this.getDetailUseCase.execute({ transaction, network, walletId });
   }
 
-  getRawTransaction(txid: string): Promise<RawTransaction> {
+  getRawTransaction(txid: string, network: BitcoinNetwork): Promise<RawTransaction> {
     if (!this.blockchainProvider) {
       return Promise.reject(new Error('No blockchain provider configured'));
     }
-    return this.blockchainProvider.getRawTransaction(txid);
+    return this.blockchainProvider.getRawTransaction(txid, network);
   }
 }

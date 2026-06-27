@@ -164,9 +164,9 @@ describe('Integration: Sign & Broadcast', () => {
       walletId: WALLET_ID,
       network: 'testnet4',
     });
-    await setup.service.broadcastTransaction(signed, WALLET_ID);
+    await setup.service.broadcastTransaction(signed, WALLET_ID, 'testnet4');
 
-    expect(provider.broadcastTransaction).toHaveBeenCalledWith(signed.rawHex);
+    expect(provider.broadcastTransaction).toHaveBeenCalledWith(signed.rawHex, 'testnet4');
   });
 
   it('stores the broadcast transaction in local storage', async () => {
@@ -179,7 +179,7 @@ describe('Integration: Sign & Broadcast', () => {
       walletId: WALLET_ID,
       network: 'testnet4',
     });
-    await setup.service.broadcastTransaction(signed, WALLET_ID);
+    await setup.service.broadcastTransaction(signed, WALLET_ID, 'testnet4');
 
     const txs = await setup.txRepo.list(WALLET_ID);
     expect(txs).toHaveLength(1);
@@ -202,7 +202,7 @@ describe('Integration: Sign & Broadcast', () => {
       walletId: WALLET_ID,
       network: 'testnet4',
     });
-    await setup.service.broadcastTransaction(signed, WALLET_ID);
+    await setup.service.broadcastTransaction(signed, WALLET_ID, 'testnet4');
 
     const utxosAfter = await setup.utxoRepo.listByWallet(WALLET_ID);
     expect(utxosAfter).toHaveLength(0);
@@ -220,7 +220,7 @@ describe('Integration: Sign & Broadcast', () => {
       network: 'testnet4',
     });
 
-    await expect(setup.service.broadcastTransaction(signed, WALLET_ID)).rejects.toThrow('Network error');
+    await expect(setup.service.broadcastTransaction(signed, WALLET_ID, 'testnet4')).rejects.toThrow('Network error');
 
     const utxos = await setup.utxoRepo.listByWallet(WALLET_ID);
     expect(utxos).toHaveLength(1);

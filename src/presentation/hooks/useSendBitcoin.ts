@@ -16,6 +16,7 @@ export type SendBitcoinState = {
   amountSats: string;
   feeTier: FeeRateTier;
   customFeeRate: string;
+  customFeeError: string | null;
   availableBalanceSats: number;
   feeRates: FeeRates | null;
   isLoadingFeeRates: boolean;
@@ -87,7 +88,7 @@ export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
   useEffect(() => {
     if (!selectedWallet || !isOnline) return;
     setIsLoadingFeeRates(true);
-    Promise.all([fetchFeeRates(), listUtxos(selectedWallet.id), listAddresses(selectedWallet.id)])
+    Promise.all([fetchFeeRates(selectedWallet.network), listUtxos(selectedWallet.id), listAddresses(selectedWallet.id)])
       .then(([rates, utxos, addresses]) => {
         setFeeRates(rates);
         const filtered = originId
@@ -107,18 +108,26 @@ export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
   }, [selectedWallet, isOnline, fetchFeeRates, listUtxos, listAddresses, originId]);
 
   const selectedFeeRate = useMemo(() => {
+    const minimum = feeRates ? Math.max(1, feeRates.minimumSatsPerVByte) : 1;
     if (feeTier === 'custom') {
       const parsed = parseFloat(customFeeRate);
-      return parsed > 0 ? parsed : 1;
+      return Math.max(parsed > 0 ? parsed : 1, minimum);
     }
-    if (!feeRates) return 1;
+    if (!feeRates) return minimum;
     const map: Record<Exclude<FeeRateTier, 'custom'>, number> = {
       economy: feeRates.economySatsPerVByte,
       normal: feeRates.halfHourSatsPerVByte,
       fast: feeRates.fastSatsPerVByte,
     };
-    return map[feeTier as Exclude<FeeRateTier, 'custom'>] ?? 1;
+    return Math.max(map[feeTier as Exclude<FeeRateTier, 'custom'>] ?? 1, minimum);
   }, [feeTier, customFeeRate, feeRates]);
+
+  const customFeeError = useMemo<string | null>(() => {
+    if (feeTier !== 'custom' || !customFeeRate.trim()) return null;
+    const parsed = parseFloat(customFeeRate);
+    if (isNaN(parsed) || parsed < 1) return t('fees.customFeeMinError');
+    return null;
+  }, [feeTier, customFeeRate, t]);
 
   const setToAddress = useCallback(
     (value: string) => {
@@ -171,6 +180,10 @@ export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
     if (addressError !== null || !toAddress.trim()) {
       return;
     }
+    if (feeTier === 'custom') {
+      const parsed = parseFloat(customFeeRate);
+      if (!customFeeRate.trim() || isNaN(parsed) || parsed < 1) return;
+    }
 
     setIsPreviewing(true);
     setPreviewError(null);
@@ -190,7 +203,7 @@ export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
     } finally {
       setIsPreviewing(false);
     }
-  }, [selectedWallet, toAddress, amountSats, selectedFeeRate, addressError, preview, payFee, t]);
+  }, [selectedWallet, toAddress, amountSats, selectedFeeRate, addressError, preview, payFee, feeTier, customFeeRate, t]);
 
   const clearPreview = useCallback(() => {
     setTxPreview(null);
@@ -254,6 +267,7 @@ export function useSendBitcoin(opts?: UseSendBitcoinOpts): SendBitcoinState {
     amountSats,
     feeTier,
     customFeeRate,
+    customFeeError,
     availableBalanceSats,
     feeRates,
     isLoadingFeeRates,

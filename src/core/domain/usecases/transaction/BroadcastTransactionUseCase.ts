@@ -1,5 +1,6 @@
 import type { Transaction } from '../../entities/Transaction';
 import type { SignedTransaction } from '../../entities/SignedTransaction';
+import type { BitcoinNetwork } from '../../entities/Network';
 import type { BlockchainProvider } from '../../repositories/BlockchainProvider';
 import type { TransactionRepository } from '../../repositories/TransactionRepository';
 import type { UtxoRepository } from '../../repositories/UtxoRepository';
@@ -16,8 +17,8 @@ export class BroadcastTransactionUseCase {
     private readonly utxoRepository: UtxoRepository,
   ) {}
 
-  async execute(signed: SignedTransaction, walletId: string): Promise<BroadcastResult> {
-    const txid = await this.blockchainProvider.broadcastTransaction(signed.rawHex);
+  async execute(signed: SignedTransaction, walletId: string, network: BitcoinNetwork): Promise<BroadcastResult> {
+    const txid = await this.blockchainProvider.broadcastTransaction(signed.rawHex, network);
 
     // Find the non-change output = recipient
     const recipientOutput = signed.builtTransaction.outputs.find(o => !o.isChange);

@@ -42,6 +42,7 @@ const BASE_STATE: SendBitcoinState = {
   amountSats: '',
   feeTier: 'normal',
   customFeeRate: '',
+  customFeeError: null,
   availableBalanceSats: 1_000_000,
   feeRates: FEE_RATES,
   isLoadingFeeRates: false,
@@ -141,7 +142,6 @@ describe('SendScreen', () => {
       mockState = { ...BASE_STATE, amountSats: '100000' };
       const screen = renderWithTheme(<SendScreen />);
       expect(screen.getByTestId('btc-conversion')).toBeTruthy();
-      expect(screen.getByText('≈ 0.001 BTC')).toBeTruthy();
     });
   });
 

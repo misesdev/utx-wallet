@@ -5,6 +5,7 @@ import type { NetworkConfig } from '../../core/domain/entities/Network';
 import { useNetwork } from './useNetwork';
 import { useWallet } from './useWallet';
 import { useAppTranslation } from './useAppTranslation';
+import { useActiveWalletStore } from '../store/activeWalletStore';
 
 export type HomeWalletState = {
   wallet: Wallet | null;
@@ -25,22 +26,30 @@ export function useHomeWallet(): HomeWalletState {
   const { networkConfig, isOnline } = useNetwork();
   const isSafeMode = !networkConfig.allowPublicFallback && networkConfig.personalNodes.length > 0;
 
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [confirmedBalanceSats, setConfirmedBalanceSats] = useState(0);
-  const [pendingBalanceSats, setPendingBalanceSats] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    transactions,
+    confirmedBalanceSats,
+    pendingBalanceSats,
+    isDataLoading,
+    setWalletData,
+    setWalletId,
+  } = useActiveWalletStore();
+
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!selectedWallet) {
-      setTransactions([]);
-      setConfirmedBalanceSats(0);
-      setPendingBalanceSats(0);
-      setIsLoading(false);
+      setWalletData({
+        transactions: [],
+        utxos: [],
+        confirmedBalanceSats: 0,
+        pendingBalanceSats: 0,
+        isDataLoading: false,
+      });
       return;
     }
 
-    setIsLoading(true);
+    setWalletData({ isDataLoading: true });
     setError(null);
     try {
       const [txs, utxos] = await Promise.all([
@@ -50,19 +59,23 @@ export function useHomeWallet(): HomeWalletState {
       const sorted = [...txs].sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
-      setTransactions(sorted);
-      setConfirmedBalanceSats(
-        utxos.filter(u => u.isConfirmed).reduce((acc, u) => acc + u.valueSats, 0),
-      );
-      setPendingBalanceSats(
-        utxos.filter(u => !u.isConfirmed).reduce((acc, u) => acc + u.valueSats, 0),
-      );
+      setWalletData({
+        transactions: sorted,
+        utxos,
+        confirmedBalanceSats: utxos.filter(u => u.isConfirmed).reduce((acc, u) => acc + u.valueSats, 0),
+        pendingBalanceSats: utxos.filter(u => !u.isConfirmed).reduce((acc, u) => acc + u.valueSats, 0),
+        isDataLoading: false,
+      });
     } catch {
       setError(t('home.errorLoadWalletData'));
-    } finally {
-      setIsLoading(false);
+      setWalletData({ isDataLoading: false });
     }
-  }, [selectedWallet, listTransactions, listUtxos, t]);
+  }, [selectedWallet, listTransactions, listUtxos, t, setWalletData]);
+
+  const currentWalletId = selectedWallet?.id ?? null;
+  useEffect(() => {
+    setWalletId(currentWalletId);
+  }, [currentWalletId, setWalletId]);
 
   useEffect(() => {
     refresh().catch(() => undefined);
@@ -76,7 +89,7 @@ export function useHomeWallet(): HomeWalletState {
     isOnline,
     isSafeMode,
     transactions,
-    isLoading,
+    isLoading: isDataLoading,
     error,
     refresh,
   };

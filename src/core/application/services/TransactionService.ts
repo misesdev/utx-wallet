@@ -1,5 +1,6 @@
 import type { BuiltTransaction } from '../../domain/entities/BuiltTransaction';
 import type { SignedTransaction } from '../../domain/entities/SignedTransaction';
+import type { BitcoinNetwork } from '../../domain/entities/Network';
 import type { BuildTransactionParams } from '../../domain/usecases/transaction/BuildTransactionUseCase';
 import type { SignTransactionParams } from '../../domain/usecases/transaction/SignTransactionUseCase';
 import type { BroadcastResult } from '../../domain/usecases/transaction/BroadcastTransactionUseCase';
@@ -22,7 +23,7 @@ export class TransactionService {
     return this.signTransactionUseCase.execute(params);
   }
 
-  broadcastTransaction(signed: SignedTransaction, walletId: string): Promise<BroadcastResult> {
-    return this.broadcastTransactionUseCase.execute(signed, walletId);
+  broadcastTransaction(signed: SignedTransaction, walletId: string, network: BitcoinNetwork): Promise<BroadcastResult> {
+    return this.broadcastTransactionUseCase.execute(signed, walletId, network);
   }
 }

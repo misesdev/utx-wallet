@@ -76,8 +76,11 @@ export class SyncAddressStatusUseCase {
     hasUtxos: boolean,
   ): AddressStatus {
     if (txCount === 0) {
-      // Keep reserved if it was reserved but no tx arrived yet
-      return current === 'reserved' ? 'reserved' : 'fresh';
+      // A reserved address with no blockchain activity means the transaction that
+      // reserved it was never broadcast (or was replaced). Release it back to fresh
+      // so it can be reused — leaving it reserved permanently would create phantom
+      // gaps that stop wallet-import discovery before the real balances are found.
+      return 'fresh';
     }
     if (outgoingTxCount > 0 && hasUtxos) {
       return 'inconsistent';

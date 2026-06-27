@@ -216,7 +216,10 @@ describe('SyncAddressStatusUseCase', () => {
       );
     });
 
-    it('keeps "reserved" status when address was reserved but no tx arrived yet', async () => {
+    it('releases "reserved" to "fresh" when no blockchain transactions found', async () => {
+      // A reserved address with txCount=0 means the transaction that reserved it was
+      // never broadcast (or was replaced). Keeping it reserved permanently creates phantom
+      // gaps that halt wallet-import discovery before real balances are found.
       const addr = makeWalletAddress(ADDRESS_A, { status: 'reserved' });
       const walletAddressRepo = makeWalletAddressRepo([addr]);
       const prefetched = new Map([[ADDRESS_A, []]]);
@@ -226,7 +229,7 @@ describe('SyncAddressStatusUseCase', () => {
 
       expect(walletAddressRepo.updateSyncData).toHaveBeenCalledWith(
         addr.id,
-        expect.objectContaining({ status: 'reserved' }),
+        expect.objectContaining({ status: 'fresh' }),
       );
     });
 

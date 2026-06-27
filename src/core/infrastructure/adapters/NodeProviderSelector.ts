@@ -37,23 +37,23 @@ export class NodeProviderSelector implements NodeRepository, BlockchainProvider 
     return this.multiNodeProvider.getTransactions(address, network);
   }
 
-  async getTransactionStatus(txid: string): Promise<RemoteTransactionStatus> {
-    return this.multiNodeProvider.getTransactionStatus(txid);
+  async getTransactionStatus(txid: string, network: BitcoinNetwork): Promise<RemoteTransactionStatus> {
+    return this.multiNodeProvider.getTransactionStatus(txid, network);
   }
 
-  async getCurrentBlockHeight(): Promise<number> {
-    return this.multiNodeProvider.getCurrentBlockHeight();
+  async getCurrentBlockHeight(network: BitcoinNetwork): Promise<number> {
+    return this.multiNodeProvider.getCurrentBlockHeight(network);
   }
 
-  async getFeeRates(): Promise<FeeRates> {
-    return this.multiNodeProvider.getFeeRates();
+  async getFeeRates(network: BitcoinNetwork): Promise<FeeRates> {
+    return this.multiNodeProvider.getFeeRates(network);
   }
 
-  async broadcastTransaction(rawHex: string): Promise<string> {
-    return this.multiNodeProvider.broadcastTransaction(rawHex);
+  async broadcastTransaction(rawHex: string, network: BitcoinNetwork): Promise<string> {
+    return this.multiNodeProvider.broadcastTransaction(rawHex, network);
   }
 
-  async getRawTransaction(txid: string): Promise<RawTransaction> {
-    return this.multiNodeProvider.getRawTransaction(txid);
+  async getRawTransaction(txid: string, network: BitcoinNetwork): Promise<RawTransaction> {
+    return this.multiNodeProvider.getRawTransaction(txid, network);
   }
 }

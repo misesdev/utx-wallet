@@ -6,20 +6,6 @@ import type { SendBitcoinState } from '../../../src/presentation/hooks/useSendBi
 import type { TransactionPreview } from '../../../src/core/domain/entities/TransactionPreview';
 import type { FeeRates } from '../../../src/core/domain/repositories/BlockchainProvider';
 
-const mockRequireAuth = jest.fn().mockResolvedValue(true);
-const mockSubmitPin = jest.fn();
-const mockCancelAuth = jest.fn();
-
-jest.mock('../../../src/presentation/hooks/useReauthenticate', () => ({
-  useReauthenticate: () => ({
-    requireAuth: mockRequireAuth,
-    pinModalVisible: false,
-    pinError: null,
-    submitPin: mockSubmitPin,
-    cancelAuth: mockCancelAuth,
-  }),
-}));
-
 const VALID_ADDRESS = 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq';
 
 const FEE_RATES: FeeRates = {
@@ -73,6 +59,7 @@ const BASE_STATE: SendBitcoinState = {
   amountSats: '100000',
   feeTier: 'normal',
   customFeeRate: '',
+  customFeeError: null,
   availableBalanceSats: 1_000_000,
   feeRates: FEE_RATES,
   isLoadingFeeRates: false,
@@ -115,7 +102,6 @@ describe('SendFeesScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockState = { ...BASE_STATE };
-    mockRequireAuth.mockResolvedValue(true);
   });
 
   describe('fee selector', () => {
@@ -143,6 +129,13 @@ describe('SendFeesScreen', () => {
       const screen = renderWithTheme(<SendFeesScreen />);
       expect(screen.queryByTestId('input-custom-fee')).toBeNull();
     });
+
+    it('shows custom fee error when rate is below minimum', () => {
+      mockState = { ...BASE_STATE, feeTier: 'custom', customFeeError: 'fees.customFeeMinError' };
+      const screen = renderWithTheme(<SendFeesScreen />);
+      // error rendered inside FeeSelector; also review button is disabled
+      expect(screen.getByTestId('btn-review').props.accessibilityState?.disabled).toBe(true);
+    });
   });
 
   describe('review button', () => {
@@ -158,6 +151,12 @@ describe('SendFeesScreen', () => {
       expect(screen.getByTestId('btn-review').props.accessibilityState?.disabled).toBeFalsy();
     });
 
+    it('is disabled when customFeeError is set', () => {
+      mockState = { ...BASE_STATE, customFeeError: 'fees.customFeeMinError' };
+      const screen = renderWithTheme(<SendFeesScreen />);
+      expect(screen.getByTestId('btn-review').props.accessibilityState?.disabled).toBe(true);
+    });
+
     it('calls reviewTransaction when pressed', async () => {
       const screen = renderWithTheme(<SendFeesScreen />);
       fireEvent.press(screen.getByTestId('btn-review'));
@@ -165,46 +164,28 @@ describe('SendFeesScreen', () => {
     });
   });
 
-  describe('preview card', () => {
-    it('shows preview card when preview is available', () => {
-      mockState = { ...BASE_STATE, preview: PREVIEW };
-      const screen = renderWithTheme(<SendFeesScreen />);
-      expect(screen.getByTestId('preview-card')).toBeTruthy();
+  describe('navigation to review screen', () => {
+    it('navigates to TransactionReview when preview becomes available', async () => {
+      mockState = { ...BASE_STATE, preview: PREVIEW, selectedFeeRate: 10 };
+      renderWithTheme(<SendFeesScreen />);
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith(
+          'TransactionReview',
+          expect.objectContaining({
+            toAddress: VALID_ADDRESS,
+            amountSats: '100000',
+            selectedFeeRate: 10,
+            payFee: false,
+            previewJson: JSON.stringify(PREVIEW),
+          }),
+        );
+      });
     });
 
-    it('hides preview card when preview is null', () => {
-      const screen = renderWithTheme(<SendFeesScreen />);
-      expect(screen.queryByTestId('preview-card')).toBeNull();
-    });
-
-    it('renders amount in preview', () => {
-      mockState = { ...BASE_STATE, preview: PREVIEW };
-      const screen = renderWithTheme(<SendFeesScreen />);
-      expect(screen.getByTestId('preview-amount').props.children).toBe('100,000 sats');
-    });
-
-    it('renders fee in preview', () => {
-      mockState = { ...BASE_STATE, preview: PREVIEW };
-      const screen = renderWithTheme(<SendFeesScreen />);
-      expect(screen.getByTestId('preview-fee').props.children).toBe('900 sats');
-    });
-
-    it('renders total in preview', () => {
-      mockState = { ...BASE_STATE, preview: PREVIEW };
-      const screen = renderWithTheme(<SendFeesScreen />);
-      expect(screen.getByTestId('preview-total').props.children).toBe('100,900 sats');
-    });
-
-    it('renders change when changeSats > 0', () => {
-      mockState = { ...BASE_STATE, preview: PREVIEW };
-      const screen = renderWithTheme(<SendFeesScreen />);
-      expect(screen.getByTestId('preview-change')).toBeTruthy();
-    });
-
-    it('hides change row when changeSats is zero', () => {
-      mockState = { ...BASE_STATE, preview: { ...PREVIEW, changeSats: 0 } };
-      const screen = renderWithTheme(<SendFeesScreen />);
-      expect(screen.queryByTestId('preview-change')).toBeNull();
+    it('calls clearPreview after navigating to review screen', async () => {
+      mockState = { ...BASE_STATE, preview: PREVIEW, selectedFeeRate: 10 };
+      renderWithTheme(<SendFeesScreen />);
+      await waitFor(() => expect(mockClearPreview).toHaveBeenCalledTimes(1));
     });
   });
 
@@ -214,52 +195,6 @@ describe('SendFeesScreen', () => {
       const screen = renderWithTheme(<SendFeesScreen />);
       expect(screen.getByTestId('preview-error')).toBeTruthy();
       expect(screen.getByText('Saldo insuficiente')).toBeTruthy();
-    });
-
-    it('shows send error inline after failed send', () => {
-      mockState = { ...BASE_STATE, preview: PREVIEW, sendError: 'Broadcast failed' };
-      const screen = renderWithTheme(<SendFeesScreen />);
-      expect(screen.getByTestId('send-error')).toBeTruthy();
-      expect(screen.getByText('Broadcast failed')).toBeTruthy();
-    });
-  });
-
-  describe('confirm and send button', () => {
-    it('shows the confirm button when preview is available', () => {
-      mockState = { ...BASE_STATE, preview: PREVIEW };
-      const screen = renderWithTheme(<SendFeesScreen />);
-      expect(screen.getByTestId('btn-confirm-send')).toBeTruthy();
-    });
-
-    it('hides the confirm button when preview is null', () => {
-      const screen = renderWithTheme(<SendFeesScreen />);
-      expect(screen.queryByTestId('btn-confirm-send')).toBeNull();
-    });
-
-    it('calls requireAuth then sendTransaction when confirm button is pressed', async () => {
-      mockState = { ...BASE_STATE, preview: PREVIEW };
-      const screen = renderWithTheme(<SendFeesScreen />);
-      fireEvent.press(screen.getByTestId('btn-confirm-send'));
-      await waitFor(() => {
-        expect(mockRequireAuth).toHaveBeenCalledTimes(1);
-        expect(mockSendTransaction).toHaveBeenCalledTimes(1);
-      });
-    });
-
-    it('does not call sendTransaction when requireAuth returns false', async () => {
-      mockRequireAuth.mockResolvedValue(false);
-      mockState = { ...BASE_STATE, preview: PREVIEW };
-      const screen = renderWithTheme(<SendFeesScreen />);
-      fireEvent.press(screen.getByTestId('btn-confirm-send'));
-      await waitFor(() => expect(mockRequireAuth).toHaveBeenCalledTimes(1));
-      expect(mockSendTransaction).not.toHaveBeenCalled();
-    });
-
-    it('shows loading state while sending', () => {
-      mockState = { ...BASE_STATE, preview: PREVIEW, isSending: true };
-      const screen = renderWithTheme(<SendFeesScreen />);
-      const btn = screen.getByTestId('btn-confirm-send');
-      expect(btn.props.accessibilityState?.disabled).toBe(true);
     });
   });
 
@@ -285,12 +220,6 @@ describe('SendFeesScreen', () => {
       fireEvent(screen.getByTestId('toggle-pay-fee'), 'valueChange', true);
       expect(mockSetPayFee).toHaveBeenCalledWith(true);
     });
-  });
-
-  it('renders recipient amount in preview', () => {
-    mockState = { ...BASE_STATE, preview: PREVIEW };
-    const screen = renderWithTheme(<SendFeesScreen />);
-    expect(screen.getByTestId('preview-recipient-amount').props.children).toBe('99,100 sats');
   });
 
   describe('watch-only wallet guard', () => {

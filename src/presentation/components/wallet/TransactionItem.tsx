@@ -90,7 +90,7 @@ export function TransactionItem({ transaction, onPress, hidden: hiddenProp }: Tr
 
         {!isIncoming && transaction.feeSats !== undefined && transaction.feeSats > 0 && (
           <AppText variant="label" color="faint" style={styles.feeLabel}>
-            + {formatSats(transaction.feeSats)} sats fee
+            + {formatSats(transaction.feeSats)} {t('common.sats')} {t('transactions.feeLabel')}
           </AppText>
         )}
       </View>

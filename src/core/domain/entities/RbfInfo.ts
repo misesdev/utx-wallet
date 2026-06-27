@@ -3,7 +3,7 @@ import type { RawTxInput } from '../repositories/BlockchainProvider';
 export type RbfIneligibilityReason =
   | 'already-confirmed'
   | 'no-rbf-signal'
-  | 'no-change'
+  | 'recipient-not-identified'
   | 'watch-only';
 
 export type RbfInfo = {

@@ -43,8 +43,8 @@ export class WalletTransactionSigner implements TransactionSigner {
     const tx = new HDTransaction();
 
     for (const input of built.inputs) {
-      const pairKey = singleKey ?? await this.findKeyForAddress(walletData!.wallet, walletId, input.address);
-      if (!pairKey) {
+      const pairKey = singleKey ?? await this.findKeyForAddress(walletData!.wallet, input.address);
+      if (!pairKey || !this.keyMatchesAddress(pairKey, input.address)) {
         throw new AppError(
           `Chave não encontrada para o endereço: ${input.address}`,
           'KEY_NOT_FOUND',
@@ -76,7 +76,6 @@ export class WalletTransactionSigner implements TransactionSigner {
 
   private async findKeyForAddress(
     wallet: HDWallet,
-    walletId: string,
     address: string,
   ): Promise<ECPairKey | null> {
     // Fast path: look up derivation path in the HD address registry
@@ -84,7 +83,10 @@ export class WalletTransactionSigner implements TransactionSigner {
       const record = await this.walletAddressRepository.findByAddress(address);
       if (record) {
         const change: 0 | 1 = record.chain === 'change' ? 1 : 0;
-        return wallet.getPairKey(record.index, { account: record.accountIndex, change });
+        const pairKey = wallet.getPairKey(record.index, { account: record.accountIndex, change });
+        if (this.keyMatchesAddress(pairKey, address)) {
+          return pairKey;
+        }
       }
     }
 
@@ -97,5 +99,9 @@ export class WalletTransactionSigner implements TransactionSigner {
       }
     }
     return null;
+  }
+
+  private keyMatchesAddress(pairKey: ECPairKey, address: string): boolean {
+    return pairKey.getAddress() === address || pairKey.getAddress('p2wpkh') === address;
   }
 }

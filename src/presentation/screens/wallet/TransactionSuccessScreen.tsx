@@ -43,7 +43,7 @@ export function TransactionSuccessScreen() {
   function goHome() {
     navigation.reset({
       index: 1,
-      routes: [{ name: AppRoutes.WalletList }, { name: AppRoutes.Home }],
+      routes: [{ name: AppRoutes.Home }, { name: AppRoutes.Wallet }],
     });
   }
 
@@ -83,13 +83,13 @@ export function TransactionSuccessScreen() {
               <AppText variant="title" style={styles.amountNumber} testID="success-amount">
                 {formatSats(amountSats)}
               </AppText>
-              <AppText variant="body" color="muted"> sats</AppText>
+              <AppText variant="body" color="muted"> {t('common.sats')}</AppText>
             </View>
           </View>
           <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
           <View style={styles.row}>
             <AppText color="muted">{t('txSuccess.feePaid')}</AppText>
-            <AppText testID="success-fee">{`${formatSats(feeSats)} sats`}</AppText>
+            <AppText testID="success-fee">{`${formatSats(feeSats)} ${t('common.sats')}`}</AppText>
           </View>
         </AppCard>
 

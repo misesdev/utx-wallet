@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { AppCard } from '../../components/base/AppCard';
 import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,9 +9,7 @@ import { AppButton } from '../../components/base/AppButton';
 import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
 import { FeeSelector } from '../../components/wallet/FeeSelector';
-import { PinInputModal } from '../../components/security/PinInputModal';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
-import { useReauthenticate } from '../../hooks/useReauthenticate';
 import { useSendBitcoin } from '../../hooks/useSendBitcoin';
 import { useTheme } from '../../hooks/useTheme';
 import type { AppStackParamList } from '../../../app/navigation/routes';
@@ -54,33 +52,23 @@ export function SendFeesScreen() {
     amountSats,
     feeTier,
     customFeeRate,
+    customFeeError,
     feeRates,
     isLoadingFeeRates,
     preview,
     isPreviewing,
     previewError,
-    isSending,
-    sendError,
-    sentResult,
     payFee,
+    selectedFeeRate,
     isWatchOnly,
     setToAddress,
     setAmountSats,
     setFeeTier,
     setCustomFeeRate,
     reviewTransaction,
-    sendTransaction,
-    resetSend,
+    clearPreview,
     setPayFee,
   } = useSendBitcoin({ originId, initialAddress, initialAmount });
-
-  const { requireAuth, pinModalVisible, pinError, submitPin, cancelAuth } = useReauthenticate();
-
-  const handleConfirmSend = useCallback(async () => {
-    const ok = await requireAuth();
-    if (!ok) return;
-    await sendTransaction();
-  }, [requireAuth, sendTransaction]);
 
   // Sync params into hook state if hook initialized before params resolved
   useEffect(() => {
@@ -91,18 +79,20 @@ export function SendFeesScreen() {
     if (initialAmount && !amountSats) setAmountSats(initialAmount);
   }, [initialAmount]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Navigate to review screen when preview is ready
   useEffect(() => {
-    if (!sentResult) return;
-    navigation.reset({
-      index: 2,
-      routes: [
-        { name: AppRoutes.WalletList },
-        { name: AppRoutes.Home },
-        { name: AppRoutes.TransactionSuccess, params: { txid: sentResult.txid, amountSats: sentResult.transaction.amountSats, feeSats: sentResult.transaction.feeSats ?? 0 } },
-      ],
+    if (!preview) return;
+    navigation.navigate(AppRoutes.TransactionReview, {
+      originId,
+      originName,
+      toAddress: toAddress || initialAddress,
+      amountSats: amountSats || initialAmount,
+      selectedFeeRate,
+      payFee,
+      previewJson: JSON.stringify(preview),
     });
-    resetSend();
-  }, [sentResult, navigation, resetSend]);
+    clearPreview();
+  }, [preview]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const effectiveAddress = toAddress || initialAddress;
   const effectiveAmount = amountSats || initialAmount;
@@ -112,7 +102,8 @@ export function SendFeesScreen() {
     effectiveAddress.length > 0 &&
     !isNaN(parsedAmount) &&
     parsedAmount > 0 &&
-    !isPreviewing;
+    !isPreviewing &&
+    !customFeeError;
 
   if (isWatchOnly) {
     return (
@@ -139,6 +130,8 @@ export function SendFeesScreen() {
     );
   }
 
+  const footerHeight = Math.max(insets.bottom, 20) + 54 + 24;
+
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
       {/* Header */}
@@ -164,10 +157,7 @@ export function SendFeesScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: Math.max(insets.bottom, 16) + 24 },
-        ]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: footerHeight }]}
       >
         {/* Summary card */}
         <AppCard>
@@ -190,6 +180,7 @@ export function SendFeesScreen() {
           selected={feeTier}
           feeRates={feeRates}
           customFeeRate={customFeeRate}
+          customFeeError={customFeeError}
           onSelect={setFeeTier}
           onCustomFeeRateChange={setCustomFeeRate}
         />
@@ -210,9 +201,9 @@ export function SendFeesScreen() {
         <AppCard>
           <View style={styles.toggleRow}>
             <View style={styles.toggleInfo}>
-              <AppText variant="body">{t('fees.payFee')}</AppText>
+              <AppText variant="body" style={styles.toggleTitle}>{t('fees.payFeeTitle')}</AppText>
               <AppText variant="caption" color="muted">
-                {payFee ? t('fees.payFeeHint') : t('fees.noPayFeeHint')}
+                {t('fees.payFeeSubtitle')}
               </AppText>
             </View>
             <Switch
@@ -221,116 +212,30 @@ export function SendFeesScreen() {
               testID="toggle-pay-fee"
               trackColor={{ false: theme.colors.border, true: theme.colors.accent }}
               thumbColor={theme.colors.surface}
-              accessibilityLabel={t('fees.payFee')}
+              accessibilityLabel={t('fees.payFeeTitle')}
             />
           </View>
         </AppCard>
+      </ScrollView>
 
-        {/* Review button */}
+      {/* Sticky footer */}
+      <View
+        style={[
+          styles.footer,
+          {
+            backgroundColor: theme.colors.background,
+            borderTopColor: theme.colors.border,
+            paddingBottom: Math.max(insets.bottom, 20),
+          },
+        ]}
+      >
         <AppButton
           title={isPreviewing ? t('fees.calculating') : t('fees.previewTitle')}
           disabled={!canReview}
           onPress={reviewTransaction}
           testID="btn-review"
         />
-
-        {/* Preview card */}
-        {preview && (
-          <AppCard accent testID="preview-card">
-            <AppText variant="subtitle">{t('fees.previewTitle')}</AppText>
-
-            <View style={styles.row}>
-              <AppText color="muted">{t('fees.amount')}</AppText>
-              <AppText testID="preview-amount">{`${formatSats(preview.amountSats)} sats`}</AppText>
-            </View>
-            <View style={styles.row}>
-              <AppText color="muted">{t('fees.estimatedFee')}</AppText>
-              <AppText testID="preview-fee">{`${formatSats(preview.feeSats)} sats`}</AppText>
-            </View>
-            <View style={styles.separator} />
-            <View style={styles.row}>
-              <AppText color="muted">{t('fees.total')}</AppText>
-              <AppText variant="subtitle" testID="preview-total">
-                {`${formatSats(preview.totalSats)} sats`}
-              </AppText>
-            </View>
-            {preview.changeSats > 0 && (
-              <View style={styles.row}>
-                <AppText color="muted">{t('fees.change')}</AppText>
-                <AppText testID="preview-change">{`${formatSats(preview.changeSats)} sats`}</AppText>
-              </View>
-            )}
-            <View style={styles.row}>
-              <AppText color="muted">{t('fees.recipientReceives')}</AppText>
-              <AppText testID="preview-recipient-amount">
-                {`${formatSats(preview.recipientAmountSats)} sats`}
-              </AppText>
-            </View>
-            <View style={styles.row}>
-              <AppText color="muted">{t('fees.recipient')}</AppText>
-              <AppText style={styles.address} testID="preview-address">
-                {truncateAddress(preview.toAddress)}
-              </AppText>
-            </View>
-            <View style={styles.row}>
-              <AppText color="muted">{t('fees.feeRate')}</AppText>
-              <AppText testID="preview-fee-rate">{`${preview.feeRateSatsPerVByte} sat/vB`}</AppText>
-            </View>
-
-            {/* Electrum-style inputs / outputs */}
-            {preview.inputs.length > 0 && (
-              <>
-                <View style={styles.separator} />
-                <AppText variant="label" color="muted">{t('fees.inputs')}</AppText>
-                {preview.inputs.map((inp, i) => (
-                  <View key={i} style={styles.ioRow}>
-                    <AppText variant="caption" color="muted" style={styles.ioAddress} numberOfLines={1}>
-                      {truncateAddress(inp.address, 8)}
-                    </AppText>
-                    <AppText variant="caption">{`${formatSats(inp.valueSats)} sats`}</AppText>
-                  </View>
-                ))}
-              </>
-            )}
-            {preview.outputs.length > 0 && (
-              <>
-                <View style={styles.separator} />
-                <AppText variant="label" color="muted">{t('fees.outputs')}</AppText>
-                {preview.outputs.map((out, i) => (
-                  <View key={i} style={styles.ioRow}>
-                    <AppText variant="caption" color={out.isChange ? 'muted' : 'default'} style={styles.ioAddress} numberOfLines={1}>
-                      {out.isChange ? t('fees.changeOutput') : truncateAddress(out.address, 8)}
-                    </AppText>
-                    <AppText variant="caption">{`${formatSats(out.amountSats)} sats`}</AppText>
-                  </View>
-                ))}
-              </>
-            )}
-
-            <AppButton
-              title={t('fees.confirmSend')}
-              size="md"
-              onPress={handleConfirmSend}
-              loading={isSending}
-              disabled={isSending}
-              testID="btn-confirm-send"
-            />
-            {sendError && (
-              <AppText variant="caption" color="danger" style={styles.center} testID="send-error">
-                {sendError}
-              </AppText>
-            )}
-          </AppCard>
-        )}
-      </ScrollView>
-
-      <PinInputModal
-        visible={pinModalVisible}
-        step="verify"
-        error={pinError}
-        onSubmit={submitPin}
-        onCancel={cancelAuth}
-      />
+      </View>
     </View>
   );
 }
@@ -405,36 +310,20 @@ const styles = StyleSheet.create({
   },
   toggleInfo: {
     flex: 1,
-    gap: 2,
+    gap: 4,
+  },
+  toggleTitle: {
+    fontWeight: '600',
   },
 
-  // Preview card
-  row: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  // Footer
+  footer: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 20,
+    paddingTop: 12,
   },
-  separator: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    height: 1,
-  },
-  address: {
-    fontVariant: ['tabular-nums'],
-    letterSpacing: 0.3,
-    maxWidth: '60%',
-    textAlign: 'right',
-  },
-  ioRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  ioAddress: {
-    flex: 1,
-    fontFamily: 'monospace',
-    fontSize: 11,
-  },
+
+  // Misc
   center: {
     textAlign: 'center',
   },

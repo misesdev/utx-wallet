@@ -39,7 +39,6 @@ describe('GlobalSettingsScreen', () => {
     expect(screen.getByTestId('global-settings-language')).toBeTruthy();
     expect(screen.getByTestId('global-settings-security')).toBeTruthy();
     expect(screen.getByTestId('global-settings-node')).toBeTruthy();
-    expect(screen.getByTestId('global-settings-offline')).toBeTruthy();
     expect(screen.getByTestId('global-settings-safe-mode')).toBeTruthy();
   });
 

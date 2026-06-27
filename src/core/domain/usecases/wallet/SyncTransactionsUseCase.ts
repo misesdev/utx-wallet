@@ -119,6 +119,43 @@ export class SyncTransactionsUseCase {
 
     await this.transactionRepository.upsertAll(walletId, resolvedTxs);
 
+    // Pending transactions whose spending address fell out of the scan pool
+    // (e.g. archived after a previous sync) would never update to 'confirmed'
+    // through the address scan alone.  Explicitly verify each such transaction
+    // against the blockchain so status is always current after any sync.
+    await this.confirmPendingTransactions(walletId, localTxs, resolvedTxs, network);
+
     return { newCount, fetchedTransactions };
+  }
+
+  private async confirmPendingTransactions(
+    walletId: string,
+    localTxs: Transaction[],
+    resolvedTxs: Transaction[],
+    network: BitcoinNetwork,
+  ): Promise<void> {
+    const resolvedTxids = new Set(resolvedTxs.map(tx => tx.txid ?? tx.id));
+    const pendingToCheck = localTxs.filter(
+      tx =>
+        tx.status === 'pending' &&
+        tx.txid &&
+        !resolvedTxids.has(tx.txid),
+    );
+    if (pendingToCheck.length === 0) return;
+
+    const confirmed: Transaction[] = [];
+    for (const tx of pendingToCheck) {
+      try {
+        const status = await this.blockchainProvider.getTransactionStatus(tx.txid!, network);
+        if (status.confirmed) {
+          confirmed.push({ ...tx, status: 'confirmed' });
+        }
+      } catch {
+        // Keep as pending on network error — will be retried on next sync
+      }
+    }
+    if (confirmed.length > 0) {
+      await this.transactionRepository.upsertAll(walletId, confirmed);
+    }
   }
 }

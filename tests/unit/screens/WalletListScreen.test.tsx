@@ -1,6 +1,6 @@
 import React from 'react';
-import { act, fireEvent, waitFor } from '@testing-library/react-native';
-import { WalletListScreen } from '../../../src/presentation/screens/wallet/WalletListScreen';
+import { fireEvent, waitFor } from '@testing-library/react-native';
+import { HomeScreen as WalletListScreen } from '../../../src/presentation/screens/home/HomeScreen';
 import { renderWithTheme } from '../../mocks/renderWithProviders';
 import type { Wallet } from '../../../src/core/domain/entities/Wallet';
 
@@ -223,7 +223,7 @@ describe('WalletListScreen', () => {
       const screen = renderWithTheme(<WalletListScreen />);
       fireEvent.press(screen.getByLabelText('Open wallet My Wallet'));
       expect(mockSelectWallet).toHaveBeenCalledWith('w1');
-      expect(mockNavigate).toHaveBeenCalledWith('Home');
+      expect(mockNavigate).toHaveBeenCalledWith('Wallet');
     });
 
     it('shows network label on wallet card', () => {
@@ -501,7 +501,7 @@ describe('WalletListScreen', () => {
       const screen = renderWithTheme(<WalletListScreen />);
       fireEvent.press(screen.getByLabelText('Open wallet Main Wallet'));
       expect(mockSelectWallet).toHaveBeenCalledWith('w1');
-      expect(mockNavigate).toHaveBeenCalledWith('Home');
+      expect(mockNavigate).toHaveBeenCalledWith('Wallet');
     });
 
     it('dismisses modal when cancel is pressed', () => {
@@ -532,7 +532,7 @@ describe('WalletListScreen', () => {
       fireEvent.press(screen.getByTestId('btn-disable-safe-mode-and-open'));
       await waitFor(() => expect(mockDeactivateSafeMode).toHaveBeenCalled());
       expect(mockSelectWallet).toHaveBeenCalledWith('w1');
-      expect(mockNavigate).toHaveBeenCalledWith('Home');
+      expect(mockNavigate).toHaveBeenCalledWith('Wallet');
     });
 
     it('modal is not visible initially', () => {

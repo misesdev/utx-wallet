@@ -7,7 +7,7 @@ import type { TransactionRepository } from '../../repositories/TransactionReposi
 import type { SignTransactionUseCase } from './SignTransactionUseCase';
 import type { BroadcastTransactionUseCase, BroadcastResult } from './BroadcastTransactionUseCase';
 import { AppError } from '../../../application/errors/AppError';
-import { calcNewFeeSats, calcNewChangeSats, validateFeeBump } from '../../services/RbfService';
+import { calcNewFeeSats, calcNewRecipientSats, validateFeeBump } from '../../services/RbfService';
 import { generateId } from '../../../../shared/utils/generateId';
 import { DUST_THRESHOLD_SATS } from './BuildTransactionUseCase';
 
@@ -16,6 +16,7 @@ export type GetRbfInfoParams = {
   toAddress: string;        // recipient address stored in Transaction.address
   walletIsWatchOnly: boolean;
   isConfirmed: boolean;
+  walletNetwork: BitcoinNetwork;
 };
 
 export type AccelerateTransactionParams = {
@@ -67,7 +68,7 @@ export class AccelerateTransactionUseCase {
       };
     }
 
-    const rawTx = await this.blockchainProvider.getRawTransaction(params.txid);
+    const rawTx = await this.blockchainProvider.getRawTransaction(params.txid, params.walletNetwork);
 
     if (!rawTx.isRbfEligible) {
       return {
@@ -86,14 +87,13 @@ export class AccelerateTransactionUseCase {
     }
 
     const recipientOutput = rawTx.outputs.find(o => o.address === params.toAddress);
-    const changeOutput = rawTx.outputs.find(o => o.address !== params.toAddress);
 
     if (!recipientOutput) {
-      // toAddress not found in outputs — can't identify recipient
+      // Recipient address not found in outputs — cannot reconstruct the transaction
       return {
         originalTxid: params.txid,
         isRbfEligible: false,
-        ineligibilityReason: 'no-change',
+        ineligibilityReason: 'recipient-not-identified',
         toAddress: params.toAddress,
         recipientAmountSats: 0,
         changeAddress: '',
@@ -105,24 +105,12 @@ export class AccelerateTransactionUseCase {
       };
     }
 
-    if (!changeOutput) {
-      // No change output — can't reduce fee from change
-      return {
-        originalTxid: params.txid,
-        isRbfEligible: false,
-        ineligibilityReason: 'no-change',
-        toAddress: params.toAddress,
-        recipientAmountSats: recipientOutput.valueSats,
-        changeAddress: '',
-        changeAmountSats: 0,
-        currentFeeSats: rawTx.feeSats,
-        currentFeeRate: 0,
-        estimatedVBytes: 0,
-        rawInputs: rawTx.inputs,
-      };
-    }
+    const changeOutput = rawTx.outputs.find(o => o.address !== params.toAddress);
 
-    const estimatedVBytes = this.feeEstimation.estimateVBytes(rawTx.inputs.length, 2);
+    // Transactions are always acceleratable by deducting the fee increase from the recipient.
+    // Outputs used to estimate vBytes: 2 when change present, 1 when no change.
+    const outputCount = changeOutput ? 2 : 1;
+    const estimatedVBytes = this.feeEstimation.estimateVBytes(rawTx.inputs.length, outputCount);
     const currentFeeRate = rawTx.feeSats / estimatedVBytes;
 
     return {
@@ -130,8 +118,8 @@ export class AccelerateTransactionUseCase {
       isRbfEligible: true,
       toAddress: params.toAddress,
       recipientAmountSats: recipientOutput.valueSats,
-      changeAddress: changeOutput.address,
-      changeAmountSats: changeOutput.valueSats,
+      changeAddress: changeOutput?.address ?? '',
+      changeAmountSats: changeOutput?.valueSats ?? 0,
       currentFeeSats: rawTx.feeSats,
       currentFeeRate: Math.ceil(currentFeeRate),
       estimatedVBytes,
@@ -148,22 +136,22 @@ export class AccelerateTransactionUseCase {
 
     const newFeeSats = calcNewFeeSats(rbfInfo.estimatedVBytes, newFeeRateSatsPerVByte);
     const totalInputSats = rbfInfo.rawInputs.reduce((sum, i) => sum + i.prevoutValue, 0);
-    const newChangeSats = calcNewChangeSats(totalInputSats, rbfInfo.recipientAmountSats, newFeeSats);
+    // Fee increase is always deducted from the recipient, keeping change unchanged.
+    const newRecipientSats = calcNewRecipientSats(totalInputSats, rbfInfo.changeAmountSats, newFeeSats);
 
-    const validation = validateFeeBump(rbfInfo.currentFeeSats, newFeeSats, newChangeSats);
+    const validation = validateFeeBump(rbfInfo.currentFeeSats, newFeeSats, newRecipientSats);
     if (!validation.valid) {
       if (validation.reason === 'fee-not-higher') {
         throw new AppError('Nova taxa deve ser maior que a atual', 'FEE_NOT_HIGHER');
       }
-      throw new AppError('Saldo insuficiente para aumentar a taxa', 'INSUFFICIENT_FUNDS');
+      throw new AppError('Taxa muito alta: valor do recebedor ficaria abaixo do mínimo', 'INSUFFICIENT_FUNDS');
     }
 
-    // Build replacement BuiltTransaction using same inputs
     const outputs: BuiltTransaction['outputs'] = [
-      { address: rbfInfo.toAddress, amountSats: rbfInfo.recipientAmountSats, isChange: false },
+      { address: rbfInfo.toAddress, amountSats: newRecipientSats, isChange: false },
     ];
-    if (newChangeSats >= DUST_THRESHOLD_SATS) {
-      outputs.push({ address: rbfInfo.changeAddress, amountSats: newChangeSats, isChange: true });
+    if (rbfInfo.changeAmountSats >= DUST_THRESHOLD_SATS) {
+      outputs.push({ address: rbfInfo.changeAddress, amountSats: rbfInfo.changeAmountSats, isChange: true });
     }
 
     const builtTx: BuiltTransaction = {
@@ -177,10 +165,10 @@ export class AccelerateTransactionUseCase {
         scriptPubKey: i.scriptPubKey,
       })),
       outputs,
-      amountSats: rbfInfo.recipientAmountSats,
+      amountSats: newRecipientSats,
       feeSats: newFeeSats,
       totalSats: totalInputSats,
-      changeSats: Math.max(0, newChangeSats),
+      changeSats: rbfInfo.changeAmountSats,
       feeRateSatsPerVByte: newFeeRateSatsPerVByte,
       estimatedVBytes: rbfInfo.estimatedVBytes,
       status: 'built',
@@ -193,7 +181,7 @@ export class AccelerateTransactionUseCase {
       network: params.walletNetwork,
     });
 
-    const result = await this.broadcastTransaction.execute(signed, params.walletId);
+    const result = await this.broadcastTransaction.execute(signed, params.walletId, params.walletNetwork);
 
     await this.markOriginalAsReplaced(params.walletId, rbfInfo.originalTxid, result.txid);
 

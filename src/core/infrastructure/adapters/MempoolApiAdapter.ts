@@ -62,8 +62,8 @@ export class MempoolApiAdapter implements NodeRepository, BlockchainProvider {
     return txs.map(tx => this.mapTransaction(tx, address));
   }
 
-  async getTransactionStatus(txid: string): Promise<RemoteTransactionStatus> {
-    const tx = await this.clientFor('mainnet').getTransaction(txid);
+  async getTransactionStatus(txid: string, network: BitcoinNetwork): Promise<RemoteTransactionStatus> {
+    const tx = await this.clientFor(network).getTransaction(txid);
     return {
       txid: tx.txid,
       confirmed: tx.status.confirmed,
@@ -72,8 +72,8 @@ export class MempoolApiAdapter implements NodeRepository, BlockchainProvider {
     };
   }
 
-  async getFeeRates(): Promise<FeeRates> {
-    const rates = await this.clientFor('mainnet').getFeeRates();
+  async getFeeRates(network: BitcoinNetwork): Promise<FeeRates> {
+    const rates = await this.clientFor(network).getFeeRates();
     return {
       fastSatsPerVByte: rates.fastestFee,
       halfHourSatsPerVByte: rates.halfHourFee,
@@ -83,16 +83,16 @@ export class MempoolApiAdapter implements NodeRepository, BlockchainProvider {
     };
   }
 
-  async getCurrentBlockHeight(): Promise<number> {
-    return this.clientFor('mainnet').getCurrentBlockHeight();
+  async getCurrentBlockHeight(network: BitcoinNetwork): Promise<number> {
+    return this.clientFor(network).getCurrentBlockHeight();
   }
 
-  async broadcastTransaction(rawHex: string): Promise<string> {
-    return this.clientFor('mainnet').broadcastTransaction(rawHex);
+  async broadcastTransaction(rawHex: string, network: BitcoinNetwork): Promise<string> {
+    return this.clientFor(network).broadcastTransaction(rawHex);
   }
 
-  async getRawTransaction(txid: string): Promise<RawTransaction> {
-    return this.clientFor('mainnet').getRawTransaction(txid);
+  async getRawTransaction(txid: string, network: BitcoinNetwork): Promise<RawTransaction> {
+    return this.clientFor(network).getRawTransaction(txid);
   }
 
   // ── Private helpers ─────────────────────────────────────────────────────────

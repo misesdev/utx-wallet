@@ -49,7 +49,7 @@ describe('TransactionSuccessScreen', () => {
 
   it('displays the fee in sats', () => {
     const screen = renderWithTheme(<TransactionSuccessScreen />);
-    expect(screen.getByTestId('success-fee').props.children).toBe('900 sats');
+    expect(screen.getByTestId('success-fee').props.children).toBe('900 common.sats');
   });
 
   it('displays the truncated txid in the header row', () => {
@@ -86,15 +86,15 @@ describe('TransactionSuccessScreen', () => {
     jest.useRealTimers();
   });
 
-  it('navigates to WalletList then Home when "Go home" is pressed', () => {
+  it('navigates to Home then Wallet when "Go home" is pressed', () => {
     const screen = renderWithTheme(<TransactionSuccessScreen />);
     fireEvent.press(screen.getByTestId('btn-go-home'));
     expect(mockReset).toHaveBeenCalledWith(
       expect.objectContaining({
         index: 1,
         routes: expect.arrayContaining([
-          expect.objectContaining({ name: 'WalletList' }),
           expect.objectContaining({ name: 'Home' }),
+          expect.objectContaining({ name: 'Wallet' }),
         ]),
       }),
     );

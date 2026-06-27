@@ -7,6 +7,8 @@ import { FeeEstimationService } from '../../../src/core/domain/services/FeeEstim
 import { CoinSelectionService } from '../../../src/core/domain/services/CoinSelectionService';
 import type { UtxoRepository } from '../../../src/core/domain/repositories/UtxoRepository';
 import type { WalletAddressProvider } from '../../../src/core/domain/repositories/WalletAddressProvider';
+import type { GetNextChangeAddressUseCase } from '../../../src/core/domain/usecases/address/GetNextChangeAddressUseCase';
+import type { WalletAddress } from '../../../src/core/domain/entities/WalletAddress';
 import type { Utxo } from '../../../src/core/domain/entities/Utxo';
 
 // Valid addresses verified via bitcoin-tx-lib (ECPairKey-generated)
@@ -459,6 +461,99 @@ describe('BuildTransactionUseCase', () => {
       await expect(
         useCase.execute(baseParams({ amountSats: 100_000, subtractFeeFromAmount: false })),
       ).rejects.toMatchObject({ code: 'INSUFFICIENT_BALANCE' });
+    });
+  });
+
+  describe('HD change address reservation (GetNextChangeAddressUseCase)', () => {
+    const HD_CHANGE_ADDR = 'bc1q2huh508fyvu04z98cvnrd2stuzyqzwe80eqark';
+
+    function makeHdChangeUseCase(changeAddr = HD_CHANGE_ADDR): jest.Mocked<GetNextChangeAddressUseCase> {
+      const hdAddr: WalletAddress = {
+        id: 'hd-change-1',
+        walletId: WALLET_ID,
+        originId: 'origin-1',
+        originName: 'Default',
+        address: changeAddr,
+        path: "m/84'/0'/0'/1/0",
+        accountIndex: 0,
+        chain: 'change',
+        index: 0,
+        status: 'reserved',
+        totalReceivedSats: 0,
+        totalSentSats: 0,
+        txCount: 0,
+        incomingTxCount: 0,
+        outgoingTxCount: 0,
+        hasUtxos: false,
+        isFrozen: false,
+        createdAt: new Date().toISOString(),
+        usedAt: new Date().toISOString(),
+        lastSyncedAt: null,
+      };
+      return { execute: jest.fn().mockResolvedValue(hdAddr) } as unknown as jest.Mocked<GetNextChangeAddressUseCase>;
+    }
+
+    function makeHdUseCase(utxos: Utxo[], hdChange = makeHdChangeUseCase()) {
+      return new BuildTransactionUseCase(
+        makeRepo(utxos),
+        coinSelection,
+        feeEstimation,
+        makeChangeProvider(HD_CHANGE_ADDR),
+        hdChange,
+      );
+    }
+
+    it('calls GetNextChangeAddressUseCase with reserve=true when change output is needed', async () => {
+      const balance = 500_000; // large surplus → change will exist
+      const hdChange = makeHdChangeUseCase();
+      const useCase = makeHdUseCase([makeUtxo(balance)], hdChange);
+
+      const result = await useCase.execute(baseParams({ amountSats: 100_000 }));
+
+      expect(hdChange.execute).toHaveBeenCalledWith(
+        WALLET_ID, 'mainnet', undefined, true,
+      );
+      const changeOutput = result.outputs.find(o => o.isChange);
+      expect(changeOutput).toBeDefined();
+      expect(changeOutput!.address).toBe(HD_CHANGE_ADDR);
+    });
+
+    it('does NOT call GetNextChangeAddressUseCase when changeSats=0 (exact send, no change)', async () => {
+      // Send exact balance so no change is left after fee
+      const balance = 50_000;
+      const hdChange = makeHdChangeUseCase();
+      const useCase = makeHdUseCase([makeUtxo(balance)], hdChange);
+
+      const result = await useCase.execute(baseParams({ amountSats: balance, subtractFeeFromAmount: false }));
+
+      // Auto-drain switches to SFA; change = inputSats - amountSats = 0
+      expect(hdChange.execute).not.toHaveBeenCalled();
+      expect(result.changeSats).toBe(0);
+      expect(result.outputs.every(o => !o.isChange)).toBe(true);
+    });
+
+    it('does NOT reserve change address when change would be absorbed as dust (standard mode)', async () => {
+      const amount = 100_000;
+      const dust = DUST_THRESHOLD_SATS - 1; // 545 — sub-dust, will be absorbed
+      const balance = amount + fee(1, 2) + dust;
+      const hdChange = makeHdChangeUseCase();
+      const useCase = makeHdUseCase([makeUtxo(balance)], hdChange);
+
+      const result = await useCase.execute(baseParams({ amountSats: amount }));
+
+      expect(hdChange.execute).not.toHaveBeenCalled();
+      expect(result.changeSats).toBe(0);
+    });
+
+    it('does NOT reserve change address when SFA produces zero change', async () => {
+      // SFA: totalInputSats == amountSats → changeSats=0
+      const balance = 50_000;
+      const hdChange = makeHdChangeUseCase();
+      const useCase = makeHdUseCase([makeUtxo(balance)], hdChange);
+
+      await useCase.execute(baseParams({ amountSats: balance, subtractFeeFromAmount: true }));
+
+      expect(hdChange.execute).not.toHaveBeenCalled();
     });
   });
 

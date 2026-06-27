@@ -26,6 +26,7 @@ import { SelectOriginReceiveScreen } from '../../presentation/screens/wallet/Sel
 import { SelectOriginSendScreen } from '../../presentation/screens/wallet/SelectOriginSendScreen';
 import { SendScreen } from '../../presentation/screens/wallet/SendScreen';
 import { SendFeesScreen } from '../../presentation/screens/wallet/SendFeesScreen';
+import { TransactionReviewScreen } from '../../presentation/screens/wallet/TransactionReviewScreen';
 import { AccelerateTransactionScreen } from '../../presentation/screens/wallet/AccelerateTransactionScreen';
 import { TransactionDetailsScreen } from '../../presentation/screens/wallet/TransactionDetailsScreen';
 import { TransactionListScreen } from '../../presentation/screens/wallet/TransactionListScreen';
@@ -33,7 +34,7 @@ import { TransactionSuccessScreen } from '../../presentation/screens/wallet/Tran
 import { UtxosScreen } from '../../presentation/screens/wallet/UtxosScreen';
 import { ViewSeedScreen } from '../../presentation/screens/wallet/ViewSeedScreen';
 import { WalletDetailsScreen } from '../../presentation/screens/wallet/WalletDetailsScreen';
-import { WalletListScreen } from '../../presentation/screens/wallet/WalletListScreen';
+import { WalletScreen } from '../../presentation/screens/wallet/WalletScreen';
 import { ConfirmQrWalletImportScreen } from '../../presentation/screens/qr/ConfirmQrWalletImportScreen';
 import { QrWalletScannerScreen } from '../../presentation/screens/qr/QrWalletScannerScreen';
 import { ScanAddressQrScreen } from '../../presentation/screens/qr/ScanAddressQrScreen';
@@ -55,12 +56,12 @@ export function AppNavigator() {
   return (
     <CreateWalletProvider>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name={AppRoutes.WalletList} component={WalletListScreen} />
+        <Stack.Screen name={AppRoutes.Home} component={HomeScreen} />
+        <Stack.Screen name={AppRoutes.Wallet} component={WalletScreen} />
         <Stack.Screen name={AppRoutes.CreateWallet} component={CreateWalletScreen} />
         <Stack.Screen name={AppRoutes.ImportWallet} component={ImportWalletScreen} />
         <Stack.Screen name={AppRoutes.BackupSeed} component={BackupSeedScreen} />
         <Stack.Screen name={AppRoutes.ConfirmSeed} component={ConfirmSeedScreen} />
-        <Stack.Screen name={AppRoutes.Home} component={HomeScreen} />
         <Stack.Screen name={AppRoutes.WalletDetails} component={WalletDetailsScreen} />
         <Stack.Screen name={AppRoutes.Transactions} component={TransactionListScreen} />
         <Stack.Screen name={AppRoutes.Receive} component={ReceiveScreen} />
@@ -68,6 +69,7 @@ export function AppNavigator() {
         <Stack.Screen name={AppRoutes.SelectOriginSend} component={SelectOriginSendScreen} />
         <Stack.Screen name={AppRoutes.Send} component={SendScreen} />
         <Stack.Screen name={AppRoutes.SendFees} component={SendFeesScreen} />
+        <Stack.Screen name={AppRoutes.TransactionReview} component={TransactionReviewScreen} />
         <Stack.Screen name={AppRoutes.TransactionDetails} component={TransactionDetailsScreen} />
         <Stack.Screen name={AppRoutes.TransactionSuccess} component={TransactionSuccessScreen} />
         <Stack.Screen name={AppRoutes.AccelerateTransaction} component={AccelerateTransactionScreen} />

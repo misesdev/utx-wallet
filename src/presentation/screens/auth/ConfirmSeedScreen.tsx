@@ -97,7 +97,7 @@ export function ConfirmSeedScreen() {
   function handleSetupDone() {
     reset();
     setSetupVisible(false);
-    navigation.reset({ index: 0, routes: [{ name: AppRoutes.WalletList }] });
+    navigation.reset({ index: 0, routes: [{ name: AppRoutes.Home }] });
   }
 
   function handleSetupRetry() {

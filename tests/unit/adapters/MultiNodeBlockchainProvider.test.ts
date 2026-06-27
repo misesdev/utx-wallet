@@ -202,9 +202,70 @@ describe('MultiNodeBlockchainProvider', () => {
         economyFee: 5,
         minimumFee: 1,
       });
-      const rates = await provider.getFeeRates();
+      const rates = await provider.getFeeRates('testnet4');
       expect(rates.fastSatsPerVByte).toBe(20);
       expect(rates.minimumSatsPerVByte).toBe(1);
+    });
+  });
+
+  describe('broadcastTransaction', () => {
+    const RAW_HEX = 'deadbeef01020304';
+
+    it('continues to the next node when the first node rejects with HTTP 400', async () => {
+      // Unlike data queries, a 400 from broadcast (e.g. -26 policy rejection) should not
+      // halt the failover chain — another node may accept the transaction.
+      const { provider, httpClient } = await makeProvider(BASE_CONFIG);
+      httpClient.postText.mockImplementation((url: string) => {
+        if (url.includes('node1.local'))
+          return Promise.reject(new AppError('HTTP 400 — sendrawtransaction RPC error: -26', 'HTTP_ERROR'));
+        return Promise.resolve('accepted-txid');
+      });
+      const txid = await provider.broadcastTransaction(RAW_HEX, 'testnet4');
+      expect(txid).toBe('accepted-txid');
+      expect(httpClient.postText).toHaveBeenCalledTimes(2);
+    });
+
+    it('uses public fallback when all personal nodes reject with 400 and fallback is enabled', async () => {
+      const { provider, httpClient, publicFallback } = await makeProvider({
+        ...BASE_CONFIG,
+        allowPublicFallback: true,
+      });
+      httpClient.postText.mockRejectedValue(new AppError('HTTP 400 — policy rejection', 'HTTP_ERROR'));
+      publicFallback.broadcastTransaction.mockResolvedValue('fallback-txid');
+      const txid = await provider.broadcastTransaction(RAW_HEX, 'testnet4');
+      expect(txid).toBe('fallback-txid');
+      expect(publicFallback.broadcastTransaction).toHaveBeenCalledWith(RAW_HEX, 'testnet4');
+    });
+
+    it('throws last error when all nodes reject with 400 and fallback is disabled (safe mode)', async () => {
+      const { provider, httpClient } = await makeProvider({
+        ...BASE_CONFIG,
+        allowPublicFallback: false,
+      });
+      const err = new AppError('HTTP 400 — sendrawtransaction RPC error: -26', 'HTTP_ERROR');
+      httpClient.postText.mockRejectedValue(err);
+      await expect(provider.broadcastTransaction(RAW_HEX, 'testnet4')).rejects.toThrow('-26');
+    });
+
+    it('passes the correct network to the public fallback', async () => {
+      const { provider, httpClient, publicFallback } = await makeProvider({
+        ...BASE_CONFIG,
+        personalNodes: [],
+        allowPublicFallback: true,
+      });
+      httpClient.postText.mockRejectedValue(new Error('timeout'));
+      publicFallback.broadcastTransaction.mockResolvedValue('public-txid');
+      const txid = await provider.broadcastTransaction(RAW_HEX, 'mainnet');
+      expect(publicFallback.broadcastTransaction).toHaveBeenCalledWith(RAW_HEX, 'mainnet');
+      expect(txid).toBe('public-txid');
+    });
+
+    it('does NOT continue to next node for data queries that return 400 (non-broadcast ops)', async () => {
+      // For get operations (UTXOs, etc.) a 400 is a definitive client error — don't retry.
+      const { provider, httpClient } = await makeProvider(BASE_CONFIG);
+      httpClient.get.mockRejectedValue(new AppError('HTTP 400 — bad request', 'HTTP_ERROR'));
+      await expect(provider.getUtxos('tb1qtest', 'testnet4')).rejects.toThrow('HTTP 400');
+      expect(httpClient.get).toHaveBeenCalledTimes(1);
     });
   });
 });

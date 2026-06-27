@@ -54,9 +54,9 @@ export interface BlockchainProvider {
   getBalance(address: string, network: BitcoinNetwork): Promise<AddressBalance>;
   getUtxos(address: string, network: BitcoinNetwork): Promise<Utxo[]>;
   getTransactions(address: string, network: BitcoinNetwork): Promise<Transaction[]>;
-  getTransactionStatus(txid: string): Promise<RemoteTransactionStatus>;
-  getCurrentBlockHeight(): Promise<number>;
-  getFeeRates(): Promise<FeeRates>;
-  broadcastTransaction(rawHex: string): Promise<string>;
-  getRawTransaction(txid: string): Promise<RawTransaction>;
+  getTransactionStatus(txid: string, network: BitcoinNetwork): Promise<RemoteTransactionStatus>;
+  getCurrentBlockHeight(network: BitcoinNetwork): Promise<number>;
+  getFeeRates(network: BitcoinNetwork): Promise<FeeRates>;
+  broadcastTransaction(rawHex: string, network: BitcoinNetwork): Promise<string>;
+  getRawTransaction(txid: string, network: BitcoinNetwork): Promise<RawTransaction>;
 }

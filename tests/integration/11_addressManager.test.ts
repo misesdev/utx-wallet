@@ -179,7 +179,7 @@ describe('Integration: HD Address Manager', () => {
 
   // ── 2. Pool management ────────────────────────────────────────────────────
 
-  it('initialises pool with exactly 3 fresh receive + 3 fresh change on origin creation', async () => {
+  it('initialises pool with 3 fresh receive + 5 fresh change on origin creation', async () => {
     const { importWallet, createOrigin, walletAddressRepository } = makeSetup();
     const wallet = await importWallet.execute('W5', TEST_MNEMONIC);
     const origin = await createOrigin.execute(wallet.id, DEFAULT_ORIGIN_NAME, 'testnet4');
@@ -188,7 +188,7 @@ describe('Integration: HD Address Manager', () => {
     const freshChange = await walletAddressRepository.countFreshByChain(wallet.id, origin.id, 'change');
 
     expect(freshReceive).toBe(3);
-    expect(freshChange).toBe(3);
+    expect(freshChange).toBe(5); // minAvailableChange=5 > minAvailableReceive=3
   });
 
   it('EnsureAddressPool replenishes receive to minimum after reserving', async () => {
@@ -205,18 +205,19 @@ describe('Integration: HD Address Manager', () => {
     expect(freshReceive).toBe(3); // replenished back to 3
   });
 
-  it('EnsureAddressPool replenishes change to minimum', async () => {
+  it('EnsureAddressPool replenishes change pool back to minAvailableChange (5) after reservation', async () => {
     const { importWallet, createOrigin, getNextChange, walletAddressRepository } = makeSetup();
     const wallet = await importWallet.execute('W7', TEST_MNEMONIC);
     const origin = await createOrigin.execute(wallet.id, DEFAULT_ORIGIN_NAME, 'testnet4');
 
-    // Reserve all 3 fresh change addresses
+    // Reserve 3 change addresses; each reservation triggers ensureAddressPool which
+    // replenishes back to minAvailableChange=5 so the pool always stays full
     await getNextChange.execute(wallet.id, 'testnet4', origin.id, true);
     await getNextChange.execute(wallet.id, 'testnet4', origin.id, true);
     await getNextChange.execute(wallet.id, 'testnet4', origin.id, true);
 
     const freshChange = await walletAddressRepository.countFreshByChain(wallet.id, origin.id, 'change');
-    expect(freshChange).toBe(3);
+    expect(freshChange).toBe(5);
   });
 
   // ── 3. Address selection rules ────────────────────────────────────────────

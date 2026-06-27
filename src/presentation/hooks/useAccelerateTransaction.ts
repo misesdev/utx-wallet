@@ -5,7 +5,7 @@ import { useAccelerate } from '../../app/providers/AccelerateProvider';
 import { useWallet } from './useWallet';
 import { useAppTranslation } from './useAppTranslation';
 import { AppError } from '../../core/application/errors/AppError';
-import { calcNewFeeSats, calcNewChangeSats } from '../../core/domain/services/RbfService';
+import { calcNewFeeSats, calcNewRecipientSats } from '../../core/domain/services/RbfService';
 
 export type UseAccelerateTransactionParams = {
   txid: string;
@@ -19,7 +19,7 @@ export type UseAccelerateState = {
   infoError: string | null;
   newFeeRateSatsPerVByte: number;
   newFeeSats: number;
-  newChangeSats: number;
+  newRecipientSats: number;
   isAccelerating: boolean;
   accelerateError: string | null;
   acceleratedTxid: string | null;
@@ -43,15 +43,15 @@ export function useAccelerateTransaction(params: UseAccelerateTransactionParams)
 
   const walletIsWatchOnly = selectedWallet?.status === 'watch-only';
 
-  // Derive fee/change from current rbfInfo + newFeeRate
+  // Fee increase is deducted from recipient; change remains at its original value.
   const newFeeSats = rbfInfo
     ? calcNewFeeSats(rbfInfo.estimatedVBytes, newFeeRateSatsPerVByte)
     : 0;
   const totalInputSats = rbfInfo
     ? rbfInfo.rawInputs.reduce((sum, i) => sum + i.prevoutValue, 0)
     : 0;
-  const newChangeSats = rbfInfo
-    ? calcNewChangeSats(totalInputSats, rbfInfo.recipientAmountSats, newFeeSats)
+  const newRecipientSats = rbfInfo
+    ? calcNewRecipientSats(totalInputSats, rbfInfo.changeAmountSats, newFeeSats)
     : 0;
 
   const loadInfo = useCallback(async () => {
@@ -63,9 +63,9 @@ export function useAccelerateTransaction(params: UseAccelerateTransactionParams)
         toAddress,
         walletIsWatchOnly: walletIsWatchOnly ?? false,
         isConfirmed,
+        walletNetwork: selectedWallet?.network ?? 'mainnet',
       });
       setRbfInfo(info);
-      // Default new fee rate to current + 1
       if (info.isRbfEligible) {
         setNewFeeRateSatsPerVByte(info.currentFeeRate + 1);
       }
@@ -74,7 +74,7 @@ export function useAccelerateTransaction(params: UseAccelerateTransactionParams)
     } finally {
       setIsLoadingInfo(false);
     }
-  }, [txid, toAddress, walletIsWatchOnly, isConfirmed, getRbfInfo, t]);
+  }, [txid, toAddress, walletIsWatchOnly, isConfirmed, selectedWallet?.network, getRbfInfo, t]);
 
   useEffect(() => {
     loadInfo();
@@ -110,7 +110,7 @@ export function useAccelerateTransaction(params: UseAccelerateTransactionParams)
     infoError,
     newFeeRateSatsPerVByte,
     newFeeSats,
-    newChangeSats,
+    newRecipientSats,
     isAccelerating,
     accelerateError,
     acceleratedTxid,

@@ -1,4 +1,5 @@
 import type { FeeRates } from '../../domain/repositories/BlockchainProvider';
+import type { BitcoinNetwork } from '../../domain/entities/Network';
 import type { TransactionPreview } from '../../domain/entities/TransactionPreview';
 import type { BroadcastResult } from '../../domain/usecases/transaction/BroadcastTransactionUseCase';
 import { ValidateAddressUseCase } from '../../domain/usecases/transaction/ValidateAddressUseCase';
@@ -30,8 +31,8 @@ export class SendService {
     return this.validateAddressUseCase.execute(address);
   }
 
-  fetchFeeRates(): Promise<FeeRates> {
-    return this.fetchFeeRatesUseCase.execute();
+  fetchFeeRates(network: BitcoinNetwork): Promise<FeeRates> {
+    return this.fetchFeeRatesUseCase.execute(network);
   }
 
   preview(params: PreviewTransactionParams): Promise<TransactionPreview> {
@@ -45,6 +46,6 @@ export class SendService {
       walletId: params.walletId,
       network: params.walletNetwork,
     });
-    return this.broadcastTransactionUseCase.execute(signed, params.walletId);
+    return this.broadcastTransactionUseCase.execute(signed, params.walletId, params.walletNetwork);
   }
 }

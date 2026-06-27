@@ -1,6 +1,8 @@
 import React, { createContext, PropsWithChildren, useCallback, useEffect, useMemo, useState } from 'react';
 import { clearAllSensitiveData } from '../../core/infrastructure/adapters/SensitiveDataStore';
 import { WalletService } from '../../core/application/services/WalletService';
+import { useWalletListStore } from '../../presentation/store/walletListStore';
+import { useActiveWalletStore } from '../../presentation/store/activeWalletStore';
 import type { Wallet } from '../../core/domain/entities/Wallet';
 import type { Transaction } from '../../core/domain/entities/Transaction';
 import type { Utxo } from '../../core/domain/entities/Utxo';
@@ -48,15 +50,21 @@ export function WalletProvider({ children, walletService }: WalletProviderProps)
   const [isLoading, setIsLoading] = useState(true);
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
 
+  const { setWallets: setWalletListStore, setLoading: setWalletListLoading } = useWalletListStore();
+  const { clear: clearActiveWallet } = useActiveWalletStore();
+
   const reloadWallets = useCallback(async () => {
-    setWallets(await walletService.loadWallets());
-  }, [walletService]);
+    const loaded = await walletService.loadWallets();
+    setWallets(loaded);
+    setWalletListStore(loaded);
+  }, [walletService, setWalletListStore]);
 
   useEffect(() => {
+    setWalletListLoading(true);
     reloadWallets()
-      .catch(() => setWallets([]))
-      .finally(() => setIsLoading(false));
-  }, [reloadWallets]);
+      .catch(() => { setWallets([]); setWalletListStore([]); })
+      .finally(() => { setIsLoading(false); setWalletListLoading(false); });
+  }, [reloadWallets, setWalletListLoading, setWalletListStore]);
 
   const selectedWallet = useMemo(
     () =>
@@ -85,7 +93,10 @@ export function WalletProvider({ children, walletService }: WalletProviderProps)
       deleteWallet: async (id: string) => {
         await walletService.deleteWallet(id);
         clearAllSensitiveData();
-        if (selectedWalletId === id) setSelectedWalletId(null);
+        if (selectedWalletId === id) {
+          clearActiveWallet();
+          setSelectedWalletId(null);
+        }
         await reloadWallets();
       },
       renameWallet: async (id: string, name: string) => {
@@ -111,7 +122,7 @@ export function WalletProvider({ children, walletService }: WalletProviderProps)
       exportWalletKey: (params) => walletService.exportWalletKey(params),
       getExportFormats: (walletId) => walletService.getExportFormats(walletId),
     }),
-    [reloadWallets, wallets, isLoading, selectedWallet, selectedWalletId, walletService],
+    [reloadWallets, wallets, isLoading, selectedWallet, selectedWalletId, walletService, clearActiveWallet],
   );
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;

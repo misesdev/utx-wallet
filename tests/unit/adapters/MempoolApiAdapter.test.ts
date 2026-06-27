@@ -80,7 +80,7 @@ describe('MempoolApiAdapter — NodeRepository', () => {
 
 
   describe('network endpoint selection', () => {
-    it('getFeeRates always uses mainnet endpoint (network-agnostic fee API)', async () => {
+    it('getFeeRates uses the requested network endpoint', async () => {
       const { adapter, httpClient } = createAdapter();
       httpClient.get.mockResolvedValue({
         fastestFee: 12,
@@ -90,9 +90,9 @@ describe('MempoolApiAdapter — NodeRepository', () => {
         minimumFee: 1,
       });
 
-      await adapter.getFeeRates();
+      await adapter.getFeeRates('testnet4');
 
-      expect(httpClient.get).toHaveBeenCalledWith('https://mempool.space/api/v1/fees/recommended', expect.any(Object));
+      expect(httpClient.get).toHaveBeenCalledWith('https://mempool.space/testnet4/api/v1/fees/recommended', expect.any(Object));
     });
   });
 
@@ -265,7 +265,7 @@ describe('MempoolApiAdapter — BlockchainProvider', () => {
         status: { confirmed: true, block_height: 800_000, block_time: 1_700_000_000 },
       };
       httpClient.get.mockResolvedValue(mockTx);
-      const status = await adapter.getTransactionStatus('txid1');
+      const status = await adapter.getTransactionStatus('txid1', 'testnet4');
       expect(status).toEqual({
         txid: 'txid1',
         confirmed: true,
@@ -282,7 +282,7 @@ describe('MempoolApiAdapter — BlockchainProvider', () => {
         status: { confirmed: false },
       };
       httpClient.get.mockResolvedValue(mockTx);
-      const status = await adapter.getTransactionStatus('txid2');
+      const status = await adapter.getTransactionStatus('txid2', 'testnet4');
       expect(status.confirmed).toBe(false);
       expect(status.blockHeight).toBeUndefined();
     });
@@ -299,7 +299,7 @@ describe('MempoolApiAdapter — BlockchainProvider', () => {
         minimumFee: 1,
       };
       httpClient.get.mockResolvedValue(mockRates);
-      const rates = await adapter.getFeeRates();
+      const rates = await adapter.getFeeRates('testnet4');
       expect(rates).toEqual({
         fastSatsPerVByte: 20,
         halfHourSatsPerVByte: 15,
@@ -315,7 +315,7 @@ describe('MempoolApiAdapter — BlockchainProvider', () => {
       const { adapter, httpClient } = createAdapter();
       const expectedTxid = 'abcdef1234567890';
       httpClient.postText.mockResolvedValue(expectedTxid);
-      const txid = await adapter.broadcastTransaction('deadbeef');
+      const txid = await adapter.broadcastTransaction('deadbeef', 'testnet4');
       expect(txid).toBe(expectedTxid);
       expect(httpClient.postText).toHaveBeenCalledWith(
         expect.stringContaining('/tx'),
@@ -329,7 +329,7 @@ describe('MempoolApiAdapter — BlockchainProvider', () => {
       httpClient.postText.mockRejectedValue(
         new AppError('HTTP 400: Bad Request', 'HTTP_ERROR'),
       );
-      await expect(adapter.broadcastTransaction('badhex')).rejects.toMatchObject({
+      await expect(adapter.broadcastTransaction('badhex', 'testnet4')).rejects.toMatchObject({
         code: 'HTTP_ERROR',
       });
     });

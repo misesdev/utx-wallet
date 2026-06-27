@@ -90,8 +90,8 @@ android {
         applicationId "com.misesdev.utxwallet"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 16
-        versionName "2.6"
+        versionCode 17
+        versionName "3.0.0"
     }
     signingConfigs {
         debug {

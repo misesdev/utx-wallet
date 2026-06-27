@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -7,6 +7,7 @@ import { AppButton } from '../../components/base/AppButton';
 import { AppIcon } from '../../components/base/AppIcon';
 import { AppLoading } from '../../components/base/AppLoading';
 import { AppText } from '../../components/base/AppText';
+import { DUST_THRESHOLD_SATS } from '../../../core/domain/usecases/transaction/BuildTransactionUseCase';
 import { PinInputModal } from '../../components/security/PinInputModal';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
@@ -14,6 +15,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useAccelerateTransaction } from '../../hooks/useAccelerateTransaction';
 import { useReauthenticate } from '../../hooks/useReauthenticate';
 import type { AppStackParamList } from '../../../app/navigation/routes';
+import { AppRoutes } from '../../../app/navigation/routes';
 
 type RouteParams = RouteProp<AppStackParamList, 'AccelerateTransaction'>;
 
@@ -40,7 +42,7 @@ export function AccelerateTransactionScreen() {
     infoError,
     newFeeRateSatsPerVByte,
     newFeeSats,
-    newChangeSats,
+    newRecipientSats,
     isAccelerating,
     accelerateError,
     acceleratedTxid,
@@ -61,39 +63,22 @@ export function AccelerateTransactionScreen() {
     rbfInfo != null &&
     rbfInfo.isRbfEligible &&
     newFeeRateSatsPerVByte > rbfInfo.currentFeeRate &&
-    newChangeSats >= 0;
+    newRecipientSats >= DUST_THRESHOLD_SATS;
 
-  // ── Success state ────────────────────────────────────────────────────────────
-  if (acceleratedTxid) {
-    return (
-      <View
-        testID="accelerate-success-screen"
-        style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}
-      >
-        <View style={styles.successContainer}>
-          <AppIcon name="receive" size={48} color={theme.colors.success} />
-          <AppText variant="title" style={[styles.successTitle, { color: theme.colors.success }]}>
-            {t('rbf.success')}
-          </AppText>
-          <AppText variant="body" color="muted" style={styles.center}>
-            {t('rbf.successDesc')}
-          </AppText>
-          <View style={[styles.txidBox, { backgroundColor: theme.colors.surfaceMuted, borderRadius: theme.radii.md }]}>
-            <AppText variant="caption" color="muted" style={styles.mono} testID="accelerated-txid">
-              {acceleratedTxid}
-            </AppText>
-          </View>
-          <AppButton
-            title={t('rbf.close')}
-            variant="primary"
-            onPress={() => navigation.goBack()}
-            testID="btn-close-success"
-            style={styles.ctaButton}
-          />
-        </View>
-      </View>
-    );
-  }
+  useEffect(() => {
+    if (!acceleratedTxid) return;
+    navigation.reset({
+      index: 2,
+      routes: [
+        { name: AppRoutes.Home },
+        { name: AppRoutes.Wallet },
+        {
+          name: AppRoutes.TransactionSuccess,
+          params: { txid: acceleratedTxid, amountSats: newRecipientSats, feeSats: newFeeSats },
+        },
+      ],
+    });
+  }, [acceleratedTxid, navigation, newRecipientSats, newFeeSats]);
 
   return (
     <View
@@ -158,11 +143,11 @@ export function AccelerateTransactionScreen() {
 
             <View style={styles.row}>
               <AppText variant="caption" color="muted">{t('fees.amount')}</AppText>
-              <AppText variant="caption">{formatSats(amountSats)} sats</AppText>
+              <AppText variant="caption">{formatSats(amountSats)} {t('common.sats')}</AppText>
             </View>
             <View style={styles.row}>
               <AppText variant="caption" color="muted">{t('rbf.currentFee')}</AppText>
-              <AppText variant="caption">{formatSats(feeSats)} sats</AppText>
+              <AppText variant="caption">{formatSats(feeSats)} {t('common.sats')}</AppText>
             </View>
           </View>
 
@@ -189,7 +174,7 @@ export function AccelerateTransactionScreen() {
                 {rbfInfo.ineligibilityReason === 'already-confirmed' && t('rbf.alreadyConfirmed')}
                 {rbfInfo.ineligibilityReason === 'no-rbf-signal' && t('rbf.noRbfSignal')}
                 {rbfInfo.ineligibilityReason === 'watch-only' && t('rbf.watchOnly')}
-                {rbfInfo.ineligibilityReason === 'no-change' && t('rbf.insufficientChange')}
+                {rbfInfo.ineligibilityReason === 'recipient-not-identified' && t('rbf.recipientNotIdentified')}
               </AppText>
               <AppButton
                 title={t('rbf.close')}
@@ -240,7 +225,7 @@ export function AccelerateTransactionScreen() {
               >
                 <AppText variant="label" color="muted">{t('fees.networkFee')}</AppText>
                 <AppText variant="caption" color="muted" style={styles.marginTop4}>
-                  {t('rbf.currentFee')}: {rbfInfo.currentFeeRate} sat/vB
+                  {t('rbf.currentFee')}: {rbfInfo.currentFeeRate} {t('common.satPerVbyte')}
                 </AppText>
 
                 {/* Simple numeric fee rate input */}
@@ -268,7 +253,7 @@ export function AccelerateTransactionScreen() {
                     >
                       <AppText variant="body" color="muted">+</AppText>
                     </Pressable>
-                    <AppText variant="caption" color="muted">sat/vB</AppText>
+                    <AppText variant="caption" color="muted">{t('common.satPerVbyte')}</AppText>
                   </View>
                 </View>
               </View>
@@ -288,7 +273,7 @@ export function AccelerateTransactionScreen() {
                 <View style={styles.row}>
                   <AppText variant="caption" color="muted">{t('rbf.newFee')}</AppText>
                   <AppText variant="caption" testID="rbf-new-fee">
-                    {formatSats(newFeeSats)} sats
+                    {formatSats(newFeeSats)} {t('common.sats')}
                   </AppText>
                 </View>
                 <View style={styles.row}>
@@ -298,18 +283,18 @@ export function AccelerateTransactionScreen() {
                     style={{ color: feeIncrease > 0 ? theme.colors.warning : theme.colors.textMuted }}
                     testID="rbf-fee-increase"
                   >
-                    +{formatSats(Math.max(0, feeIncrease))} sats
+                    +{formatSats(Math.max(0, feeIncrease))} {t('common.sats')}
                   </AppText>
                 </View>
                 <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
                 <View style={styles.row}>
-                  <AppText variant="caption" color="muted">{t('rbf.newChange')}</AppText>
+                  <AppText variant="caption" color="muted">{t('rbf.newRecipient')}</AppText>
                   <AppText
                     variant="caption"
-                    style={{ color: newChangeSats < 0 ? theme.colors.danger : theme.colors.text }}
-                    testID="rbf-new-change"
+                    style={{ color: newRecipientSats < DUST_THRESHOLD_SATS ? theme.colors.danger : theme.colors.text }}
+                    testID="rbf-new-recipient"
                   >
-                    {formatSats(Math.max(0, newChangeSats))} sats
+                    {formatSats(Math.max(0, newRecipientSats))} {t('common.sats')}
                   </AppText>
                 </View>
               </View>
@@ -417,9 +402,6 @@ const styles = StyleSheet.create({
   ctaButton: {
     marginTop: 8,
   },
-  successTitle: {
-    marginTop: 16,
-  },
   flex1: {
     flex: 1,
   },
@@ -436,16 +418,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     minWidth: 60,
     textAlign: 'center',
-  },
-  successContainer: {
-    alignItems: 'center',
-    flex: 1,
-    gap: 16,
-    justifyContent: 'center',
-    paddingHorizontal: 32,
-  },
-  txidBox: {
-    padding: 12,
-    width: '100%',
   },
 });

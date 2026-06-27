@@ -97,6 +97,7 @@ describe('useAccelerateTransaction', () => {
         toAddress: TO_ADDRESS,
         walletIsWatchOnly: false,
         isConfirmed: false,
+        walletNetwork: WALLET.network,
       });
     });
 
@@ -165,7 +166,7 @@ describe('useAccelerateTransaction', () => {
       expect(result.current.newFeeSats).toBe(1800);
     });
 
-    it('calculates newChangeSats = totalInput - recipient - newFee', async () => {
+    it('calculates newRecipientSats = totalInput - change - newFee', async () => {
       const { result } = renderHook(() =>
         useAccelerateTransaction({ txid: TXID, toAddress: TO_ADDRESS, isConfirmed: false }),
       );
@@ -175,8 +176,8 @@ describe('useAccelerateTransaction', () => {
         result.current.setNewFeeRate(10);
       });
 
-      // totalInput = 1_000_000, recipient = 800_000, fee = 1800 → change = 198_200
-      expect(result.current.newChangeSats).toBe(198_200);
+      // totalInput = 1_000_000, change = 196_000, fee = 1800 → recipient = 802_200
+      expect(result.current.newRecipientSats).toBe(802_200);
     });
   });
 

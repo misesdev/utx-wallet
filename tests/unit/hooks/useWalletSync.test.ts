@@ -3,6 +3,7 @@ import { useWalletSync } from '../../../src/presentation/hooks/useWalletSync';
 import { AppError } from '../../../src/core/application/errors/AppError';
 import type { Wallet } from '../../../src/core/domain/entities/Wallet';
 import type { SyncResult } from '../../../src/core/domain/usecases/wallet/SyncWalletUseCase';
+import { useActiveWalletStore } from '../../../src/presentation/store/activeWalletStore';
 
 const mockSyncWallet = jest.fn<Promise<SyncResult>, [string]>();
 
@@ -43,6 +44,8 @@ describe('useWalletSync', () => {
     mockSelectedWallet = WALLET;
     mockIsOnline = true;
     mockSyncWallet.mockResolvedValue(SYNC_RESULT);
+    // Reset the Zustand store between tests so state doesn't leak
+    useActiveWalletStore.getState().clear();
   });
 
   describe('initial state', () => {

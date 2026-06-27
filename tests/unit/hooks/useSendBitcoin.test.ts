@@ -298,6 +298,56 @@ describe('useSendBitcoin', () => {
 
       expect(result.current.selectedFeeRate).toBe(1);
     });
+
+    it('clamps tier rate up to minimumSatsPerVByte when tier rate is below minimum', async () => {
+      // Testnet4 can return economy=0 or very low rates. The minimum relay fee must be respected
+      // to avoid HTTP 400 -26 "min relay fee not met" rejections from the personal node.
+      mockFetchFeeRates.mockResolvedValue({
+        ...FEE_RATES,
+        economySatsPerVByte: 0.5,
+        minimumSatsPerVByte: 1,
+      });
+      const { result } = renderHook(() => useSendBitcoin());
+      await waitFor(() => expect(result.current.feeRates).not.toBeNull());
+
+      act(() => result.current.setFeeTier('economy'));
+
+      expect(result.current.selectedFeeRate).toBe(1);
+    });
+
+    it('clamps custom rate up to minimumSatsPerVByte when custom rate is below minimum', async () => {
+      mockFetchFeeRates.mockResolvedValue({ ...FEE_RATES, minimumSatsPerVByte: 2 });
+      const { result } = renderHook(() => useSendBitcoin());
+      await waitFor(() => expect(result.current.feeRates).not.toBeNull());
+
+      act(() => {
+        result.current.setFeeTier('custom');
+        result.current.setCustomFeeRate('1');
+      });
+
+      expect(result.current.selectedFeeRate).toBe(2);
+    });
+
+    it('does not clamp when tier rate already meets the minimum', async () => {
+      mockFetchFeeRates.mockResolvedValue({ ...FEE_RATES, minimumSatsPerVByte: 1 });
+      const { result } = renderHook(() => useSendBitcoin());
+      await waitFor(() => expect(result.current.feeRates).not.toBeNull());
+
+      act(() => result.current.setFeeTier('fast'));
+
+      expect(result.current.selectedFeeRate).toBe(FEE_RATES.fastSatsPerVByte);
+    });
+
+    it('always enforces at least 1 sat/vB regardless of minimumSatsPerVByte', async () => {
+      // minimumSatsPerVByte can be 0 in some API responses; the absolute floor must stay 1.
+      mockFetchFeeRates.mockResolvedValue({ ...FEE_RATES, minimumSatsPerVByte: 0, economySatsPerVByte: 0 });
+      const { result } = renderHook(() => useSendBitcoin());
+      await waitFor(() => expect(result.current.feeRates).not.toBeNull());
+
+      act(() => result.current.setFeeTier('economy'));
+
+      expect(result.current.selectedFeeRate).toBeGreaterThanOrEqual(1);
+    });
   });
 
   describe('reviewTransaction', () => {

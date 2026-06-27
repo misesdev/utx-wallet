@@ -4,6 +4,7 @@ import type { Wallet } from '../../../src/core/domain/entities/Wallet';
 import type { Transaction } from '../../../src/core/domain/entities/Transaction';
 import type { Utxo } from '../../../src/core/domain/entities/Utxo';
 import type { NetworkConfig } from '../../../src/core/domain/entities/Network';
+import { useActiveWalletStore } from '../../../src/presentation/store/activeWalletStore';
 
 const mockListTransactions = jest.fn<Promise<Transaction[]>, [string]>();
 const mockListUtxos = jest.fn<Promise<Utxo[]>, [string]>();
@@ -47,6 +48,8 @@ describe('useHomeWallet', () => {
     mockNetworkConfig = DEFAULT_NETWORK_CONFIG;
     mockListTransactions.mockResolvedValue([]);
     mockListUtxos.mockResolvedValue([]);
+    // Reset the Zustand store between tests so state doesn't leak
+    useActiveWalletStore.getState().clear();
   });
 
   it('initializes with loading=false and empty data', async () => {

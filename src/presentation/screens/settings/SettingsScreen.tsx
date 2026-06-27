@@ -122,7 +122,7 @@ export function SettingsScreen() {
     setIsDeleting(true);
     try {
       await deleteWallet(selectedWallet.id);
-      navigation.reset({ index: 0, routes: [{ name: AppRoutes.WalletList }] });
+      navigation.reset({ index: 0, routes: [{ name: AppRoutes.Home }] });
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);

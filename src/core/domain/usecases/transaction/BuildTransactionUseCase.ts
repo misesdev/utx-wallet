@@ -74,24 +74,6 @@ export class BuildTransactionUseCase {
     })();
     const { selectedUtxos, totalInputSats } = selectionResult;
 
-    // ── Change address — prefer HD system, fall back to legacy provider ────────
-    let changeAddress: string;
-    if (this.getNextChangeAddress) {
-      const hdChangeAddr = await this.getNextChangeAddress.execute(
-        params.walletId,
-        params.walletNetwork,
-        params.changeOriginId,
-        true, // reserve it
-      );
-      changeAddress = hdChangeAddr.address;
-    } else {
-      changeAddress = await this.changeAddressProvider.getChangeAddress(
-        params.walletId,
-        params.walletNetwork,
-        params.changeAddressIndex ?? 0,
-      );
-    }
-
     // ── Build inputs — scriptPubKey derived via bitcoin-tx-lib ────────────────
     const inputs: BuiltTransactionInput[] = selectedUtxos.map(u => ({
       txid: u.txid,
@@ -124,11 +106,18 @@ export class BuildTransactionUseCase {
         );
       }
 
+      // ── Change address — resolved only when a change output is actually needed ─
+      // Reserving before this point would leave phantom-reserved addresses when
+      // no change output is created (changeSats = 0), breaking wallet recovery.
+      const changeAddress = changeSats > 0
+        ? await this.resolveChangeAddress(params, true)
+        : undefined;
+
       // ── Build outputs ─────────────────────────────────────────────────────────
       const outputs: BuiltTransactionOutput[] = [
         { address: params.toAddress, amountSats: recipientAmountSats, isChange: false },
       ];
-      if (changeSats > 0) {
+      if (changeSats > 0 && changeAddress) {
         outputs.push({ address: changeAddress, amountSats: changeSats, isChange: true });
       }
 
@@ -162,11 +151,16 @@ export class BuildTransactionUseCase {
         changeSats = 0;
       }
 
+      // ── Change address — resolved only when a change output is actually needed ─
+      const changeAddress = changeSats > 0
+        ? await this.resolveChangeAddress(params, true)
+        : undefined;
+
       // ── Build outputs ─────────────────────────────────────────────────────────
       const outputs: BuiltTransactionOutput[] = [
         { address: params.toAddress, amountSats: params.amountSats, isChange: false },
       ];
-      if (changeSats > 0) {
+      if (changeSats > 0 && changeAddress) {
         outputs.push({ address: changeAddress, amountSats: changeSats, isChange: true });
       }
 
@@ -190,5 +184,25 @@ export class BuildTransactionUseCase {
         createdAt: new Date().toISOString(),
       };
     }
+  }
+
+  private async resolveChangeAddress(
+    params: BuildTransactionParams,
+    reserve: boolean,
+  ): Promise<string> {
+    if (this.getNextChangeAddress) {
+      const hdChangeAddr = await this.getNextChangeAddress.execute(
+        params.walletId,
+        params.walletNetwork,
+        params.changeOriginId,
+        reserve,
+      );
+      return hdChangeAddr.address;
+    }
+    return this.changeAddressProvider.getChangeAddress(
+      params.walletId,
+      params.walletNetwork,
+      params.changeAddressIndex ?? 0,
+    );
   }
 }

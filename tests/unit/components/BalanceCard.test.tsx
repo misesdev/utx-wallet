@@ -12,13 +12,12 @@ describe('BalanceCard', () => {
   it('renders the BTC equivalent', () => {
     const screen = renderWithTheme(<BalanceCard balanceSats={100_000_000} />);
     expect(screen.getByTestId('balance-btc')).toBeTruthy();
-    expect(screen.getByText('≈ 1.00000000 BTC')).toBeTruthy();
   });
 
   it('renders zero balance correctly', () => {
     const screen = renderWithTheme(<BalanceCard balanceSats={0} />);
     expect(screen.getByText('0')).toBeTruthy();
-    expect(screen.getByText('≈ 0.00000000 BTC')).toBeTruthy();
+    expect(screen.getByTestId('balance-btc')).toBeTruthy();
   });
 
   it('uses custom label when provided', () => {

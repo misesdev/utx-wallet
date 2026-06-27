@@ -158,7 +158,7 @@ describe('ImportWalletScreen', () => {
     await waitFor(() => expect(mockSubmit).toHaveBeenCalledTimes(1));
   });
 
-  it('shows progress modal then resets navigation to WalletList when import and sync succeed', async () => {
+  it('shows progress modal then resets navigation to Home when import and sync succeed', async () => {
     const wallet = { id: '1', name: 'Savings', network: 'testnet', status: 'locked', createdAt: new Date().toISOString() };
     mockSubmit.mockResolvedValue(wallet);
 
@@ -167,7 +167,7 @@ describe('ImportWalletScreen', () => {
 
     await waitFor(() => expect(screen.getByText('walletSetup.done')).toBeTruthy());
     fireEvent.press(screen.getByTestId('wallet-setup-done-btn'));
-    await waitFor(() => expect(mockNavigationReset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'WalletList' }] }));
+    await waitFor(() => expect(mockNavigationReset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'Home' }] }));
   });
 
   it('calls importSync with wallet id and network after successful submit', async () => {

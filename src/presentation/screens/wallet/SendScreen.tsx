@@ -187,7 +187,7 @@ export function SendScreen() {
           <AppText variant="body" color="muted" style={styles.unitLabel}>{t('common.sats')}</AppText>
           {btcAmount && (
             <AppText variant="caption" color="muted" style={styles.btcConversion} testID="btc-conversion">
-              ≈ {btcAmount} BTC
+              {t('accountDetails.btcValue', { btc: btcAmount })}
             </AppText>
           )}
           {isOverBalance && (

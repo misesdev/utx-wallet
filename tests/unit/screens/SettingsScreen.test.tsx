@@ -245,13 +245,13 @@ describe('SettingsScreen', () => {
       expect(mockDeleteWallet).toHaveBeenCalledWith('w1');
     });
 
-    it('resets navigation to WalletList after successful deletion', async () => {
+    it('resets navigation to Home after successful deletion', async () => {
       const screen = renderWithTheme(<SettingsScreen />);
       fireEvent.press(screen.getByTestId('delete-wallet-btn'));
       await act(async () => {
         fireEvent.press(screen.getByTestId('confirm-modal-confirm'));
       });
-      await waitFor(() => expect(mockNavigationReset).toHaveBeenCalledWith({ index: 0, routes: [{ name: AppRoutes.WalletList }] }));
+      await waitFor(() => expect(mockNavigationReset).toHaveBeenCalledWith({ index: 0, routes: [{ name: AppRoutes.Home }] }));
     });
   });
 });

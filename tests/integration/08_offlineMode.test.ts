@@ -171,22 +171,22 @@ describe('Integration: Offline Mode', () => {
   });
 
   describe('broadcastTransaction', () => {
-    it('calls blockchain provider with the stored rawHex', async () => {
+    it('calls blockchain provider with the stored rawHex and network', async () => {
       const provider = makeBlockchainProvider();
       const { makeService } = makeSetup();
       const service = makeService(provider);
-      const stored = await service.importRawHex(WALLET_ID, VALID_HEX);
+      const stored = await service.importRawHex(WALLET_ID, VALID_HEX, { network: 'testnet4' });
 
       await service.broadcastTransaction(stored);
 
-      expect(provider.broadcastTransaction).toHaveBeenCalledWith(VALID_HEX);
+      expect(provider.broadcastTransaction).toHaveBeenCalledWith(VALID_HEX, 'testnet4');
     });
 
     it('returns the txid from the blockchain provider', async () => {
       const provider = makeBlockchainProvider('real-txid-here');
       const { makeService } = makeSetup();
       const service = makeService(provider);
-      const stored = await service.importRawHex(WALLET_ID, VALID_HEX);
+      const stored = await service.importRawHex(WALLET_ID, VALID_HEX, { network: 'mainnet' });
 
       const txid = await service.broadcastTransaction(stored);
       expect(txid).toBe('real-txid-here');
@@ -196,7 +196,7 @@ describe('Integration: Offline Mode', () => {
       const provider = makeBlockchainProvider();
       const { makeService } = makeSetup();
       const service = makeService(provider);
-      const stored = await service.importRawHex(WALLET_ID, VALID_HEX);
+      const stored = await service.importRawHex(WALLET_ID, VALID_HEX, { network: 'testnet4' });
 
       await service.broadcastTransaction(stored);
 
@@ -209,12 +209,20 @@ describe('Integration: Offline Mode', () => {
       provider.broadcastTransaction.mockRejectedValue(new Error('Network down'));
       const { makeService } = makeSetup();
       const service = makeService(provider);
-      const stored = await service.importRawHex(WALLET_ID, VALID_HEX);
+      const stored = await service.importRawHex(WALLET_ID, VALID_HEX, { network: 'testnet4' });
 
       await expect(service.broadcastTransaction(stored)).rejects.toThrow('Network down');
 
       const remaining = await service.listTransactions(WALLET_ID);
       expect(remaining).toHaveLength(1);
+    });
+
+    it('throws MISSING_NETWORK when imported without a network option', async () => {
+      const { makeService } = makeSetup();
+      const service = makeService();
+      const stored = await service.importRawHex(WALLET_ID, VALID_HEX);
+
+      await expect(service.broadcastTransaction(stored)).rejects.toMatchObject({ code: 'MISSING_NETWORK' });
     });
   });
 });

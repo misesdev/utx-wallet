@@ -4,7 +4,7 @@
  */
 import React from 'react';
 import { renderWithTheme } from '../../mocks/renderWithProviders';
-import { HomeScreen } from '../../../src/presentation/screens/home/HomeScreen';
+import { WalletScreen as HomeScreen } from '../../../src/presentation/screens/wallet/WalletScreen';
 import { SendScreen } from '../../../src/presentation/screens/wallet/SendScreen';
 import { TransactionListScreen } from '../../../src/presentation/screens/wallet/TransactionListScreen';
 import { useSecurity } from '../../../src/app/providers/SecurityProvider';
@@ -55,6 +55,7 @@ const mockSendBitcoinState: SendBitcoinState = {
   amountSats: '',
   feeTier: 'normal',
   customFeeRate: '',
+  customFeeError: null,
   availableBalanceSats: 1_000_000,
   feeRates: null,
   isLoadingFeeRates: false,

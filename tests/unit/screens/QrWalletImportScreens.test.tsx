@@ -191,7 +191,7 @@ describe('QrWalletImportScreens', () => {
 
     fireEvent.press(screen.getByTestId('wallet-setup-done-btn'));
     await waitFor(() =>
-      expect(mockNavigationReset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'WalletList' }] }),
+      expect(mockNavigationReset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'Home' }] }),
     );
   });
 

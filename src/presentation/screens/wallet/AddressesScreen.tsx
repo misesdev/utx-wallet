@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, InteractionManager, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppEmptyState } from '../../components/base/AppEmptyState';
 import { AppIcon } from '../../components/base/AppIcon';
@@ -90,7 +90,7 @@ const AddressRow = React.memo(function AddressRowMemo({ address, onSync, isSynci
               <AppText variant="caption" color="muted">{t('addresses.txCount', { count: address.txCount })}</AppText>
               {address.totalReceivedSats > 0 ? (
                 <AppText variant="caption" color="muted">
-                  {address.totalReceivedSats.toLocaleString()} sats
+                  {address.totalReceivedSats.toLocaleString()} {t('common.sats')}
                 </AppText>
               ) : null}
             </>
@@ -227,8 +227,8 @@ export function AddressesScreen() {
   const handleSyncAddress = useCallback(async (address: string) => {
     if (!selectedWallet || syncingAddress) return;
     setSyncingAddress(address);
-    // Yield to the React scheduler so the loader appears before async work begins.
-    await new Promise<void>(resolve => InteractionManager.runAfterInteractions(() => resolve()));
+    // Yield to the event loop so React flushes the spinner state before the sync starts.
+    await new Promise<void>(resolve => setTimeout(resolve, 0));
     try {
       await syncAddress(selectedWallet.id, address);
       await silentLoad();

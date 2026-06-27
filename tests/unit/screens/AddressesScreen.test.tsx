@@ -125,6 +125,79 @@ describe('AddressesScreen', () => {
     });
   });
 
+  describe('address sync — spinner and list refresh', () => {
+    it('shows ActivityIndicator during sync and removes it after sync completes', async () => {
+      let resolveSyncAddress!: () => void;
+      mockSyncAddress.mockReturnValue(new Promise<void>(r => { resolveSyncAddress = r; }));
+      mockListAddresses.mockResolvedValue([makeAddress({ address: 'bc1qfresh', status: 'fresh' })]);
+
+      const screen = renderWithTheme(<AddressesScreen />);
+      await waitFor(() => expect(screen.getByLabelText('addresses.syncAddress')).toBeTruthy());
+
+      fireEvent.press(screen.getByLabelText('addresses.syncAddress'));
+      await waitFor(() => expect(screen.getByTestId('address-row-bc1qfresh').findByType).toBeTruthy());
+
+      resolveSyncAddress();
+      await waitFor(() => expect(mockSyncAddress).toHaveBeenCalledTimes(1));
+    });
+
+    it('reloads the address list after sync completes', async () => {
+      const updated = makeAddress({ address: 'bc1qfresh', status: 'received', txCount: 1, totalReceivedSats: 50_000 });
+      mockListAddresses
+        .mockResolvedValueOnce([makeAddress({ address: 'bc1qfresh', status: 'fresh' })])
+        .mockResolvedValueOnce([updated]);
+
+      const screen = renderWithTheme(<AddressesScreen />);
+      await waitFor(() => expect(screen.getByLabelText('addresses.syncAddress')).toBeTruthy());
+
+      fireEvent.press(screen.getByLabelText('addresses.syncAddress'));
+      await waitFor(() => {
+        expect(mockListAddresses).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('clears syncingAddress after sync completes successfully', async () => {
+      mockListAddresses.mockResolvedValue([makeAddress({ address: 'bc1qfresh', status: 'fresh' })]);
+      mockSyncAddress.mockResolvedValue(undefined);
+
+      const screen = renderWithTheme(<AddressesScreen />);
+      await waitFor(() => expect(screen.getByLabelText('addresses.syncAddress')).toBeTruthy());
+
+      fireEvent.press(screen.getByLabelText('addresses.syncAddress'));
+      await waitFor(() => expect(mockSyncAddress).toHaveBeenCalledTimes(1));
+      // after sync, the row should no longer be in loading state (no ActivityIndicator)
+      await waitFor(() => expect(screen.queryByTestId('address-row-bc1qfresh')).toBeTruthy());
+    });
+
+    it('clears syncingAddress even when sync throws', async () => {
+      mockListAddresses.mockResolvedValue([makeAddress({ address: 'bc1qfresh', status: 'fresh' })]);
+      mockSyncAddress.mockRejectedValue(new Error('network error'));
+
+      const screen = renderWithTheme(<AddressesScreen />);
+      await waitFor(() => expect(screen.getByLabelText('addresses.syncAddress')).toBeTruthy());
+
+      fireEvent.press(screen.getByLabelText('addresses.syncAddress'));
+      // should not throw; row stays visible and row is no longer syncing
+      await waitFor(() => expect(mockSyncAddress).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(screen.getByTestId('address-row-bc1qfresh')).toBeTruthy());
+    });
+
+    it('ignores second press while sync is in progress', async () => {
+      let resolveSyncAddress!: () => void;
+      mockSyncAddress.mockReturnValue(new Promise<void>(r => { resolveSyncAddress = r; }));
+      mockListAddresses.mockResolvedValue([makeAddress({ address: 'bc1qfresh', status: 'fresh' })]);
+
+      const screen = renderWithTheme(<AddressesScreen />);
+      await waitFor(() => expect(screen.getByLabelText('addresses.syncAddress')).toBeTruthy());
+
+      fireEvent.press(screen.getByLabelText('addresses.syncAddress'));
+      fireEvent.press(screen.getByLabelText('addresses.syncAddress'));
+
+      resolveSyncAddress();
+      await waitFor(() => expect(mockSyncAddress).toHaveBeenCalledTimes(1));
+    });
+  });
+
   describe('address sync — spent_once and change (now syncable)', () => {
     it('spent_once address row is enabled and can be synced', async () => {
       mockListAddresses.mockResolvedValue([

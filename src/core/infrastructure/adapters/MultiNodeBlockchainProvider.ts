@@ -65,30 +65,30 @@ export class MultiNodeBlockchainProvider implements BlockchainProvider {
     );
   }
 
-  async getTransactionStatus(txid: string): Promise<RemoteTransactionStatus> {
+  async getTransactionStatus(txid: string, network: BitcoinNetwork): Promise<RemoteTransactionStatus> {
     return this.withPriority(
-      null,
+      network,
       client => client.getTransaction(txid).then(tx => ({
         txid: tx.txid,
         confirmed: tx.status.confirmed,
         blockHeight: tx.status.block_height,
         blockTime: tx.status.block_time,
       })),
-      () => this.publicFallback.getTransactionStatus(txid),
+      () => this.publicFallback.getTransactionStatus(txid, network),
     );
   }
 
-  async getCurrentBlockHeight(): Promise<number> {
+  async getCurrentBlockHeight(network: BitcoinNetwork): Promise<number> {
     return this.withPriority(
-      null,
+      network,
       client => client.getCurrentBlockHeight(),
-      () => this.publicFallback.getCurrentBlockHeight(),
+      () => this.publicFallback.getCurrentBlockHeight(network),
     );
   }
 
-  async getFeeRates(): Promise<FeeRates> {
+  async getFeeRates(network: BitcoinNetwork): Promise<FeeRates> {
     return this.withPriority(
-      null,
+      network,
       client => client.getFeeRates().then(rates => ({
         fastSatsPerVByte: rates.fastestFee,
         halfHourSatsPerVByte: rates.halfHourFee,
@@ -96,23 +96,26 @@ export class MultiNodeBlockchainProvider implements BlockchainProvider {
         economySatsPerVByte: rates.economyFee,
         minimumSatsPerVByte: rates.minimumFee,
       })),
-      () => this.publicFallback.getFeeRates(),
+      () => this.publicFallback.getFeeRates(network),
     );
   }
 
-  async broadcastTransaction(rawHex: string): Promise<string> {
+  async broadcastTransaction(rawHex: string, network: BitcoinNetwork): Promise<string> {
+    // Don't halt on client errors (HTTP 400): a policy rejection (-26) from one node
+    // does not mean all nodes will reject the transaction.
     return this.withPriority(
-      null,
+      network,
       client => client.broadcastTransaction(rawHex),
-      () => this.publicFallback.broadcastTransaction(rawHex),
+      () => this.publicFallback.broadcastTransaction(rawHex, network),
+      { haltOnClientError: false },
     );
   }
 
-  async getRawTransaction(txid: string): Promise<RawTransaction> {
+  async getRawTransaction(txid: string, network: BitcoinNetwork): Promise<RawTransaction> {
     return this.withPriority(
-      null,
+      network,
       client => client.getRawTransaction(txid),
-      () => this.publicFallback.getRawTransaction(txid),
+      () => this.publicFallback.getRawTransaction(txid, network),
     );
   }
 
@@ -120,7 +123,9 @@ export class MultiNodeBlockchainProvider implements BlockchainProvider {
     network: BitcoinNetwork | null,
     fn: (client: MempoolApiClient) => Promise<T>,
     fallback: () => Promise<T>,
+    options?: { haltOnClientError?: boolean },
   ): Promise<T> {
+    const haltOnClientError = options?.haltOnClientError ?? true;
     const config = await this.configStorage.load();
     const allNodes = config?.personalNodes ?? [];
     const nodes = (network !== null
@@ -137,7 +142,7 @@ export class MultiNodeBlockchainProvider implements BlockchainProvider {
       try {
         return await fn(this.makeClient(node));
       } catch (err) {
-        if (isClientError(err)) throw err;
+        if (haltOnClientError && isClientError(err)) throw err;
         lastError = err;
       }
     }

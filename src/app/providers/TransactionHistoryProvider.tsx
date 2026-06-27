@@ -7,7 +7,7 @@ import { TransactionHistoryService } from '../../core/application/services/Trans
 
 type TransactionHistoryContextValue = {
   getDetail: (tx: Transaction, network: BitcoinNetwork, walletId?: string) => Promise<TransactionDetail>;
-  getRawTransaction: (txid: string) => Promise<RawTransaction>;
+  getRawTransaction: (txid: string, network: BitcoinNetwork) => Promise<RawTransaction>;
 };
 
 const TransactionHistoryContext = createContext<TransactionHistoryContextValue | null>(null);
@@ -19,7 +19,7 @@ type TransactionHistoryProviderProps = PropsWithChildren<{
 export function TransactionHistoryProvider({ children, service }: TransactionHistoryProviderProps) {
   const value: TransactionHistoryContextValue = {
     getDetail: (tx, network, walletId) => service.getDetail(tx, network, walletId),
-    getRawTransaction: (txid) => service.getRawTransaction(txid),
+    getRawTransaction: (txid, network) => service.getRawTransaction(txid, network),
   };
   return (
     <TransactionHistoryContext.Provider value={value}>

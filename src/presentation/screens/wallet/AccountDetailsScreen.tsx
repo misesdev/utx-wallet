@@ -245,7 +245,7 @@ export function AccountDetailsScreen() {
               </AppText>
               {!hidden && <AppText variant="subtitle" color="muted" style={styles.balanceUnit}>{t('common.sats')}</AppText>}
             </View>
-            <AppText variant="body" color="muted">{hidden ? HIDDEN_PLACEHOLDER : `≈ ${btc} BTC`}</AppText>
+            <AppText variant="body" color="muted">{hidden ? HIDDEN_PLACEHOLDER : t('accountDetails.btcValue', { btc })}</AppText>
             {pending > 0 && (
               <AppText variant="caption" color="warning">{t('accountDetails.pending', { sats: formatSats(pending) })}</AppText>
             )}

@@ -83,6 +83,12 @@ jest.mock('../../../src/presentation/hooks/useTransactionDetails', () => ({
   useTransactionDetails: () => mockState,
 }));
 
+jest.mock('../../../src/presentation/hooks/useWallet', () => ({
+  useWallet: () => ({
+    selectedWallet: null,
+  }),
+}));
+
 jest.mock('../../../src/app/providers/TransactionHistoryProvider', () => ({
   useTransactionHistory: () => ({
     getDetail: jest.fn(),

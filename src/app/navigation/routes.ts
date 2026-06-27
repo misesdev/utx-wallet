@@ -11,12 +11,12 @@ export const AuthRoutes = {
 } as const;
 
 export const AppRoutes = {
-  WalletList: 'WalletList',
+  Home: 'Home',
+  Wallet: 'Wallet',
   CreateWallet: 'CreateWallet',
   ImportWallet: 'ImportWallet',
   BackupSeed: 'BackupSeed',
   ConfirmSeed: 'ConfirmSeed',
-  Home: 'Home',
   WalletDetails: 'WalletDetails',
   Transactions: 'Transactions',
   Receive: 'Receive',
@@ -25,6 +25,7 @@ export const AppRoutes = {
   SelectOriginSend: 'SelectOriginSend',
   SendFees: 'SendFees',
   TransactionDetails: 'TransactionDetails',
+  TransactionReview: 'TransactionReview',
   TransactionSuccess: 'TransactionSuccess',
   AccelerateTransaction: 'AccelerateTransaction',
   Utxos: 'Utxos',
@@ -68,12 +69,12 @@ export type AuthStackParamList = {
 };
 
 export type AppStackParamList = {
-  WalletList: undefined;
+  Home: undefined;
+  Wallet: undefined;
   CreateWallet: { network?: BitcoinNetwork } | undefined;
   ImportWallet: { network?: BitcoinNetwork; seedRef?: string } | undefined;
   BackupSeed: undefined;
   ConfirmSeed: undefined;
-  Home: undefined;
   WalletDetails: undefined;
   Transactions: undefined;
   Receive: { originId?: string } | undefined;
@@ -82,6 +83,15 @@ export type AppStackParamList = {
   SelectOriginSend: undefined;
   SendFees: { originId?: string; originName?: string; toAddress: string; amountSats: string };
   TransactionDetails: { txid?: string } | undefined;
+  TransactionReview: {
+    originId?: string;
+    originName?: string;
+    toAddress: string;
+    amountSats: string;
+    selectedFeeRate: number;
+    payFee: boolean;
+    previewJson: string;
+  };
   TransactionSuccess: { txid: string; amountSats: number; feeSats: number };
   AccelerateTransaction: {
     txid: string;

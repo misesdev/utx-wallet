@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useSecurity } from '../../app/providers/SecurityProvider';
 import { AppError } from '../../core/application/errors/AppError';
+import { useAppTranslation } from './useAppTranslation';
 
 export type UseReauthenticateState = {
   pinModalVisible: boolean;
@@ -12,6 +13,7 @@ export type UseReauthenticateState = {
 
 export function useReauthenticate(): UseReauthenticateState {
   const { settings, biometricAvailable, reauthenticate } = useSecurity();
+  const { t } = useAppTranslation();
   const [pinModalVisible, setPinModalVisible] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
   const pendingResolveRef = useRef<((ok: boolean) => void) | null>(null);
@@ -49,10 +51,10 @@ export function useReauthenticate(): UseReauthenticateState {
         pendingResolveRef.current?.(true);
         pendingResolveRef.current = null;
       } catch (err) {
-        setPinError(err instanceof AppError ? err.message : 'PIN incorreto');
+        setPinError(err instanceof AppError ? err.message : t('security.errorPinIncorrect'));
       }
     },
-    [reauthenticate],
+    [reauthenticate, t],
   );
 
   const cancelAuth = useCallback(() => {

@@ -108,13 +108,13 @@ describe('BroadcastTransactionUseCase', () => {
   describe('broadcast success', () => {
     it('returns the txid from the blockchain provider', async () => {
       const { useCase } = makeUseCase();
-      const result = await useCase.execute(SIGNED, WALLET_ID);
+      const result = await useCase.execute(SIGNED, WALLET_ID, 'testnet4');
       expect(result.txid).toBe(TXID);
     });
 
     it('returns a transaction with correct amount, fee, and direction', async () => {
       const { useCase } = makeUseCase();
-      const result = await useCase.execute(SIGNED, WALLET_ID);
+      const result = await useCase.execute(SIGNED, WALLET_ID, 'testnet4');
       expect(result.transaction.amountSats).toBe(BUILT.amountSats);
       expect(result.transaction.feeSats).toBe(BUILT.feeSats);
       expect(result.transaction.direction).toBe('outgoing');
@@ -124,7 +124,7 @@ describe('BroadcastTransactionUseCase', () => {
     it('saves the transaction locally via transactionRepository', async () => {
       const txRepo = makeTxRepo();
       const { useCase } = makeUseCase(makeBlockchainProvider(), txRepo);
-      await useCase.execute(SIGNED, WALLET_ID);
+      await useCase.execute(SIGNED, WALLET_ID, 'testnet4');
 
       expect(txRepo.upsertAll).toHaveBeenCalledTimes(1);
       const [savedWalletId, savedTxs] = txRepo.upsertAll.mock.calls[0];
@@ -144,7 +144,7 @@ describe('BroadcastTransactionUseCase', () => {
       const utxoRepo = makeUtxoRepo([spentUtxo, UNSPENT_UTXO]);
       const { useCase } = makeUseCase(makeBlockchainProvider(), makeTxRepo(), utxoRepo);
 
-      await useCase.execute(SIGNED, WALLET_ID);
+      await useCase.execute(SIGNED, WALLET_ID, 'testnet4');
 
       expect(utxoRepo.replaceAll).toHaveBeenCalledTimes(1);
       const [savedWalletId, remaining] = utxoRepo.replaceAll.mock.calls[0];
@@ -164,7 +164,7 @@ describe('BroadcastTransactionUseCase', () => {
       const utxoRepo = makeUtxoRepo(allSpent);
       const { useCase } = makeUseCase(makeBlockchainProvider(), makeTxRepo(), utxoRepo);
 
-      await useCase.execute(SIGNED, WALLET_ID);
+      await useCase.execute(SIGNED, WALLET_ID, 'testnet4');
 
       const [, remaining] = utxoRepo.replaceAll.mock.calls[0];
       expect(remaining).toHaveLength(0);
@@ -174,7 +174,7 @@ describe('BroadcastTransactionUseCase', () => {
       const utxoRepo = makeUtxoRepo([UNSPENT_UTXO]);
       const { useCase } = makeUseCase(makeBlockchainProvider(), makeTxRepo(), utxoRepo);
 
-      await useCase.execute(SIGNED, WALLET_ID);
+      await useCase.execute(SIGNED, WALLET_ID, 'testnet4');
 
       const [, remaining] = utxoRepo.replaceAll.mock.calls[0];
       expect(remaining).toHaveLength(1);
@@ -189,7 +189,7 @@ describe('BroadcastTransactionUseCase', () => {
       );
       const { useCase } = makeUseCase(blockchainProvider);
 
-      await expect(useCase.execute(SIGNED, WALLET_ID)).rejects.toThrow('Broadcast failed');
+      await expect(useCase.execute(SIGNED, WALLET_ID, 'testnet4')).rejects.toThrow('Broadcast failed');
     });
 
     it('does not save the transaction when broadcast throws', async () => {
@@ -198,7 +198,7 @@ describe('BroadcastTransactionUseCase', () => {
       const txRepo = makeTxRepo();
       const { useCase } = makeUseCase(blockchainProvider, txRepo);
 
-      await expect(useCase.execute(SIGNED, WALLET_ID)).rejects.toThrow();
+      await expect(useCase.execute(SIGNED, WALLET_ID, 'testnet4')).rejects.toThrow();
       expect(txRepo.upsertAll).not.toHaveBeenCalled();
     });
 
@@ -208,7 +208,7 @@ describe('BroadcastTransactionUseCase', () => {
       const utxoRepo = makeUtxoRepo([UNSPENT_UTXO]);
       const { useCase } = makeUseCase(blockchainProvider, makeTxRepo(), utxoRepo);
 
-      await expect(useCase.execute(SIGNED, WALLET_ID)).rejects.toThrow();
+      await expect(useCase.execute(SIGNED, WALLET_ID, 'testnet4')).rejects.toThrow();
       expect(utxoRepo.replaceAll).not.toHaveBeenCalled();
     });
   });

@@ -226,12 +226,12 @@ describe('usePostImportSync', () => {
       expect(result.current.setupVisible).toBe(false);
     });
 
-    it('calls navigation.reset with WalletList route', () => {
+    it('calls navigation.reset with Home route', () => {
       const { result } = renderHook(() => usePostImportSync());
       act(() => { result.current.handleDone(); });
       expect(mockNavigationReset).toHaveBeenCalledWith({
         index: 0,
-        routes: [{ name: 'WalletList' }],
+        routes: [{ name: 'Home' }],
       });
     });
   });

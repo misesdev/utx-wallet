@@ -40,6 +40,7 @@ describe('icon policy', () => {
       'src/presentation/components/wallet/TransactionItem.tsx',
       'src/presentation/components/wallet/UtxoItem.tsx',
       'src/presentation/screens/home/HomeScreen.tsx',
+      'src/presentation/screens/wallet/WalletScreen.tsx',
       'src/presentation/screens/settings/SettingsScreen.tsx',
     ];
 

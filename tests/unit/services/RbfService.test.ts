@@ -1,10 +1,12 @@
 import {
   isRbfEligible,
   calcNewFeeSats,
-  calcNewChangeSats,
+  calcNewRecipientSats,
   validateFeeBump,
   RBF_SEQUENCE_THRESHOLD,
 } from '../../../src/core/domain/services/RbfService';
+
+const DUST_THRESHOLD_SATS = 546;
 
 describe('RbfService', () => {
   describe('isRbfEligible', () => {
@@ -61,22 +63,30 @@ describe('RbfService', () => {
     });
   });
 
-  describe('calcNewChangeSats', () => {
-    it('calculates change = totalInput - recipient - fee', () => {
-      expect(calcNewChangeSats(1_000_000, 700_000, 2_000)).toBe(298_000);
+  describe('calcNewRecipientSats', () => {
+    it('calculates recipient = totalInput - change - newFee', () => {
+      // totalInput=1_000_000, change=100_000, fee=2_000 → recipient=898_000
+      expect(calcNewRecipientSats(1_000_000, 100_000, 2_000)).toBe(898_000);
     });
 
-    it('returns negative when fee too high', () => {
-      expect(calcNewChangeSats(1_000_000, 900_000, 200_000)).toBe(-100_000);
+    it('returns full input minus fee when there is no change (changeAmountSats=0)', () => {
+      // totalInput=1_000_000, change=0, fee=5_000 → recipient=995_000
+      expect(calcNewRecipientSats(1_000_000, 0, 5_000)).toBe(995_000);
     });
 
-    it('returns zero when inputs exactly cover recipient + fee', () => {
-      expect(calcNewChangeSats(100_000, 99_000, 1_000)).toBe(0);
+    it('returns negative when fee exceeds available funds', () => {
+      // totalInput=100_000, change=50_000, fee=60_000 → recipient=-10_000
+      expect(calcNewRecipientSats(100_000, 50_000, 60_000)).toBe(-10_000);
     });
   });
 
   describe('validateFeeBump', () => {
-    it('returns valid: true when fee is higher and change >= 0', () => {
+    it('returns valid: true when fee is higher and recipient >= dust threshold', () => {
+      const result = validateFeeBump(900, 1800, DUST_THRESHOLD_SATS);
+      expect(result.valid).toBe(true);
+    });
+
+    it('returns valid: true when recipient is well above dust threshold', () => {
       const result = validateFeeBump(900, 1800, 50_000);
       expect(result.valid).toBe(true);
     });
@@ -97,21 +107,23 @@ describe('RbfService', () => {
       }
     });
 
-    it('returns insufficient-change when change is negative', () => {
-      const result = validateFeeBump(900, 2000, -100);
+    it('returns recipient-below-dust when recipient is below dust threshold', () => {
+      const result = validateFeeBump(900, 2000, DUST_THRESHOLD_SATS - 1);
       expect(result.valid).toBe(false);
       if (!result.valid) {
-        expect(result.reason).toBe('insufficient-change');
+        expect(result.reason).toBe('recipient-below-dust');
       }
     });
 
-    it('returns valid: true when change is exactly 0', () => {
-      const result = validateFeeBump(900, 1800, 0);
-      expect(result.valid).toBe(true);
+    it('returns recipient-below-dust when recipient is negative', () => {
+      const result = validateFeeBump(900, 2000, -100);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.reason).toBe('recipient-below-dust');
+      }
     });
 
-    it('fee-not-higher takes priority over insufficient-change when fee is lower', () => {
-      // Fee not higher AND change is negative: fee-not-higher should be returned
+    it('fee-not-higher takes priority over recipient-below-dust when fee is lower', () => {
       const result = validateFeeBump(900, 500, -100);
       expect(result.valid).toBe(false);
       if (!result.valid) {

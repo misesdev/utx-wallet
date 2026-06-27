@@ -70,7 +70,7 @@ export function usePostImportSync() {
 
   function handleDone(): void {
     setSetupVisible(false);
-    navigation.reset({ index: 0, routes: [{ name: AppRoutes.WalletList }] });
+    navigation.reset({ index: 0, routes: [{ name: AppRoutes.Home }] });
   }
 
   function handleRetry(): void {

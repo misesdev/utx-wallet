@@ -30,8 +30,8 @@ export class GetTransactionDetailUseCase {
     if (transaction.txid && transaction.status !== 'replaced') {
       try {
         const [status, currentHeight] = await Promise.all([
-          this.blockchainProvider.getTransactionStatus(transaction.txid),
-          this.blockchainProvider.getCurrentBlockHeight(),
+          this.blockchainProvider.getTransactionStatus(transaction.txid, network),
+          this.blockchainProvider.getCurrentBlockHeight(network),
         ]);
         const wasConfirmed = transaction.status === 'confirmed';
         isConfirmed = status.confirmed;

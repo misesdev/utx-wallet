@@ -1,347 +1,229 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { Wallet } from '../../../core/domain/entities/Wallet';
+import { TESTNET_NETWORKS } from '../../../shared/constants/networks';
+import { useAddressManager } from '../../../app/providers/AddressManagerProvider';
 import { AppBottomDock } from '../../components/base/AppBottomDock';
-import { AppEmptyState } from '../../components/base/AppEmptyState';
 import { AppLoading } from '../../components/base/AppLoading';
+import { AppLogo } from '../../components/base/AppLogo';
 import { AppText } from '../../components/base/AppText';
 import { AppIcon } from '../../components/base/AppIcon';
-import type { IconName } from '../../../shared/icons/iconNames';
-import { NetworkBadge } from '../../components/wallet/NetworkBadge';
 import { BalanceEyeButton } from '../../components/security/BalanceEyeButton';
 import { PinInputModal } from '../../components/security/PinInputModal';
-import { useAccountSummaries } from '../../hooks/useAccountSummaries';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
-import { useHomeWallet } from '../../hooks/useHomeWallet';
-import { useWalletSync } from '../../hooks/useWalletSync';
+import { useSafeMode } from '../../hooks/useSafeMode';
 import { useTemporaryRevealBalance } from '../../hooks/useTemporaryRevealBalance';
 import { useTheme } from '../../hooks/useTheme';
+import { useWallet } from '../../hooks/useWallet';
 import { AppRoutes } from '../../../app/navigation/routes';
-import { TESTNET_NETWORKS } from '../../../shared/constants/networks';
-import type { AccountSummary } from '../../../core/domain/services/AccountSummaryService';
-import type { SyncProgress } from '../../../core/domain/usecases/wallet/SyncProgress';
+import { WalletCard } from './components/WalletCard';
+import { SafeModeBlockedModal } from './components/SafeModeBlockedModal';
+import { WalletListEmptyState } from './components/WalletListEmptyState';
+import type { WalletSummary } from './components/WalletCard';
 
-const SATS_PER_BTC = 100_000_000;
-const HIDDEN_PLACEHOLDER = '••••••';
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
-// ─── Testnet banner ───────────────────────────────────────────────────────────
+type NetworkTab = 'mainnet' | 'testnet4';
 
-function TestnetBanner() {
-  const { theme } = useTheme();
-  const { t } = useAppTranslation();
-  return (
-    <View
-      testID="testnet-banner"
-      style={[
-        styles.testnetBanner,
-        {
-          backgroundColor: theme.colors.warningMuted,
-          borderColor: theme.colors.warning,
-          borderRadius: theme.radii.md,
-        },
-      ]}
-    >
-      <AppIcon name="warning" size={15} color={theme.colors.warning} />
-      <AppText variant="caption" style={[styles.testnetBannerText, { color: theme.colors.warning }]}>
-        {t('home.testnetBanner' as any)}
-      </AppText>
-    </View>
-  );
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function matchesTab(wallet: Wallet, tab: NetworkTab): boolean {
+  if (tab === 'mainnet') return wallet.network === 'mainnet';
+  return TESTNET_NETWORKS.includes(wallet.network);
 }
 
-// ─── Header ──────────────────────────────────────────────────────────────────
-
-type HomeHeaderProps = {
-  walletName: string;
-  walletNetwork?: string;
-  connectivityMode?: ReturnType<typeof useHomeWallet>['networkConfig']['connectivityMode'];
-  isSafeMode: boolean;
-  isWatchOnly: boolean;
-  hideBalanceEnabled: boolean;
-  hidden: boolean;
-  onToggleReveal: () => void;
+const NETWORK_ACCENT: Record<NetworkTab, string> = {
+  mainnet: '#F7931A',
+  testnet4: '#178a54',
 };
 
-function HomeHeader({ walletName, walletNetwork, connectivityMode, isSafeMode, isWatchOnly, hideBalanceEnabled, hidden, onToggleReveal }: HomeHeaderProps) {
-  const { theme } = useTheme();
-  const { t } = useAppTranslation();
-  return (
-    <View style={styles.header}>
-      <AppText variant="subtitle" style={styles.headerName} numberOfLines={1}>{walletName}</AppText>
-      <View style={styles.headerRight}>
-        {isSafeMode && (
-          <View style={[styles.safeModeBadge, { backgroundColor: theme.colors.dangerMuted, borderRadius: theme.radii.sm }]}>
-            <AppText variant="label" color="warning">{t('home.safeMode')}</AppText>
-          </View>
-        )}
-        {isWatchOnly && (
-          <View style={[styles.watchOnlyBadge, { backgroundColor: theme.colors.surfaceMuted, borderRadius: theme.radii.sm }]}>
-            <AppText variant="label" color="muted">{t('wallet.watchOnly' as any)}</AppText>
-          </View>
-        )}
-        {hideBalanceEnabled && (
-          <BalanceEyeButton hidden={hidden} onPress={onToggleReveal} testID="home-eye-btn" />
-        )}
-        <NetworkBadge network={walletNetwork as import('../../../core/domain/entities/Network').BitcoinNetwork | undefined} connectivityMode={connectivityMode} />
-      </View>
-    </View>
-  );
-}
+const NETWORK_TABS: { key: NetworkTab }[] = [
+  { key: 'mainnet' },
+  { key: 'testnet4' },
+];
 
-// ─── Balance hero ─────────────────────────────────────────────────────────────
-
-type BalanceHeroProps = {
-  confirmedSats: number;
-  pendingSats: number;
-  hidden: boolean;
-  onPress: () => void;
-};
-
-function BalanceHero({ confirmedSats, pendingSats, hidden, onPress }: BalanceHeroProps) {
-  const { theme } = useTheme();
-  const { t } = useAppTranslation();
-  const btc = (confirmedSats / SATS_PER_BTC).toFixed(8);
-
-  return (
-    <View style={styles.heroWrap}>
-      <AppText variant="label" color="muted" style={styles.heroLabel}>{t('home.balance')}</AppText>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('transactions.title')}
-        onPress={onPress}
-        style={({ pressed }) => [styles.heroRow, { opacity: pressed ? 0.72 : 1 }]}
-      >
-        <AppText variant="display" style={styles.heroSats}>
-          {hidden ? HIDDEN_PLACEHOLDER : confirmedSats.toLocaleString()}
-        </AppText>
-        {!hidden && (
-          <AppText variant="subtitle" color="muted" style={styles.heroUnit}>{t('common.sats')}</AppText>
-        )}
-        <AppIcon name="chevronRight" size={26} color={theme.colors.textMuted} />
-      </Pressable>
-      <AppText variant="body" color="muted" style={styles.heroBtc}>
-        {hidden ? HIDDEN_PLACEHOLDER : `≈ ${btc} BTC`}
-      </AppText>
-      {pendingSats > 0 && (
-        <View style={styles.pendingRow}>
-          <View style={[styles.pendingDot, { backgroundColor: theme.colors.warning }]} />
-          <AppText variant="caption" color="warning">{t('home.pending')}</AppText>
-          <AppText variant="caption" color="warning">
-            +{pendingSats.toLocaleString()} sats
-          </AppText>
-        </View>
-      )}
-    </View>
-  );
-}
-
-// ─── Sync pill ────────────────────────────────────────────────────────────────
-
-export function addressSyncFormat(address: string): string {
-  if (address.length <= 6) return address;
-  return `${address.slice(0, 2)}..${address.slice(-4)}`;
-}
-
-export function accountSyncFormat(account: string): string {
-  if (account.length <= 4) return account;
-  return `${account.slice(0, 4)}..`;
-}
-
-type SyncPillProps = {
-  isSyncing: boolean;
-  lastSyncAt: string | null;
-  syncError: string | null;
-  syncProgress: SyncProgress | null;
-  onSync: () => void;
-};
-
-function SyncPill({ isSyncing, lastSyncAt, syncError, syncProgress, onSync }: SyncPillProps) {
-  const { theme } = useTheme();
-  const { t } = useAppTranslation();
-  let label: string;
-  if (isSyncing && syncProgress?.accountName && syncProgress?.currentAddress) {
-    label = t('home.syncingAccount', {
-      account: accountSyncFormat(syncProgress.accountName),
-      address: addressSyncFormat(syncProgress.currentAddress),
-    });
-  } else if (isSyncing) {
-    label = t('home.syncing');
-  } else if (syncError) {
-    label = syncError;
-  } else if (lastSyncAt) {
-    label = t('home.lastSync', { time: new Date(lastSyncAt).toLocaleTimeString() });
-  } else {
-    label = t('home.tapToSync');
-  }
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={t('home.tapToSync')}
-      onPress={onSync}
-      disabled={isSyncing}
-      style={({ pressed }) => [
-        styles.syncPill,
-        {
-          backgroundColor: theme.colors.surfaceRaised,
-          borderColor: syncError ? theme.colors.danger : theme.colors.border,
-          borderRadius: theme.radii.xl,
-          opacity: pressed || isSyncing ? 0.72 : 1,
-        },
-      ]}
-    >
-      <AppText variant="caption" color={syncError ? 'danger' : 'muted'} numberOfLines={1}>
-        {label}
-      </AppText>
-      {!isSyncing && <AppIcon name="sync" size={16} color={theme.colors.textMuted} />}
-    </Pressable>
-  );
-}
-
-// ─── Quick action buttons ─────────────────────────────────────────────────────
-
-type QuickActionProps = {
-  icon: IconName;
-  label: string;
-  a11yLabel?: string;
-  onPress: () => void;
-  accentColor?: string;
-};
-
-function QuickAction({ icon, label, a11yLabel, onPress, accentColor }: QuickActionProps) {
-  const { theme } = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={a11yLabel ?? label}
-      onPress={onPress}
-      style={({ pressed }) => [styles.quickAction, { opacity: pressed ? 0.7 : 1 }]}
-    >
-      <View
-        style={[
-          styles.quickCircle,
-          {
-            backgroundColor: theme.colors.surfaceRaised,
-            borderColor: theme.colors.borderHighlight,
-          },
-        ]}
-      >
-        <AppIcon name={icon} size={28} color={accentColor ?? theme.colors.text} />
-      </View>
-      <AppText variant="caption" color="muted" style={styles.quickLabel}>{label}</AppText>
-    </Pressable>
-  );
-}
-
-// ─── Account summary card ─────────────────────────────────────────────────────
-
-type AccountSummaryCardProps = {
-  summary: AccountSummary;
-  hidden: boolean;
-  onPress: () => void;
-};
-
-function AccountSummaryCard({ summary, hidden, onPress }: AccountSummaryCardProps) {
-  const { theme } = useTheme();
-  const { t } = useAppTranslation();
-  const isDefault = summary.type === 'default';
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={summary.name}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.originCard,
-        {
-          backgroundColor: theme.colors.surfaceRaised,
-          borderColor: isDefault ? theme.colors.borderHighlight : theme.colors.border,
-          borderRadius: theme.radii.lg,
-          opacity: pressed ? 0.76 : 1,
-        },
-      ]}
-    >
-      <View
-        style={[
-          styles.originIconWrap,
-          {
-            backgroundColor: isDefault ? theme.colors.accentMuted : theme.colors.surfaceMuted,
-            borderRadius: theme.radii.md,
-          },
-        ]}
-      >
-        <AppIcon name={isDefault ? "wallet" : "accounts"} size={24} color={isDefault ? theme.colors.accent : theme.colors.textMuted} />
-      </View>
-      <View style={styles.originBody}>
-        <AppText variant="body" style={styles.originName}>{summary.name}</AppText>
-        <AppText variant="caption" color="muted">
-          {hidden ? HIDDEN_PLACEHOLDER : `${summary.confirmedBalanceSats.toLocaleString()} ${t('common.sats')}`}
-        </AppText>
-      </View>
-      <AppIcon name="chevronRight" size={20} color={theme.colors.textFaint} />
-    </Pressable>
-  );
-}
-
-
-// ─── HomeScreen ───────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// HomeScreen
+// ---------------------------------------------------------------------------
 
 export function HomeScreen() {
-  const navigation = useAppNavigation();
-  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { t } = useAppTranslation();
+  const insets = useSafeAreaInsets();
+  const navigation = useAppNavigation();
+  const { width: windowWidth } = useWindowDimensions();
+  const { wallets, isLoading, selectWallet, listUtxos } = useWallet();
+  const { getOrigins } = useAddressManager();
   const { hidden, hideBalanceEnabled, toggleReveal, pinModalVisible, pinError, submitPin, cancelAuth } =
     useTemporaryRevealBalance();
-  const { summaries, reload: reloadAccounts } = useAccountSummaries();
+  const { isWalletBlocked, deactivateSafeMode } = useSafeMode();
 
-  const {
-    wallet,
-    confirmedBalanceSats,
-    pendingBalanceSats,
-    networkConfig,
-    isSafeMode,
-    transactions,
-    isLoading,
-    error,
-    refresh,
-  } = useHomeWallet();
+  const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const [visitedTabs, setVisitedTabs] = useState<Set<number>>(new Set([0]));
+  const [summaries, setSummaries] = useState<Record<string, WalletSummary>>({});
+  const [blockedWallet, setBlockedWallet] = useState<Wallet | null>(null);
+  const pagerRef = useRef<ScrollView>(null);
+  const indicatorAnim = useRef(new Animated.Value(0)).current;
 
+  const effectiveWidth = Math.max(windowWidth, 1);
+  const tabWidth = effectiveWidth / NETWORK_TABS.length;
 
-  const { isSyncing, lastSyncAt, syncError, syncProgress, sync } = useWalletSync();
+  const activeTab: NetworkTab = NETWORK_TABS[activeTabIndex].key;
+
+  const updateActiveTab = useCallback(
+    (index: number) => {
+      setActiveTabIndex(index);
+      setVisitedTabs(prev => {
+        if (prev.has(index)) return prev;
+        return new Set([...prev, index]);
+      });
+      Animated.timing(indicatorAnim, {
+        toValue: index * tabWidth,
+        duration: 220,
+        useNativeDriver: true,
+      }).start();
+    },
+    [indicatorAnim, tabWidth],
+  );
+
+  function handleTabPress(index: number) {
+    if (index === activeTabIndex) return;
+    pagerRef.current?.scrollTo({ x: index * effectiveWidth, animated: true });
+    updateActiveTab(index);
+  }
+
+  function handleMomentumScrollEnd(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    const index = Math.max(
+      0,
+      Math.min(
+        NETWORK_TABS.length - 1,
+        Math.round(e.nativeEvent.contentOffset.x / effectiveWidth),
+      ),
+    );
+    updateActiveTab(index);
+  }
+
+  const walletsRef = useRef(wallets);
+  walletsRef.current = wallets;
+
+  const loadSummaries = useCallback(async (walletList: Wallet[]) => {
+    if (walletList.length === 0) return;
+    const entries = await Promise.all(
+      walletList.map(async (w) => {
+        try {
+          const [utxos, origins] = await Promise.all([
+            listUtxos(w.id),
+            getOrigins(w.id),
+          ]);
+          const balanceSats = utxos.reduce((sum, u) => sum + u.valueSats, 0);
+          return [w.id, {
+            balanceSats,
+            utxoCount: utxos.length,
+            accountCount: origins.filter(o => !o.archivedAt).length,
+            isLoaded: true,
+          }] as const;
+        } catch {
+          return [w.id, { balanceSats: 0, utxoCount: 0, accountCount: 0, isLoaded: true }] as const;
+        }
+      }),
+    );
+    setSummaries(Object.fromEntries(entries));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    loadSummaries(wallets).catch(() => undefined);
+  }, [wallets, loadSummaries]);
 
   useFocusEffect(
     useCallback(() => {
-      reloadAccounts();
-      refresh().catch(() => undefined);
-    }, [reloadAccounts, refresh]),
+      loadSummaries(walletsRef.current).catch(() => undefined);
+    }, [loadSummaries]),
   );
 
-  const handleSync = useCallback(async () => {
-    await sync();
-    await refresh();
-    await reloadAccounts();
-  }, [sync, refresh, reloadAccounts]);
+  function openWalletDirect(wallet: Wallet) {
+    selectWallet(wallet.id);
+    navigation.navigate(AppRoutes.Wallet);
+  }
 
-  if (!wallet) {
-    return (
-      <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
-        <AppEmptyState
-          icon="wallet"
-          title={t('home.noWallet')}
-          description={t('home.noWalletDesc')}
+  function handleOpenWallet(wallet: Wallet) {
+    if (isWalletBlocked(wallet.network)) {
+      setBlockedWallet(wallet);
+      return;
+    }
+    openWalletDirect(wallet);
+  }
+
+  async function handleDisableSafeModeAndOpen() {
+    if (!blockedWallet) return;
+    const wallet = blockedWallet;
+    setBlockedWallet(null);
+    await deactivateSafeMode();
+    openWalletDirect(wallet);
+  }
+
+  function handleBlockedManageNodes() {
+    setBlockedWallet(null);
+    navigation.navigate(AppRoutes.ManageNodes);
+  }
+
+  function handleNavigateCreate() {
+    navigation.navigate(AppRoutes.CreateWallet, { network: activeTab });
+  }
+
+  function handleNavigateImport() {
+    navigation.navigate(AppRoutes.ImportWallet, { network: activeTab });
+  }
+
+  function handleOpenGlobalSettings() {
+    navigation.navigate(AppRoutes.GlobalSettings);
+  }
+
+  function handleScanImportQr() {
+    navigation.navigate(AppRoutes.ScanWalletQr, { network: activeTab });
+  }
+
+  function renderTabContent(tab: NetworkTab) {
+    const filtered = wallets.filter(w => matchesTab(w, tab));
+    if (filtered.length === 0) {
+      return (
+        <WalletListEmptyState
+          network={tab}
+          onCreateWallet={handleNavigateCreate}
+          onImportWallet={handleNavigateImport}
         />
-      </View>
-    );
+      );
+    }
+    return filtered.map(wallet => (
+      <WalletCard
+        key={wallet.id}
+        wallet={wallet}
+        summary={summaries[wallet.id]}
+        hidden={hidden}
+        isBlocked={isWalletBlocked(wallet.network)}
+        onOpen={() => handleOpenWallet(wallet)}
+      />
+    ));
   }
 
   return (
-    <View
-      testID="home-screen"
-      style={[styles.root, { backgroundColor: theme.colors.background }]}
-    >
+    <View style={[styles.root, { backgroundColor: theme.colors.background, paddingTop: insets.top }]}>
       <PinInputModal
         visible={pinModalVisible}
         step="verify"
@@ -349,421 +231,176 @@ export function HomeScreen() {
         onSubmit={submitPin}
         onCancel={cancelAuth}
       />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        decelerationRate="fast"
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingTop: insets.top + 8, paddingBottom: Math.max(insets.bottom, 16) + 100 },
-        ]}
-      >
-        {/* Testnet safety banner */}
-        {wallet && TESTNET_NETWORKS.includes(wallet.network) && <TestnetBanner />}
 
-        {/* Header: wallet name left, network + safe mode right */}
-        <HomeHeader
-          walletName={wallet.name}
-          walletNetwork={wallet.network}
-          connectivityMode={networkConfig.connectivityMode}
-          isSafeMode={isSafeMode}
-          isWatchOnly={wallet.status === 'watch-only'}
-          hideBalanceEnabled={hideBalanceEnabled}
-          hidden={hidden}
-          onToggleReveal={toggleReveal}
-        />
+      <SafeModeBlockedModal
+        visible={blockedWallet !== null}
+        walletNetwork={blockedWallet?.network ?? 'mainnet'}
+        onDisableAndOpen={handleDisableSafeModeAndOpen}
+        onManageNodes={handleBlockedManageNodes}
+        onCancel={() => setBlockedWallet(null)}
+      />
 
-        {/* Balance hero */}
-        <BalanceHero
-          confirmedSats={confirmedBalanceSats}
-          pendingSats={pendingBalanceSats}
-          hidden={hidden}
-          onPress={() => navigation.navigate(AppRoutes.Transactions)}
-        />
-
-        {/* Sync pill */}
-        <SyncPill
-          isSyncing={isSyncing}
-          lastSyncAt={lastSyncAt}
-          syncError={syncError}
-          syncProgress={syncProgress}
-          onSync={handleSync}
-        />
-
-        {/* Quick action buttons — horizontally scrollable */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.quickActionsRow}
-        >
-          <QuickAction
-            icon="accounts"
-            label={t('home.segregation')}
-            a11yLabel={t('home.segregation')}
-            onPress={() => navigation.navigate(AppRoutes.Segregation)}
-            accentColor={theme.colors.accent}
-          />
-          <QuickAction
-            icon="settings"
-            label={t('common.settings')}
-            a11yLabel={t('common.settings')}
-            onPress={() => navigation.navigate(AppRoutes.Settings)}
-          />
-          <QuickAction
-            icon="wallet"
-            label={t('home.utxos')}
-            a11yLabel={t('home.utxos')}
-            onPress={() => navigation.navigate(AppRoutes.Utxos)}
-          />
-          <QuickAction
-            icon="addresses"
-            label={t('home.addresses')}
-            a11yLabel={t('home.addresses')}
-            onPress={() => navigation.navigate(AppRoutes.Addresses)}
-          />
-          <QuickAction
-            icon="sign"
-            label={t('home.signature')}
-            a11yLabel={t('home.signature')}
-            onPress={() => navigation.navigate(AppRoutes.SignatureMenu)}
-          />
-        </ScrollView>
-
-        {/* Accounts / summaries list */}
-        {summaries.length > 0 && (
-          <View style={styles.originsSection}>
-            <View style={styles.sectionHeader}>
-              <AppText variant="subtitle">{t('home.accounts')}</AppText>
-              <Pressable onPress={() => navigation.navigate(AppRoutes.Segregation)}>
-                <AppText variant="caption" color="accent">{t('home.manage')}</AppText>
-              </Pressable>
-            </View>
-            <View style={styles.originList}>
-              {summaries.map(s => (
-                <AccountSummaryCard
-                  key={s.id}
-                  summary={s}
-                  hidden={hidden}
-                  onPress={() => navigation.navigate(AppRoutes.AccountDetails, { originId: s.id })}
-                />
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Recent activity preview */}
-        <View style={styles.activitySection}>
-          <View style={styles.sectionHeader}>
-            <AppText variant="subtitle">{t('home.recentActivity')}</AppText>
-            {transactions.length > 0 && (
-              <Pressable onPress={() => navigation.navigate(AppRoutes.Transactions)}>
-                <AppText variant="caption" color="accent">{t('home.seeAll')}</AppText>
-              </Pressable>
-            )}
-          </View>
-
-          {isLoading ? (
-            <AppLoading label={t('home.loading')} />
-          ) : error ? (
-            <AppText variant="caption" color="danger">{error}</AppText>
-          ) : transactions.length === 0 ? (
-            <AppEmptyState
-              icon="transactions"
-              title={t('home.noTransactions')}
-              description={t('home.noTransactionsDesc')}
-            />
-          ) : (
-            <View style={styles.activityList}>
-              {transactions.map(tx => {
-                const isIn = tx.direction === 'incoming';
-                return (
-                  <Pressable
-                    key={tx.id}
-                    testID={`transaction-${tx.id}`}
-                    accessibilityRole="button"
-                    onPress={() => navigation.navigate(AppRoutes.TransactionDetails, { txid: tx.txid ?? tx.id })}
-                    style={({ pressed }) => [
-                      styles.activityRow,
-                      {
-                        backgroundColor: theme.colors.surfaceRaised,
-                        borderColor: theme.colors.border,
-                        borderRadius: theme.radii.md,
-                        opacity: pressed ? 0.76 : 1,
-                      },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.activityIcon,
-                        {
-                          backgroundColor: isIn ? theme.colors.successMuted : theme.colors.surfaceMuted,
-                          borderRadius: theme.radii.md,
-                        },
-                      ]}
-                    >
-                      <AppIcon name={isIn ? "receive" : "send"} size={22} color={isIn ? theme.colors.success : theme.colors.textMuted} />
-                    </View>
-                    <View style={styles.activityInfo}>
-                      <AppText variant="body" style={styles.activityTitle}>
-                        {isIn ? t('home.received') : t('home.sent')}
-                      </AppText>
-                      <AppText variant="caption" color="muted">
-                        {tx.status} · {new Date(tx.createdAt).toLocaleDateString()}
-                      </AppText>
-                    </View>
-                    <AppText
-                      variant="subtitle"
-                      style={[styles.activityAmount, { color: isIn ? theme.colors.success : theme.colors.text }]}
-                    >
-                      {hidden ? HIDDEN_PLACEHOLDER : `${isIn ? '+' : '−'}${tx.amountSats.toLocaleString()}`}
-                    </AppText>
-                  </Pressable>
-                );
-              })}
-            </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <AppLogo size="sm" showName={false} />
+        <AppText variant="subtitle" style={styles.headerTitle}>{t('walletList.title')}</AppText>
+        <View style={styles.headerActions}>
+          {hideBalanceEnabled && (
+            <BalanceEyeButton hidden={hidden} onPress={toggleReveal} testID="wallet-list-eye-btn" />
           )}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('walletList.importWallet')}
+            onPress={handleNavigateImport}
+            style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.6 : 1 }]}
+          >
+            <AppIcon name="import" size={20} color={theme.colors.textMuted} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('walletList.createWallet')}
+            onPress={handleNavigateCreate}
+            style={({ pressed }) => [
+              styles.headerBtn,
+              styles.headerBtnPrimary,
+              { backgroundColor: theme.colors.primary, borderRadius: theme.radii.md, opacity: pressed ? 0.8 : 1 },
+            ]}
+          >
+            <AppText variant="label" style={[styles.headerBtnPrimaryText, { color: theme.colors.primaryText }]}>+</AppText>
+          </Pressable>
         </View>
-      </ScrollView>
+      </View>
 
+      {/* Tab bar with sliding underline indicator */}
+      <View style={[styles.tabBar, { borderBottomColor: theme.colors.border }]}>
+        {NETWORK_TABS.map((tab, index) => {
+          const isActive = activeTabIndex === index;
+          const accent = NETWORK_ACCENT[tab.key];
+          return (
+            <Pressable
+              key={tab.key}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
+              onPress={() => handleTabPress(index)}
+              style={({ pressed }) => [styles.tabItem, { opacity: pressed ? 0.7 : 1 }]}
+            >
+              <AppText
+                variant="label"
+                style={[
+                  styles.tabLabel,
+                  { color: isActive ? accent : theme.colors.textMuted },
+                  isActive && styles.tabLabelActive,
+                ]}
+              >
+                {tab.key === 'mainnet' ? t('walletList.mainnet') : t('walletList.testnet')}
+              </AppText>
+            </Pressable>
+          );
+        })}
+
+        <Animated.View
+          style={[
+            styles.tabIndicator,
+            {
+              backgroundColor: NETWORK_ACCENT[activeTab],
+              width: tabWidth,
+              transform: [{ translateX: indicatorAnim }],
+            },
+          ]}
+          testID="tab-indicator"
+        />
+      </View>
+
+      {/* Swipeable pager */}
+      {isLoading ? (
+        <View style={styles.center}>
+          <AppLoading />
+        </View>
+      ) : (
+        <ScrollView
+          ref={pagerRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
+          bounces={false}
+          style={styles.pager}
+          testID="wallet-pager"
+        >
+          {NETWORK_TABS.map((tab, i) => (
+            <View
+              key={tab.key}
+              style={[styles.page, { width: effectiveWidth }]}
+              testID={`page-${tab.key}`}
+            >
+              {visitedTabs.has(i) && (
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={[
+                    styles.list,
+                    { paddingBottom: Math.max(insets.bottom, 16) + 112 },
+                  ]}
+                >
+                  {renderTabContent(tab.key)}
+                </ScrollView>
+              )}
+            </View>
+          ))}
+        </ScrollView>
+      )}
+
+      {/* Floating bottom dock */}
       <AppBottomDock
         leftButton={{
-          icon: 'receive',
-          label: t('receive.title'),
-          onPress: () => {
-            if (summaries.length > 1) {
-              navigation.navigate(AppRoutes.SelectOriginReceive);
-            } else {
-              navigation.navigate(AppRoutes.Receive);
-            }
-          },
-          iconColor: theme.colors.success,
+          icon: 'settings',
+          label: t('walletList.globalSettings'),
+          onPress: handleOpenGlobalSettings,
+          testID: 'wallet-list-global-settings',
         }}
         rightButton={{
-          icon: 'send',
-          label: t('send.title'),
-          onPress: () => {
-            if (summaries.length > 1) {
-              navigation.navigate(AppRoutes.SelectOriginSend);
-            } else {
-              navigation.navigate(AppRoutes.Send);
-            }
-          },
+          icon: 'scan',
+          label: t('walletList.scanImport'),
+          onPress: handleScanImportQr,
           backgroundColor: theme.colors.primary,
           iconColor: theme.colors.primaryText,
           labelColor: theme.colors.primaryText,
+          testID: 'wallet-list-scan-import',
         }}
       />
     </View>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
+
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  scrollContent: {
-    gap: 28,
-    paddingHorizontal: 20,
-  },
+  root: { flex: 1 },
 
-  // Testnet banner
-  testnetBanner: {
-    alignItems: 'center',
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  testnetBannerText: {
-    flex: 1,
-    fontWeight: '600',
-    lineHeight: 16,
-  },
-
-  // Header
   header: {
     alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between',
     gap: 10,
-  },
-  headerName: {
-    fontWeight: '700',
-    flex: 1,
-  },
-  headerRight: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    flexShrink: 0,
-  },
-  safeModeBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  watchOnlyBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-
-  // Balance hero
-  heroWrap: {
-    alignItems: 'center',
-    gap: 8,
+    paddingHorizontal: 20,
     paddingVertical: 12,
   },
-  heroLabel: {
-    letterSpacing: 2,
-  },
-  heroRow: {
-    alignItems: 'flex-end',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  heroSats: {
-    fontSize: 44,
-    fontWeight: '800',
-    letterSpacing: -1,
-    lineHeight: 52,
-  },
-  heroUnit: {
-    marginBottom: 8,
-  },
-  heroChevron: {
-    marginBottom: 5,
-    opacity: 0.5,
-  },
-  heroBtc: {
-    letterSpacing: 0.5,
-  },
-  pendingRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 6,
-    marginTop: 2,
-  },
-  pendingDot: {
-    borderRadius: 4,
-    height: 6,
-    width: 6,
-  },
+  headerTitle: { flex: 1, fontWeight: '700' },
+  headerActions: { alignItems: 'center', flexDirection: 'row', gap: 8 },
+  headerBtn: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
+  headerBtnPrimary: {},
+  headerBtnPrimaryText: { fontSize: 18, fontWeight: '700' },
 
-  // Sync pill
-  syncPill: {
-    alignSelf: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
+  tabBar: { borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row' },
+  tabItem: { alignItems: 'center', flex: 1, paddingVertical: 13 },
+  tabLabel: { fontSize: 13, letterSpacing: 0.3 },
+  tabLabelActive: { fontWeight: '700' },
+  tabIndicator: { borderRadius: 2, bottom: 0, height: 2, left: 0, position: 'absolute' },
 
-  // Quick actions
-  quickActionsRow: {
-    flexDirection: 'row',
-    gap: 4,
-    paddingHorizontal: 4,
-  },
-  quickAction: {
-    alignItems: 'center',
-    gap: 8,
-    width: 76,
-  },
-  quickCircle: {
-    alignItems: 'center',
-    borderRadius: 30,
-    borderWidth: 1,
-    height: 58,
-    justifyContent: 'center',
-    width: 58,
-  },
-  quickIcon: {
-    fontSize: 22,
-  },
-  quickLabel: {
-    textAlign: 'center',
-  },
+  center: { alignItems: 'center', flex: 1, justifyContent: 'center' },
 
-  // Origins / accounts
-  originsSection: {
-    gap: 12,
-  },
-  sectionHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  originList: {
-    gap: 8,
-  },
-  originCard: {
-    alignItems: 'center',
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 12,
-    padding: 14,
-  },
-  originIconWrap: {
-    alignItems: 'center',
-    height: 40,
-    justifyContent: 'center',
-    width: 40,
-  },
-  originIconText: {
-    fontSize: 18,
-  },
-  originBody: {
-    flex: 1,
-    gap: 3,
-  },
-  originNameRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  originName: {
-    fontWeight: '600',
-  },
-  defaultBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  originChevron: {
-    fontSize: 20,
-  },
-
-  activitySection: {
-    gap: 12,
-  },
-  activityList: {
-    gap: 8,
-  },
-  activityRow: {
-    alignItems: 'center',
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 12,
-    padding: 13,
-  },
-  activityIcon: {
-    alignItems: 'center',
-    height: 38,
-    justifyContent: 'center',
-    width: 38,
-  },
-  activityInfo: {
-    flex: 1,
-    gap: 3,
-  },
-  activityIconText: {
-    fontSize: 16,
-  },
-  activityTitle: {
-    fontWeight: '600',
-  },
-  activityAmount: {
-    fontWeight: '700',
-  },
+  pager: { flex: 1 },
+  page: { flex: 1 },
+  list: { gap: 12, paddingHorizontal: 20, paddingTop: 8 },
 });
-

@@ -42,7 +42,7 @@ const BASE_STATE: UseAccelerateState = {
   infoError: null,
   newFeeRateSatsPerVByte: 6,
   newFeeSats: 1_080,
-  newChangeSats: 194_920,
+  newRecipientSats: 798_920,
   isAccelerating: false,
   accelerateError: null,
   acceleratedTxid: null,
@@ -75,9 +75,10 @@ jest.mock('react-native-safe-area-context', () => ({
 
 const mockGoBack = jest.fn();
 const mockNavigate = jest.fn();
+const mockReset = jest.fn();
 
 jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ navigate: mockNavigate, goBack: mockGoBack }),
+  useNavigation: () => ({ navigate: mockNavigate, goBack: mockGoBack, reset: mockReset }),
   useRoute: () => ({
     params: {
       txid: 'aaaa' + '00'.repeat(30),
@@ -178,9 +179,9 @@ describe('AccelerateTransactionScreen', () => {
       expect(screen.getByTestId('rbf-fee-increase')).toBeTruthy();
     });
 
-    it('shows new change in preview card', () => {
+    it('shows new recipient amount in preview card', () => {
       const screen = renderWithTheme(<AccelerateTransactionScreen />);
-      expect(screen.getByTestId('rbf-new-change')).toBeTruthy();
+      expect(screen.getByTestId('rbf-new-recipient')).toBeTruthy();
     });
 
     it('shows accelerate error when accelerateError is set', () => {
@@ -251,30 +252,34 @@ describe('AccelerateTransactionScreen', () => {
     });
   });
 
-  describe('success state', () => {
-    it('shows success screen when acceleratedTxid is set', () => {
-      mockState = { ...BASE_STATE, acceleratedTxid: NEW_TXID };
-      const screen = renderWithTheme(<AccelerateTransactionScreen />);
-      expect(screen.getByTestId('accelerate-success-screen')).toBeTruthy();
+  describe('success navigation', () => {
+    it('calls navigation.reset to [Home, Wallet, TransactionSuccess] when acceleratedTxid is set', () => {
+      mockState = {
+        ...BASE_STATE,
+        acceleratedTxid: NEW_TXID,
+        newRecipientSats: 798_920,
+        newFeeSats: 1_080,
+      };
+      renderWithTheme(<AccelerateTransactionScreen />);
+      expect(mockReset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          index: 2,
+          routes: expect.arrayContaining([
+            expect.objectContaining({ name: 'Home' }),
+            expect.objectContaining({ name: 'Wallet' }),
+            expect.objectContaining({
+              name: 'TransactionSuccess',
+              params: expect.objectContaining({ txid: NEW_TXID }),
+            }),
+          ]),
+        }),
+      );
     });
 
-    it('shows the new txid in success screen', () => {
-      mockState = { ...BASE_STATE, acceleratedTxid: NEW_TXID };
-      const screen = renderWithTheme(<AccelerateTransactionScreen />);
-      expect(screen.getByTestId('accelerated-txid')).toBeTruthy();
-    });
-
-    it('shows close button on success screen', () => {
-      mockState = { ...BASE_STATE, acceleratedTxid: NEW_TXID };
-      const screen = renderWithTheme(<AccelerateTransactionScreen />);
-      expect(screen.getByTestId('btn-close-success')).toBeTruthy();
-    });
-
-    it('navigates back when close is pressed on success screen', () => {
-      mockState = { ...BASE_STATE, acceleratedTxid: NEW_TXID };
-      const screen = renderWithTheme(<AccelerateTransactionScreen />);
-      fireEvent.press(screen.getByTestId('btn-close-success'));
-      expect(mockGoBack).toHaveBeenCalledTimes(1);
+    it('does not call navigation.reset when acceleratedTxid is null', () => {
+      mockState = { ...BASE_STATE, acceleratedTxid: null };
+      renderWithTheme(<AccelerateTransactionScreen />);
+      expect(mockReset).not.toHaveBeenCalled();
     });
   });
 });

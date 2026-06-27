@@ -20,6 +20,7 @@ import { WalletKeyStorage } from '../../src/core/infrastructure/storage/WalletKe
 import { WalletKeyAddressProvider } from '../../src/core/infrastructure/adapters/WalletKeyAddressProvider';
 import { WalletTransactionSigner } from '../../src/core/infrastructure/adapters/WalletTransactionSigner';
 import type { BuiltTransaction } from '../../src/core/domain/entities/BuiltTransaction';
+import type { WalletAddressRepository } from '../../src/core/domain/repositories/WalletAddressRepository';
 import { createSecureStorageMock } from '../mocks/storage';
 
 const MNEMONIC =
@@ -191,6 +192,55 @@ describe('Integration: Signing Wallet (xpriv)', () => {
     expect(signed.rawHex.length).toBeGreaterThan(0);
     expect(signed.txid).toBeTruthy();
   });
+
+  it('falls back to address scan when the address registry returns a stale derivation path', async () => {
+    const { importWallet } = makeSetup();
+    const xpriv = getXpriv('testnet');
+    const wallet = await importWallet.execute('Xpriv Stale Registry', xpriv, 'testnet');
+    const inputAddr = expectedAddr(xpriv, 'testnet', 0, 0);
+    const built = fakeBuiltTx(wallet.id, inputAddr, expectedAddr(xpriv, 'testnet', 1, 0));
+
+    const staleAddressRepository = {
+      findByAddress: jest.fn().mockResolvedValue({
+        id: 'stale-address',
+        walletId: wallet.id,
+        originId: 'origin-1',
+        originName: 'Origin',
+        address: inputAddr,
+        path: "m/84'/1'/0'/0/7",
+        accountIndex: 0,
+        chain: 'receive',
+        index: 7,
+        status: 'received',
+        totalReceivedSats: 0,
+        totalSentSats: 0,
+        txCount: 0,
+        incomingTxCount: 0,
+        outgoingTxCount: 0,
+        hasUtxos: true,
+        isFrozen: false,
+        createdAt: new Date().toISOString(),
+        usedAt: null,
+        lastSyncedAt: null,
+      }),
+    } as unknown as WalletAddressRepository;
+
+    const secureStorage = createSecureStorageMock();
+    const walletKeyStorage = new WalletKeyStorage(secureStorage);
+    await walletKeyStorage.store(wallet.id, xpriv);
+
+    const signerWithStaleRegistry = new WalletTransactionSigner(walletKeyStorage, staleAddressRepository);
+    const imported = HDWallet.import(xpriv, undefined, { network: 'testnet', purpose: 84 }).wallet;
+    const correctPublicKey = imported.getPairKey(0, { change: 0 }).getPublicKeyHex();
+    const stalePublicKey = imported.getPairKey(7, { change: 0 }).getPublicKeyHex();
+
+    const actual = await signerWithStaleRegistry.sign(built, wallet.id, 'testnet');
+
+    expect(actual.rawHex).toContain(correctPublicKey);
+    expect(actual.rawHex).not.toContain(stalePublicKey);
+    expect(staleAddressRepository.findByAddress).toHaveBeenCalledWith(inputAddr);
+  });
+
 });
 
 // ─── WIF — single-key signing ─────────────────────────────────────────────────
@@ -236,6 +286,18 @@ describe('Integration: Single-Key Wallet (WIF)', () => {
 
     expect(typeof signed.rawHex).toBe('string');
     expect(signed.rawHex.length).toBeGreaterThan(0);
+  });
+
+  it('rejects signing when a WIF wallet does not own the input address', async () => {
+    const { importWallet, signer } = makeSetup();
+    const pair = new ECPairKey({ network: 'testnet' });
+    const otherPair = new ECPairKey({ network: 'testnet' });
+    const wallet = await importWallet.execute('WIF Wrong Input', pair.getWif(), 'testnet');
+    const built = fakeBuiltTx(wallet.id, otherPair.getAddress('p2wpkh'), pair.getAddress('p2wpkh'));
+
+    await expect(signer.sign(built, wallet.id, 'testnet')).rejects.toMatchObject({
+      code: 'KEY_NOT_FOUND',
+    });
   });
 
   it('rejects index > 0 for single-key wallets', async () => {

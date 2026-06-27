@@ -229,18 +229,18 @@ describe('OfflineModeService', () => {
   });
 
   describe('transmitir offline tx (broadcast)', () => {
-    it('calls blockchainProvider.broadcastTransaction with rawHex', async () => {
+    it('calls blockchainProvider.broadcastTransaction with rawHex and network', async () => {
       const provider = makeBlockchainProvider();
       const { service } = makeService({ provider });
-      const tx: OfflineTransaction = { id: 'tx-1', walletId: WALLET_ID, rawHex: RAW_HEX, createdAt: '2026-06-06T00:00:00.000Z' };
+      const tx: OfflineTransaction = { id: 'tx-1', walletId: WALLET_ID, network: 'testnet4', rawHex: RAW_HEX, createdAt: '2026-06-06T00:00:00.000Z' };
       await service.broadcastTransaction(tx);
-      expect(provider.broadcastTransaction).toHaveBeenCalledWith(RAW_HEX);
+      expect(provider.broadcastTransaction).toHaveBeenCalledWith(RAW_HEX, 'testnet4');
     });
 
     it('deletes the offline transaction after successful broadcast', async () => {
       const repo = makeRepo();
       const { service } = makeService({ repo });
-      const tx: OfflineTransaction = { id: 'tx-1', walletId: WALLET_ID, rawHex: RAW_HEX, createdAt: '2026-06-06T00:00:00.000Z' };
+      const tx: OfflineTransaction = { id: 'tx-1', walletId: WALLET_ID, network: 'testnet4', rawHex: RAW_HEX, createdAt: '2026-06-06T00:00:00.000Z' };
       await service.broadcastTransaction(tx);
       expect(repo.delete).toHaveBeenCalledWith('tx-1');
     });
@@ -248,7 +248,7 @@ describe('OfflineModeService', () => {
     it('returns the txid from the provider', async () => {
       const provider = makeBlockchainProvider('broadcast-txid-123');
       const { service } = makeService({ provider });
-      const tx: OfflineTransaction = { id: 'tx-1', walletId: WALLET_ID, rawHex: RAW_HEX, createdAt: '2026-06-06T00:00:00.000Z' };
+      const tx: OfflineTransaction = { id: 'tx-1', walletId: WALLET_ID, network: 'mainnet', rawHex: RAW_HEX, createdAt: '2026-06-06T00:00:00.000Z' };
       const result = await service.broadcastTransaction(tx);
       expect(result).toBe('broadcast-txid-123');
     });
@@ -258,9 +258,15 @@ describe('OfflineModeService', () => {
       const repo = makeRepo();
       provider.broadcastTransaction.mockRejectedValue(new AppError('Sem internet', 'HTTP_ERROR'));
       const { service } = makeService({ provider, repo });
-      const tx: OfflineTransaction = { id: 'tx-1', walletId: WALLET_ID, rawHex: RAW_HEX, createdAt: '2026-06-06T00:00:00.000Z' };
+      const tx: OfflineTransaction = { id: 'tx-1', walletId: WALLET_ID, network: 'testnet4', rawHex: RAW_HEX, createdAt: '2026-06-06T00:00:00.000Z' };
       await expect(service.broadcastTransaction(tx)).rejects.toBeDefined();
       expect(repo.delete).not.toHaveBeenCalled();
+    });
+
+    it('throws MISSING_NETWORK when transaction has no network (e.g. imported without opts.network)', async () => {
+      const { service } = makeService();
+      const tx: OfflineTransaction = { id: 'tx-1', walletId: WALLET_ID, rawHex: RAW_HEX, createdAt: '2026-06-06T00:00:00.000Z' };
+      await expect(service.broadcastTransaction(tx)).rejects.toMatchObject({ code: 'MISSING_NETWORK' });
     });
   });
 });

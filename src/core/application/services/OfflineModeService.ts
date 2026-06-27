@@ -18,6 +18,7 @@ export type PrepareOfflineTxParams = {
 };
 
 export type ImportRawHexOptions = {
+  network?: BitcoinNetwork;
   toAddress?: string;
   amountSats?: number;
   feeSats?: number;
@@ -43,6 +44,7 @@ export class OfflineModeService {
     const offlineTx: OfflineTransaction = {
       id: generateId(),
       walletId: params.walletId,
+      network: params.walletNetwork,
       rawHex: signed.rawHex,
       txid: signed.txid,
       amountSats: built.amountSats,
@@ -66,6 +68,7 @@ export class OfflineModeService {
     const offlineTx: OfflineTransaction = {
       id: generateId(),
       walletId,
+      network: opts?.network,
       rawHex: cleaned,
       toAddress: opts?.toAddress,
       amountSats: opts?.amountSats,
@@ -85,7 +88,10 @@ export class OfflineModeService {
   }
 
   async broadcastTransaction(offlineTx: OfflineTransaction): Promise<string> {
-    const txid = await this.blockchainProvider.broadcastTransaction(offlineTx.rawHex);
+    if (!offlineTx.network) {
+      throw new AppError('Rede não identificada para esta transação offline', 'MISSING_NETWORK');
+    }
+    const txid = await this.blockchainProvider.broadcastTransaction(offlineTx.rawHex, offlineTx.network);
     await this.deleteOfflineTx.execute(offlineTx.id);
     return txid;
   }

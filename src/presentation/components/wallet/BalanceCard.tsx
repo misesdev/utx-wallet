@@ -63,7 +63,7 @@ export function BalanceCard({ balanceSats, label, hidden = false }: BalanceCardP
 
       <View style={[styles.footer, { borderTopColor: theme.colors.border }]}>
         <AppText variant="caption" color="muted" testID="balance-btc">
-          {hidden ? HIDDEN_PLACEHOLDER : `≈ ${btc} BTC`}
+          {hidden ? HIDDEN_PLACEHOLDER : t('accountDetails.btcValue', { btc })}
         </AppText>
         <AppText variant="caption" color="muted">{t('wallet.secured')}</AppText>
       </View>
