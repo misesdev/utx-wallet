@@ -20,7 +20,7 @@ export class TransactionStorage {
 
   async listByWallet(walletId: string): Promise<Transaction[]> {
     const rows = await this.db.execute<TransactionRow>(
-      'SELECT id, txid, amount_sats, fee_sats, direction, status, created_at, address, origin_id, origin_name, replaced_by_txid FROM transactions WHERE wallet_id = ? ORDER BY CASE WHEN status = \'pending\' THEN 0 ELSE 1 END ASC, created_at DESC',
+      'SELECT id, txid, amount_sats, fee_sats, direction, status, created_at, address, origin_id, origin_name, replaced_by_txid FROM transactions WHERE wallet_id = ? ORDER BY created_at DESC',
       [walletId],
     );
     return rows.map(row => ({

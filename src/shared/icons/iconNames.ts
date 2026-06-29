@@ -77,4 +77,7 @@ export const ICON_NAMES = {
 
   // Sorting / filtering
   filter: 'filter-outline',
+
+  // Testnet
+  faucet: 'water-outline',
 } as const;

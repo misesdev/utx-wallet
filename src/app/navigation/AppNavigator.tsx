@@ -39,6 +39,7 @@ import { ConfirmQrWalletImportScreen } from '../../presentation/screens/qr/Confi
 import { QrWalletScannerScreen } from '../../presentation/screens/qr/QrWalletScannerScreen';
 import { ScanAddressQrScreen } from '../../presentation/screens/qr/ScanAddressQrScreen';
 import { NodeTutorialScreen } from '../../presentation/screens/info/NodeTutorialScreen';
+import { Testnet4FaucetsScreen } from '../../presentation/screens/info/Testnet4FaucetsScreen';
 import { WalletPolicyScreen } from '../../presentation/screens/info/WalletPolicyScreen';
 import { AddressPolicyScreen } from '../../presentation/screens/info/AddressPolicyScreen';
 import { AccountPolicyScreen } from '../../presentation/screens/info/AccountPolicyScreen';
@@ -82,6 +83,7 @@ export function AppNavigator() {
         <Stack.Screen name={AppRoutes.SecuritySettings} component={SecuritySettingsScreen} />
         <Stack.Screen name={AppRoutes.NodeSettings} component={NodeSettingsScreen} />
         <Stack.Screen name={AppRoutes.NodeTutorial} component={NodeTutorialScreen} />
+        <Stack.Screen name={AppRoutes.Testnet4Faucets} component={Testnet4FaucetsScreen} />
         <Stack.Screen name={AppRoutes.ManageNodes} component={ManageNodesScreen} />
         <Stack.Screen name={AppRoutes.SyncSettings} component={SyncSettingsScreen} />
         <Stack.Screen name={AppRoutes.BackupSettings} component={BackupSettingsScreen} />

@@ -224,6 +224,39 @@ describe('useHomeWallet', () => {
       expect(ids).toEqual(['tx-pending-older', 'tx-confirmed-recent', 'tx-confirmed-old']);
     });
 
+    it('excludes replaced transactions from the home list', async () => {
+      // Replaced transactions belong to the full transaction history screen only.
+      // The home screen should show the replacement tx (pending/confirmed) instead.
+      const txs: Transaction[] = [
+        { id: 'tx-replaced', amountSats: 5_000, direction: 'outgoing', status: 'replaced', createdAt: '2026-06-10T14:00:00.000Z', replacedByTxid: 'tx-rbf' },
+        { id: 'tx-rbf', amountSats: 5_000, direction: 'outgoing', status: 'pending', createdAt: '2026-06-10T14:01:00.000Z' },
+        { id: 'tx-confirmed', amountSats: 10_000, direction: 'incoming', status: 'confirmed', createdAt: '2026-06-09T00:00:00.000Z' },
+      ];
+      mockListTransactions.mockResolvedValue(txs);
+      const { result } = renderHook(() => useHomeWallet());
+      await act(async () => {});
+
+      const ids = result.current.transactions.map(tx => tx.id);
+      expect(ids).not.toContain('tx-replaced');
+      expect(ids).toContain('tx-rbf');
+      expect(ids).toContain('tx-confirmed');
+    });
+
+    it('places pending replacement above confirmed tx after RBF', async () => {
+      const txs: Transaction[] = [
+        { id: 'tx-replaced', amountSats: 5_000, direction: 'outgoing', status: 'replaced', createdAt: '2026-06-10T14:00:00.000Z', replacedByTxid: 'tx-rbf' },
+        { id: 'tx-confirmed', amountSats: 10_000, direction: 'incoming', status: 'confirmed', createdAt: '2026-06-09T00:00:00.000Z' },
+        { id: 'tx-rbf', amountSats: 5_000, direction: 'outgoing', status: 'pending', createdAt: '2026-06-10T14:01:00.000Z' },
+      ];
+      mockListTransactions.mockResolvedValue(txs);
+      const { result } = renderHook(() => useHomeWallet());
+      await act(async () => {});
+
+      const ids = result.current.transactions.map(tx => tx.id);
+      // pending first (RBF tx), then confirmed by date
+      expect(ids).toEqual(['tx-rbf', 'tx-confirmed']);
+    });
+
     it('does not mutate the original array from listTransactions', async () => {
       const txs: Transaction[] = [
         { id: 'tx-1', amountSats: 1_000, direction: 'incoming', status: 'confirmed', createdAt: '2026-06-01T00:00:00.000Z' },

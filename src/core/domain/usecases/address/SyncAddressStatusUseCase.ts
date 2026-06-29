@@ -82,13 +82,15 @@ export class SyncAddressStatusUseCase {
       // gaps that stop wallet-import discovery before the real balances are found.
       return 'fresh';
     }
-    if (outgoingTxCount > 0 && hasUtxos) {
-      return 'inconsistent';
-    }
-    if (outgoingTxCount > 0) {
+    // Address has been used for sending and all UTXOs are gone → mark as spent.
+    if (outgoingTxCount > 0 && !hasUtxos) {
       return chain === 'change' ? 'change' : 'spent_once';
     }
-    // Only incoming transactions
+    // All other cases: address has blockchain activity and optionally holds UTXOs.
+    // Even when outgoingTxCount > 0 with remaining UTXOs (partial spend or address
+    // reuse), the address is still active with funds — "received" is more accurate
+    // than the irrecoverable "inconsistent" label that previously required manual
+    // intervention to clear.
     return chain === 'change' ? 'change' : 'received';
   }
 }

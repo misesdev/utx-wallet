@@ -10,7 +10,8 @@ import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useAppTranslation } from '../../hooks/useAppTranslation';
 import { useReceiveBitcoin } from '../../hooks/useReceiveBitcoin';
 import { useTheme } from '../../hooks/useTheme';
-import type { AppStackParamList } from '../../../app/navigation/routes';
+import { useWallet } from '../../hooks/useWallet';
+import { AppRoutes, type AppStackParamList } from '../../../app/navigation/routes';
 
 type ReceiveRouteProps = RouteProp<AppStackParamList, 'Receive'>;
 
@@ -28,6 +29,8 @@ export function ReceiveScreen() {
     originId = undefined;
   }
 
+  const { selectedWallet } = useWallet();
+
   const {
     address,
     hdAddress,
@@ -43,6 +46,7 @@ export function ReceiveScreen() {
   const resolvedAddress = hdAddress?.address ?? address?.value ?? '';
   const originName = hdAddress?.originName;
   const originChain = hdAddress?.chain;
+  const isTestnet4 = selectedWallet?.network === 'testnet4';
 
   // ─── Loading ──────────────────────────────────────────────────────────────
   if (isLoading && !address && !hdAddress) {
@@ -190,6 +194,31 @@ export function ReceiveScreen() {
               </Pressable>
             </View>
 
+            {/* ─── Testnet4 faucet shortcut ────────────────────────── */}
+            {isTestnet4 && (
+              <Pressable
+                testID="btn-faucets"
+                accessibilityRole="button"
+                accessibilityLabel={t('faucet.button')}
+                onPress={() => navigation.navigate(AppRoutes.Testnet4Faucets)}
+                style={({ pressed }) => [
+                  styles.faucetBtn,
+                  {
+                    backgroundColor: theme.colors.accentMuted,
+                    borderColor: theme.colors.accent + '44',
+                    borderRadius: theme.radii.lg,
+                    opacity: pressed ? 0.76 : 1,
+                  },
+                ]}
+              >
+                <AppIcon name="faucet" size={20} color={theme.colors.accent} />
+                <AppText variant="body" style={[styles.faucetBtnLabel, { color: theme.colors.accent }]}>
+                  {t('faucet.button')}
+                </AppText>
+                <AppIcon name="chevronRight" size={18} color={theme.colors.accent} />
+              </Pressable>
+            )}
+
             {/* ─── Divider ─────────────────────────────────────────── */}
             <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
 
@@ -330,6 +359,20 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   actionLabel: {
+    fontWeight: '600',
+  },
+
+  // Faucet button
+  faucetBtn: {
+    alignItems: 'center',
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+  },
+  faucetBtnLabel: {
+    flex: 1,
     fontWeight: '600',
   },
 

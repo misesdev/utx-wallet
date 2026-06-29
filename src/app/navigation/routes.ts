@@ -58,6 +58,7 @@ export const AppRoutes = {
   SignatureResult: 'SignatureResult',
   VerifySignature: 'VerifySignature',
   ScanTextQr: 'ScanTextQr',
+  Testnet4Faucets: 'Testnet4Faucets',
 } as const;
 
 export type AuthStackParamList = {
@@ -130,6 +131,7 @@ export type AppStackParamList = {
   SignatureResult: { encoded: string };
   VerifySignature: undefined;
   ScanTextQr: { eventName: string };
+  Testnet4Faucets: undefined;
   ConfirmQrWalletImport: {
     secretRef: string;
     format: WalletImportFormat;

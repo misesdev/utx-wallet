@@ -3,10 +3,26 @@ import { fireEvent, waitFor } from '@testing-library/react-native';
 import { ReceiveScreen } from '../../../src/presentation/screens/wallet/ReceiveScreen';
 import { renderWithTheme } from '../../mocks/renderWithProviders';
 import type { ReceiveBitcoinState } from '../../../src/presentation/hooks/useReceiveBitcoin';
+import type { Wallet } from '../../../src/core/domain/entities/Wallet';
+import { AppRoutes } from '../../../src/app/navigation/routes';
 
 const mockCopyAddress = jest.fn();
 const mockShareAddress = jest.fn().mockResolvedValue(undefined);
 const mockSetAmountSats = jest.fn();
+const mockNavigate = jest.fn();
+
+const TESTNET4_WALLET: Wallet = {
+  id: 'wallet-1',
+  name: 'Test Wallet',
+  network: 'testnet4',
+  status: 'locked',
+  createdAt: '2026-01-01T00:00:00.000Z',
+};
+
+const MAINNET_WALLET: Wallet = {
+  ...TESTNET4_WALLET,
+  network: 'mainnet',
+};
 
 const DEFAULT_STATE: ReceiveBitcoinState = {
   address: {
@@ -30,9 +46,18 @@ const DEFAULT_STATE: ReceiveBitcoinState = {
 };
 
 let mockState: ReceiveBitcoinState = DEFAULT_STATE;
+let mockSelectedWallet: Wallet | null = TESTNET4_WALLET;
 
 jest.mock('../../../src/presentation/hooks/useReceiveBitcoin', () => ({
   useReceiveBitcoin: () => mockState,
+}));
+
+jest.mock('../../../src/presentation/hooks/useWallet', () => ({
+  useWallet: () => ({ selectedWallet: mockSelectedWallet }),
+}));
+
+jest.mock('../../../src/presentation/hooks/useAppNavigation', () => ({
+  useAppNavigation: () => ({ navigate: mockNavigate, goBack: jest.fn() }),
 }));
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -43,6 +68,7 @@ describe('ReceiveScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockState = { ...DEFAULT_STATE };
+    mockSelectedWallet = TESTNET4_WALLET;
   });
 
   describe('address display', () => {
@@ -142,6 +168,34 @@ describe('ReceiveScreen', () => {
     it('does not render a new-address button', () => {
       const screen = renderWithTheme(<ReceiveScreen />);
       expect(screen.queryByTestId('btn-new-address')).toBeNull();
+    });
+  });
+
+  describe('testnet4 faucet button', () => {
+    it('renders the faucets button on testnet4 wallets', () => {
+      mockSelectedWallet = TESTNET4_WALLET;
+      const screen = renderWithTheme(<ReceiveScreen />);
+      expect(screen.getByTestId('btn-faucets')).toBeTruthy();
+      expect(screen.getByText('faucet.button')).toBeTruthy();
+    });
+
+    it('does not render the faucets button on mainnet wallets', () => {
+      mockSelectedWallet = MAINNET_WALLET;
+      const screen = renderWithTheme(<ReceiveScreen />);
+      expect(screen.queryByTestId('btn-faucets')).toBeNull();
+    });
+
+    it('does not render the faucets button when no wallet is selected', () => {
+      mockSelectedWallet = null;
+      const screen = renderWithTheme(<ReceiveScreen />);
+      expect(screen.queryByTestId('btn-faucets')).toBeNull();
+    });
+
+    it('navigates to Testnet4Faucets screen when faucets button is pressed', () => {
+      mockSelectedWallet = TESTNET4_WALLET;
+      const screen = renderWithTheme(<ReceiveScreen />);
+      fireEvent.press(screen.getByTestId('btn-faucets'));
+      expect(mockNavigate).toHaveBeenCalledWith(AppRoutes.Testnet4Faucets);
     });
   });
 });

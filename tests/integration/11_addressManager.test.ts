@@ -392,7 +392,10 @@ describe('Integration: HD Address Manager', () => {
     expect(updated?.status).toBe('spent_once');
   });
 
-  it('SyncAddressStatus marks address as inconsistent when spent but still has UTXOs', async () => {
+  it('SyncAddressStatus marks address as "received" when spent but still holds UTXOs (partial spend)', async () => {
+    // A receive address that has both outgoing txs and remaining UTXOs represents a
+    // partial spend (e.g. two UTXOs received, one spent). The address still holds funds
+    // and should be reachable as "received", not permanently stuck as "inconsistent".
     const { importWallet, createOrigin, walletAddressRepository, utxoRepository, makeSyncAddressStatus } = makeSetup();
     const wallet = await importWallet.execute('W21', TEST_MNEMONIC);
     const origin = await createOrigin.execute(wallet.id, DEFAULT_ORIGIN_NAME, 'testnet4');
@@ -400,12 +403,12 @@ describe('Integration: HD Address Manager', () => {
     const addrs = await walletAddressRepository.findByOrigin(wallet.id, origin.id);
     const receiveAddr = addrs.find(a => a.chain === 'receive')!;
 
-    // Store a UTXO for this address
+    // Store a UTXO for this address (remaining unspent output)
     await utxoRepository.replaceAll(wallet.id, [
       { txid: 'utxo1', vout: 0, valueSats: 5000, address: receiveAddr.address, isConfirmed: true },
     ]);
 
-    // Also has an outgoing transaction (spent as input)
+    // Also has an outgoing transaction (one of multiple UTXOs was spent as input)
     const txsMap = new Map<string, Transaction[]>([
       [receiveAddr.address, [
         { id: 'tx1', txid: 'tx1', amountSats: 10000, direction: 'outgoing', status: 'confirmed', createdAt: new Date().toISOString() },
@@ -416,7 +419,7 @@ describe('Integration: HD Address Manager', () => {
     await sync.execute(wallet.id, 'testnet4');
 
     const updated = await walletAddressRepository.findByAddress(receiveAddr.address);
-    expect(updated?.status).toBe('inconsistent');
+    expect(updated?.status).toBe('received');
   });
 
   it('SyncAddressStatus marks change address as change when it has incoming txs', async () => {

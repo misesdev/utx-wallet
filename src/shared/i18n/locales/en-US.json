@@ -823,5 +823,20 @@
     "parallelWarning": "Parallel sync is active. All addresses will be fetched simultaneously using your personal node.",
     "rateLimitInfo": "The public mempool.space API blocks requests above ~1-2 per second. Lower values are safer for public APIs. When using your own node, you can raise this limit freely.",
     "info": "These settings control how aggressively the wallet queries the blockchain during sync. Be conservative with the public API to avoid temporary bans."
+  },
+  "faucet": {
+    "button": "Faucets",
+    "title": "Testnet4 Faucets",
+    "heroTitle": "Get free testnet4 coins",
+    "heroDesc": "Testnet4 coins have no real monetary value and are meant for testing only. Use these faucets to load your wallet and explore all features safely.",
+    "openFaucet": "Open",
+    "mempoolName": "mempool.space",
+    "mempoolDesc": "Official faucet by the Mempool team. Reliable and widely used by the Bitcoin developer community.",
+    "coinfaucetName": "coinfaucet.eu",
+    "coinfaucetDesc": "Community-run faucet with straightforward testnet4 coin distribution.",
+    "testnet4InfoName": "testnet4.info",
+    "testnet4InfoDesc": "Dedicated testnet4 block explorer and faucet combined in one place.",
+    "cypherfaucetName": "cypherfaucet.com",
+    "cypherfaucetDesc": "Alternative testnet faucet as a backup option."
   }
 }

@@ -186,8 +186,11 @@ describe('SyncAddressStatusUseCase', () => {
       );
     });
 
-    it('marks address as "inconsistent" when it has outgoing txs AND UTXOs (unusual)', async () => {
-      const addr = makeWalletAddress(ADDRESS_A);
+    it('marks receive address as "received" when it has outgoing txs AND UTXOs (partial spend or address reuse)', async () => {
+      // Scenario: address received multiple UTXOs, one was spent (outgoing tx), but
+      // another UTXO remains. The address is still active and holds funds — it should
+      // NOT be permanently labelled "inconsistent" which required manual intervention.
+      const addr = makeWalletAddress(ADDRESS_A, { chain: 'receive' });
       const walletAddressRepo = makeWalletAddressRepo([addr]);
       const utxoRepo = makeUtxoRepo([makeUtxo(ADDRESS_A)]);
       const tx = makeTx('tx1', 'outgoing');
@@ -198,7 +201,42 @@ describe('SyncAddressStatusUseCase', () => {
 
       expect(walletAddressRepo.updateSyncData).toHaveBeenCalledWith(
         addr.id,
-        expect.objectContaining({ status: 'inconsistent' }),
+        expect.objectContaining({ status: 'received' }),
+      );
+    });
+
+    it('marks change address as "change" when it has outgoing txs AND UTXOs', async () => {
+      const addr = makeWalletAddress(ADDRESS_A, { chain: 'change' });
+      const walletAddressRepo = makeWalletAddressRepo([addr]);
+      const utxoRepo = makeUtxoRepo([makeUtxo(ADDRESS_A)]);
+      const tx = makeTx('tx1', 'outgoing');
+      const prefetched = new Map([[ADDRESS_A, [tx]]]);
+
+      const useCase = createUseCase({ walletAddressRepo, utxoRepo });
+      await useCase.execute(WALLET_ID, NETWORK, prefetched);
+
+      expect(walletAddressRepo.updateSyncData).toHaveBeenCalledWith(
+        addr.id,
+        expect.objectContaining({ status: 'change' }),
+      );
+    });
+
+    it('recovers a previously inconsistent address to "received" once blockchain data is re-synced', async () => {
+      // Addresses with status="inconsistent" stored in the database are re-evaluated
+      // on the next sync. If they now pass the normal status computation they receive
+      // a valid status instead of remaining stuck in "inconsistent" forever.
+      const addr = makeWalletAddress(ADDRESS_A, { status: 'inconsistent' });
+      const walletAddressRepo = makeWalletAddressRepo([addr]);
+      const utxoRepo = makeUtxoRepo([makeUtxo(ADDRESS_A)]);
+      const tx = makeTx('tx1', 'outgoing');
+      const prefetched = new Map([[ADDRESS_A, [tx]]]);
+
+      const useCase = createUseCase({ walletAddressRepo, utxoRepo });
+      await useCase.execute(WALLET_ID, NETWORK, prefetched);
+
+      expect(walletAddressRepo.updateSyncData).toHaveBeenCalledWith(
+        addr.id,
+        expect.objectContaining({ status: 'received' }),
       );
     });
 
